@@ -170,7 +170,7 @@ export default function CaptureForm({ slug, cta }: Props) {
         d&apos;Althoce par email et d&apos;être éventuellement recontacté.
         Vos données ne sont jamais revendues. Désinscription en 1 clic.{" "}
         <a
-          href="https://althoce.fr/politique-de-confidentialite"
+          href="https://althoce.com/confidentialite/"
           target="_blank"
           rel="noopener noreferrer"
           className="underline hover:text-white transition-colors"
