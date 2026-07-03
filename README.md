@@ -111,6 +111,6 @@ LinkedIn reste correcte (titre + description) mais sans visuel.
 
 ## 4. Plus tard (hors v1)
 
-- Domaine custom `ressources.althoce.fr` (Vercel → Domains, un CNAME).
+- Domaine custom `ressources.althoce.com` (Vercel → Domains, un CNAME).
 - n8n en aval de Brevo : export des mobiles opt-in vers le pipeline cold call (Kaspr / Lemlist), validation humaine avant envoi.
 - A/B test `style: "modal"` vs `style: "page"` sur une même ressource.

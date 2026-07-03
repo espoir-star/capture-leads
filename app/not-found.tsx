@@ -8,7 +8,7 @@ export default function NotFound() {
         Cette ressource n&apos;existe pas (ou plus).
       </p>
       <a
-        href="https://althoce.fr"
+        href="https://althoce.com"
         className="mt-8 rounded-lg bg-accent px-8 py-3.5 font-semibold text-white hover:bg-accent-clair transition"
       >
         Retour au site Althoce
