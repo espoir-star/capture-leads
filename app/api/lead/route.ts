@@ -148,9 +148,16 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const err = await res.json().catch(() => null);
 
-      // Cas fréquent : le numéro SMS existe déjà sur un autre contact.
+      // Deux cas où le numéro bloque la création alors que le lead est bon :
+      // - duplicate_parameter : le SMS existe déjà sur un autre contact
+      // - invalid_parameter "Invalid phone number" : Brevo valide les tranches
+      //   attribuées, plus strict que notre regex
       // On retente sans le SMS pour ne pas perdre le lead.
-      if (err?.code === "duplicate_parameter") {
+      const numeroRejete =
+        err?.code === "duplicate_parameter" ||
+        (err?.code === "invalid_parameter" &&
+          /phone/i.test(String(err?.message ?? "")));
+      if (numeroRejete) {
         delete attributes.SMS;
         attributes.TEL_DOUBLON = tel; // on garde la trace du numéro
         const retry = await fetch(BREVO_API, {
