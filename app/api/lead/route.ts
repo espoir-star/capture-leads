@@ -3,6 +3,36 @@ import { getRessource } from "@/lib/ressources";
 
 const BREVO_API = "https://api.brevo.com/v3/contacts";
 
+/* Limitation de débit best-effort (mémoire de l'instance serverless).
+   Suffisant contre les boucles naïves ; les bots simples sont déjà
+   filtrés par le honeypot. */
+const FENETRE_MS = 60_000;
+const MAX_PAR_FENETRE = 5;
+const tentatives = new Map<string, { count: number; reset: number }>();
+
+function tropDeRequetes(ip: string): boolean {
+  const now = Date.now();
+  if (tentatives.size > 1000) {
+    for (const [k, v] of tentatives) if (now > v.reset) tentatives.delete(k);
+  }
+  const t = tentatives.get(ip);
+  if (!t || now > t.reset) {
+    tentatives.set(ip, { count: 1, reset: now + FENETRE_MS });
+    return false;
+  }
+  t.count++;
+  return t.count > MAX_PAR_FENETRE;
+}
+
+/** Nettoie une chaîne libre : caractères de contrôle retirés, longueur bornée */
+function nettoyer(val: unknown, max: number): string {
+  return String(val ?? "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .trim()
+    .slice(0, max);
+}
+
 interface LeadPayload {
   slug?: string;
   prenom?: string;
@@ -21,6 +51,15 @@ function telValide(tel: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "inconnue";
+  if (tropDeRequetes(ip)) {
+    return NextResponse.json(
+      { message: "Trop de tentatives. Réessayez dans une minute." },
+      { status: 429 }
+    );
+  }
+
   let body: LeadPayload;
   try {
     body = await req.json();
@@ -36,10 +75,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const slug = String(body.slug ?? "");
-  const prenom = String(body.prenom ?? "").trim();
-  const email = String(body.email ?? "").trim().toLowerCase();
-  const tel = String(body.tel ?? "").trim();
+  const slug = nettoyer(body.slug, 80);
+  const prenom = nettoyer(body.prenom, 60);
+  const email = nettoyer(body.email, 254).toLowerCase();
+  const tel = nettoyer(body.tel, 20);
 
   const ressource = getRessource(slug);
   if (!ressource) {
@@ -83,9 +122,12 @@ export async function POST(req: NextRequest) {
     SOURCE_INSCRIPTION: "page-capture",
     DATE_OPTIN: new Date().toISOString(),
   };
-  if (body.utm?.source) attributes.UTM_SOURCE = body.utm.source;
-  if (body.utm?.medium) attributes.UTM_MEDIUM = body.utm.medium;
-  if (body.utm?.campaign) attributes.UTM_CAMPAIGN = body.utm.campaign;
+  const utmSource = nettoyer(body.utm?.source, 120);
+  const utmMedium = nettoyer(body.utm?.medium, 120);
+  const utmCampaign = nettoyer(body.utm?.campaign, 120);
+  if (utmSource) attributes.UTM_SOURCE = utmSource;
+  if (utmMedium) attributes.UTM_MEDIUM = utmMedium;
+  if (utmCampaign) attributes.UTM_CAMPAIGN = utmCampaign;
 
   try {
     const res = await fetch(BREVO_API, {
