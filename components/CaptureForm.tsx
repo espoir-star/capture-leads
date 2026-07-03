@@ -130,19 +130,23 @@ export default function CaptureForm({ slug, cta }: Props) {
         <label htmlFor="tel" className="sr-only">
           Numéro de mobile
         </label>
-        <div className="flex items-center rounded-lg border border-bordure bg-fond focus-within:border-accent transition-colors">
-          <span className="pl-4 pr-2 text-secondaire select-none" aria-hidden>
-            🇫🇷 +33
+        <div className="flex items-stretch rounded-lg border border-bordure bg-fond focus-within:border-accent transition-colors">
+          <span
+            className="flex items-center gap-2 whitespace-nowrap border-r border-bordure px-4 text-secondaire select-none"
+            aria-hidden
+          >
+            <span className="leading-none">🇫🇷</span>
+            <span className="text-sm font-medium">FR</span>
           </span>
           <input
             id="tel"
             name="tel"
             type="tel"
             required
-            placeholder="6 12 34 56 78"
+            placeholder="06 12 34 56 78"
             autoComplete="tel-national"
             inputMode="tel"
-            className="w-full bg-transparent py-3.5 pr-4 text-white placeholder:text-secondaire outline-none"
+            className="w-full bg-transparent py-3.5 pl-3.5 pr-4 text-white placeholder:text-secondaire outline-none"
           />
         </div>
       </div>
