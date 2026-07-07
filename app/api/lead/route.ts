@@ -36,6 +36,7 @@ function nettoyer(val: unknown, max: number): string {
 interface LeadPayload {
   slug?: string;
   prenom?: string;
+  nom?: string;
   email?: string;
   tel?: string;
   website?: string; // honeypot
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
 
   const slug = nettoyer(body.slug, 80);
   const prenom = nettoyer(body.prenom, 60);
+  const nom = nettoyer(body.nom, 60);
   const email = nettoyer(body.email, 254).toLowerCase();
   const tel = nettoyer(body.tel, 20);
 
@@ -90,6 +92,12 @@ export async function POST(req: NextRequest) {
   if (prenom.length < 2 || prenom.length > 60) {
     return NextResponse.json(
       { message: "Prénom invalide." },
+      { status: 400 }
+    );
+  }
+  if (nom.length < 2 || nom.length > 60) {
+    return NextResponse.json(
+      { message: "Nom invalide." },
       { status: 400 }
     );
   }
@@ -117,6 +125,7 @@ export async function POST(req: NextRequest) {
 
   const attributes: Record<string, string> = {
     PRENOM: prenom,
+    NOM: nom,
     SMS: tel,
     RESSOURCE: slug,
     SOURCE_INSCRIPTION: "page-capture",

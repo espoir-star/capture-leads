@@ -38,6 +38,7 @@ export default function CaptureForm({ slug, cta }: Props) {
 
     const form = new FormData(e.currentTarget);
     const prenom = String(form.get("prenom") ?? "").trim();
+    const nom = String(form.get("nom") ?? "").trim();
     const email = String(form.get("email") ?? "").trim();
     const telBrut = String(form.get("tel") ?? "").trim();
     const honeypot = String(form.get("website") ?? "");
@@ -58,6 +59,7 @@ export default function CaptureForm({ slug, cta }: Props) {
         body: JSON.stringify({
           slug,
           prenom,
+          nom,
           email,
           tel,
           website: honeypot,
@@ -107,6 +109,22 @@ export default function CaptureForm({ slug, cta }: Props) {
           minLength={2}
           placeholder="Prénom"
           autoComplete="given-name"
+          className="w-full rounded-lg border border-bordure bg-fond px-4 py-3.5 text-white placeholder:text-secondaire focus:border-accent transition-colors"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="nom" className="sr-only">
+          Nom
+        </label>
+        <input
+          id="nom"
+          name="nom"
+          type="text"
+          required
+          minLength={2}
+          placeholder="Nom"
+          autoComplete="family-name"
           className="w-full rounded-lg border border-bordure bg-fond px-4 py-3.5 text-white placeholder:text-secondaire focus:border-accent transition-colors"
         />
       </div>
