@@ -33,7 +33,7 @@ export default async function PageMerci({ params }: Props) {
           ✓ INSCRIPTION CONFIRMÉE
         </span>
 
-        <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold leading-tight">
+        <h1 className="mt-6 font-display text-2xl sm:text-4xl font-bold leading-snug sm:leading-tight text-balance">
           Votre guide est <span className="text-accent">prêt</span> 🎉
         </h1>
 

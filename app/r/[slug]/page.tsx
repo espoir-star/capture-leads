@@ -56,11 +56,11 @@ function Titre({ brut, className }: { brut: string; className?: string }) {
 
 function Pills({ pills }: { pills: string[] }) {
   return (
-    <ul className="flex flex-wrap gap-2">
+    <ul className="flex flex-wrap gap-1.5 sm:gap-2">
       {pills.map((p) => (
         <li
           key={p}
-          className="rounded-full border border-bordure bg-carte px-3.5 py-1.5 text-sm text-secondaire"
+          className="rounded-full border border-bordure bg-carte px-3 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm text-secondaire"
         >
           <span className="mr-1.5 text-accent" aria-hidden>
             ✓
@@ -100,8 +100,8 @@ export default async function PageCapture({ params }: Props) {
           aria-hidden
           className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[720px] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
         />
-        <div className="relative w-full max-w-lg rounded-2xl border border-bordure bg-carte p-8 sm:p-10 shadow-2xl">
-          <div className="mb-6 flex items-center justify-between">
+        <div className="relative w-full max-w-lg rounded-2xl border border-bordure bg-carte p-6 sm:p-10 shadow-2xl">
+          <div className="mb-5 sm:mb-6 flex items-center justify-between">
             <Logo />
             <span className="rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent">
               {r.badge}
@@ -109,13 +109,15 @@ export default async function PageCapture({ params }: Props) {
           </div>
           <Titre
             brut={r.titre}
-            className="font-display text-2xl sm:text-3xl font-bold leading-tight"
+            className="font-display text-[22px] sm:text-3xl font-bold leading-snug sm:leading-tight text-balance"
           />
-          <p className="mt-4 text-secondaire leading-relaxed">{r.sousTitre}</p>
-          <div className="mt-5">
+          <p className="mt-3 sm:mt-4 text-[15px] sm:text-base text-secondaire leading-relaxed">
+            {r.sousTitre}
+          </p>
+          <div className="mt-4 sm:mt-5">
             <Pills pills={r.pills} />
           </div>
-          <div className="mt-8">{form}</div>
+          <div className="mt-6 sm:mt-8">{form}</div>
         </div>
       </main>
     );
@@ -134,12 +136,12 @@ export default async function PageCapture({ params }: Props) {
           </span>
           <Titre
             brut={r.titre}
-            className="mt-5 font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight"
+            className="mt-5 font-display text-[26px] sm:text-4xl lg:text-5xl font-bold leading-snug sm:leading-tight text-balance"
           />
-          <p className="mt-5 max-w-xl text-lg text-secondaire leading-relaxed">
+          <p className="mt-4 sm:mt-5 max-w-xl text-base sm:text-lg text-secondaire leading-relaxed">
             {r.sousTitre}
           </p>
-          <div className="mt-7">
+          <div className="mt-5 sm:mt-7">
             <Pills pills={r.pills} />
           </div>
         </div>
