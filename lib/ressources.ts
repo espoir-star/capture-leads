@@ -84,6 +84,29 @@ export const RESSOURCES: Record<string, Ressource> = {
     style: "page",
     cta: "Recevoir le guide",
   },
+
+  /* ─────────────────────────────────────────────────────────────
+   * 12 cas d'usage Claude pour experts-comptables
+   * ──────────────────────────────────────────────────────────── */
+  "12-cas-usage-experts-comptables": {
+    slug: "12-cas-usage-experts-comptables",
+    badge: "GUIDE GRATUIT",
+    titre:
+      "12 cas d'usage concrets de <accent>Claude</accent> pour les experts-comptables",
+    sousTitre:
+      "Pour les experts-comptables, collaborateurs et dirigeants de cabinets. 12 cas d'usage testés sur le terrain, de la production à la relation client, en passant par l'organisation interne et le conseil. Le principe : Claude propose, vous validez. Aucune écriture, aucun mail, aucune note sans votre accord.",
+    pills: [
+      "12 cas d'usage concrets",
+      "Testés sur le terrain",
+      "Claude propose, vous validez",
+      "Compatible responsabilité pro",
+    ],
+    urlRessource:
+      "https://espoir-metareglage.notion.site/12-cas-d-usage-concrets-de-Claude-pour-les-experts-comptables-3aac7d01a0e881caabc6c8d9d5555dc2",
+    brevoListId: 10, // "LM - 12 cas d'usage experts-comptables" (dossier Lead Magnets)
+    style: "modal",
+    cta: "Recevoir le guide",
+  },
 };
 
 export function getRessource(slug: string): Ressource | undefined {
