@@ -37,6 +37,21 @@ export interface Ressource {
   cover?: string;
   /** Texte du bouton de soumission */
   cta?: string;
+
+  /* ── Champs optionnels pour un contenu plus riche que pills ──── */
+
+  /** Paragraphe(s) affiché(s) après le sous-titre principal */
+  paragraphes?: string[];
+  /** Mini-carte "titre du guide" affichée au-dessus du formulaire (ex: durée de lecture) */
+  resourceCard?: { titre: string; meta: string };
+  /** Points détaillés (titre en gras + description). Remplace les pills si présent. */
+  points?: { titre: string; description: string }[];
+  /** Encadré d'alerte/insight affiché après les points */
+  encadre?: { titre: string; texte: string };
+  /** Signature en bas de page (remplace la ligne par défaut) */
+  signature?: string;
+  /** Personnalisation de la page merci (remplace le titre/texte par défaut) */
+  merci?: { titre: string; texte: string };
 }
 
 export const RESSOURCES: Record<string, Ressource> = {
@@ -106,6 +121,64 @@ export const RESSOURCES: Record<string, Ressource> = {
     brevoListId: 10, // "LM - 12 cas d'usage experts-comptables" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
+  },
+
+  /* ─────────────────────────────────────────────────────────────
+   * Guide Copilot — 8 cas d'usage
+   * ──────────────────────────────────────────────────────────── */
+  "copilot-8-cas-usage": {
+    slug: "copilot-8-cas-usage",
+    badge: "GUIDE GRATUIT",
+    titre:
+      "Votre entreprise a bloqué Claude et ChatGPT.\nEt vous utilisez <accent>Copilot</accent> uniquement pour écrire des mails.",
+    sousTitre:
+      "Le problème n'est pas l'outil. C'est que personne n'a montré ce qu'il sait faire depuis qu'il a changé de nature.",
+    paragraphes: [
+      "Depuis le 22 avril 2026, le mode agent est disponible en version générale dans Word, Excel et PowerPoint. Copilot n'attend plus vos instructions étape par étape : il exécute des actions en plusieurs étapes directement dans vos documents.",
+    ],
+    resourceCard: {
+      titre:
+        "Copilot : 8 cas d'usage, votre premier agent et la checklist de gouvernance",
+      meta: "Guide gratuit · lecture 20 min",
+    },
+    points: [
+      {
+        titre: "Les 8 cas d'usage détaillés, avec les prompts exacts à copier-coller",
+        description:
+          "Restructurer un rapport de 40 pages, nettoyer un Excel mal fichu, transformer un document interne en présentation client.",
+      },
+      {
+        titre: "La création de votre premier agent, pas à pas et sans une ligne de code",
+        description:
+          "Agent Builder en 15 minutes, puis Copilot Studio pour les agents qui agissent.",
+      },
+      {
+        titre: "La checklist de gouvernance à passer avant tout déploiement",
+        description: "Permissions, périmètre, actions, coûts, suivi.",
+      },
+      {
+        titre: "Le tableau des quatre niveaux de licence 2026",
+        description:
+          "Et le piège du modèle à crédits, celui qui fait déraper la facture.",
+      },
+    ],
+    encadre: {
+      titre: "Le point que peu de gens ont vu passer",
+      texte:
+        "Vos agents héritent des permissions existantes de votre annuaire. Ils ne créent aucun droit nouveau — mais ils rendent accessible, en langage naturel et à la demande, tout ce qui l'était déjà sans que personne ne l'ait jamais retrouvé.\n\nSi vos droits SharePoint sont mal configurés depuis trois ans, l'agent expose ces données à toute l'entreprise.",
+    },
+    pills: [],
+    urlRessource:
+      "https://espoir-metareglage.notion.site/Copilot-8-cas-d-usage-ton-premier-agent-et-la-checklist-de-gouvernance-3b1c7d01a0e8812b994ae14f8ce79bf9",
+    brevoListId: 11, // "LM - Guide Copilot 8 cas d'usage" (dossier Lead Magnets)
+    style: "modal",
+    cta: "Recevoir le guide",
+    signature: "Guide rédigé par Espoir Mwami — Althoce",
+    merci: {
+      titre: "C'est parti — le guide arrive dans votre boîte mail.",
+      texte:
+        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
+    },
   },
 };
 

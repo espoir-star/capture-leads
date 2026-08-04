@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const r = getRessource(slug);
   if (!r) return {};
 
-  const titrePlat = r.titre.replace(/<\/?accent>/g, "");
+  const titrePlat = r.titre.replace(/<\/?accent>/g, "").replace(/\n/g, " ");
   return {
     title: `${titrePlat} — Althoce`,
     description: r.sousTitre,
@@ -36,21 +36,88 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/** Rend le titre en remplaçant <accent>...</accent> par un span vert */
+/** Rend le titre en remplaçant <accent>...</accent> par un span vert, \n par un retour à la ligne */
 function Titre({ brut, className }: { brut: string; className?: string }) {
-  const parts = brut.split(/<accent>|<\/accent>/);
+  const lignes = brut.split("\n");
   return (
     <h1 className={className}>
-      {parts.map((part, i) =>
-        i % 2 === 1 ? (
-          <span key={i} className="text-accent">
-            {part}
-          </span>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      )}
+      {lignes.map((ligne, i) => (
+        <span key={i}>
+          {i > 0 && <br />}
+          {ligne.split(/<accent>|<\/accent>/).map((part, j) =>
+            j % 2 === 1 ? (
+              <span key={j} className="text-accent">
+                {part}
+              </span>
+            ) : (
+              part
+            )
+          )}
+        </span>
+      ))}
     </h1>
+  );
+}
+
+function Paragraphes({ items }: { items: string[] }) {
+  return (
+    <>
+      {items.map((texte, i) => (
+        <p
+          key={i}
+          className="mt-3 text-[15px] sm:text-base text-secondaire leading-relaxed"
+        >
+          {texte}
+        </p>
+      ))}
+    </>
+  );
+}
+
+function ResourceCard({ titre, meta }: { titre: string; meta: string }) {
+  return (
+    <div className="mt-6 rounded-xl border border-bordure bg-fond/60 p-4 sm:p-5">
+      <p className="font-display text-[15px] sm:text-base font-semibold leading-snug">
+        {titre}
+      </p>
+      <p className="mt-1 text-xs text-secondaire">{meta}</p>
+    </div>
+  );
+}
+
+function Points({ points }: { points: { titre: string; description: string }[] }) {
+  return (
+    <ul className="flex flex-col gap-3">
+      {points.map((p) => (
+        <li key={p.titre} className="flex gap-2.5">
+          <span className="mt-0.5 text-accent" aria-hidden>
+            ✓
+          </span>
+          <p className="text-[15px] leading-relaxed">
+            <span className="font-semibold">{p.titre}</span>
+            <span className="text-secondaire"> — {p.description}</span>
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Encadre({ titre, texte }: { titre: string; texte: string }) {
+  return (
+    <div className="rounded-xl border border-accent/25 bg-accent/5 p-4 sm:p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+        {titre}
+      </p>
+      {texte.split("\n\n").map((p, i) => (
+        <p
+          key={i}
+          className="mt-2 text-sm text-secondaire leading-relaxed first:mt-2.5"
+        >
+          {p}
+        </p>
+      ))}
+    </div>
   );
 }
 
@@ -114,10 +181,27 @@ export default async function PageCapture({ params }: Props) {
           <p className="mt-3 sm:mt-4 text-[15px] sm:text-base text-secondaire leading-relaxed">
             {r.sousTitre}
           </p>
+          {r.paragraphes && <Paragraphes items={r.paragraphes} />}
+          {r.resourceCard && (
+            <ResourceCard
+              titre={r.resourceCard.titre}
+              meta={r.resourceCard.meta}
+            />
+          )}
           <div className="mt-4 sm:mt-5">
-            <Pills pills={r.pills} />
+            {r.points ? <Points points={r.points} /> : <Pills pills={r.pills} />}
           </div>
+          {r.encadre && (
+            <div className="mt-5">
+              <Encadre titre={r.encadre.titre} texte={r.encadre.texte} />
+            </div>
+          )}
           <div className="mt-6 sm:mt-8">{form}</div>
+          {r.signature && (
+            <p className="mt-6 text-center text-xs text-secondaire">
+              {r.signature}
+            </p>
+          )}
         </div>
       </main>
     );

@@ -34,12 +34,22 @@ export default async function PageMerci({ params }: Props) {
         </span>
 
         <h1 className="mt-6 font-display text-2xl sm:text-4xl font-bold leading-snug sm:leading-tight text-balance">
-          Votre guide est <span className="text-accent">prêt</span> 🎉
+          {r.merci ? (
+            r.merci.titre
+          ) : (
+            <>
+              Votre guide est <span className="text-accent">prêt</span> 🎉
+            </>
+          )}
         </h1>
 
         <p className="mt-4 text-secondaire leading-relaxed">
-          Vous le recevez aussi par email dans quelques instants
-          (vérifiez vos spams si besoin).
+          {r.merci?.texte ?? (
+            <>
+              Vous le recevez aussi par email dans quelques instants
+              (vérifiez vos spams si besoin).
+            </>
+          )}
         </p>
 
         {/* Accès direct à la ressource */}
