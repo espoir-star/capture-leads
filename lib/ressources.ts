@@ -130,9 +130,8 @@ export const RESSOURCES: Record<string, Ressource> = {
     slug: "copilot-8-cas-usage",
     badge: "GUIDE GRATUIT",
     titre:
-      "Votre entreprise a bloqué Claude et ChatGPT.\nEt vous utilisez <accent>Copilot</accent> uniquement pour écrire des mails.",
-    sousTitre:
       "Le mode agent change tout depuis avril 2026. Personne ne vous a montré ce que ça change.",
+    sousTitre: "",
     points: [
       { titre: "8 cas d'usage concrets, prompts à copier-coller inclus" },
       { titre: "Votre premier agent créé pas à pas, sans une ligne de code" },

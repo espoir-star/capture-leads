@@ -18,12 +18,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!r) return {};
 
   const titrePlat = r.titre.replace(/<\/?accent>/g, "").replace(/\n/g, " ");
+  const description = r.sousTitre || titrePlat;
   return {
     title: `${titrePlat} — Althoce`,
-    description: r.sousTitre,
+    description,
     openGraph: {
       title: titrePlat,
-      description: r.sousTitre,
+      description,
       type: "website",
       locale: "fr_FR",
       ...(r.cover && { images: [{ url: r.cover, width: 1200, height: 630 }] }),
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     twitter: {
       card: "summary_large_image",
       title: titrePlat,
-      description: r.sousTitre,
+      description,
     },
   };
 }
@@ -184,9 +185,11 @@ export default async function PageCapture({ params }: Props) {
             brut={r.titre}
             className="font-display text-[22px] sm:text-3xl font-bold leading-snug sm:leading-tight text-balance"
           />
-          <p className="mt-3 sm:mt-4 text-[15px] sm:text-base text-secondaire leading-relaxed">
-            {r.sousTitre}
-          </p>
+          {r.sousTitre && (
+            <p className="mt-3 sm:mt-4 text-[15px] sm:text-base text-secondaire leading-relaxed">
+              {r.sousTitre}
+            </p>
+          )}
           {r.paragraphes && <Paragraphes items={r.paragraphes} />}
           {r.resourceCard && (
             <ResourceCard
