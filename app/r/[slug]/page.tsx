@@ -85,7 +85,11 @@ function ResourceCard({ titre, meta }: { titre: string; meta: string }) {
   );
 }
 
-function Points({ points }: { points: { titre: string; description: string }[] }) {
+function Points({
+  points,
+}: {
+  points: { titre: string; description?: string }[];
+}) {
   return (
     <ul className="flex flex-col gap-3">
       {points.map((p) => (
@@ -95,7 +99,9 @@ function Points({ points }: { points: { titre: string; description: string }[] }
           </span>
           <p className="text-[15px] leading-relaxed">
             <span className="font-semibold">{p.titre}</span>
-            <span className="text-secondaire"> — {p.description}</span>
+            {p.description && (
+              <span className="text-secondaire"> — {p.description}</span>
+            )}
           </p>
         </li>
       ))}
