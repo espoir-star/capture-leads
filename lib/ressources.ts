@@ -43,15 +43,24 @@ export interface Ressource {
   /** Paragraphe(s) affiché(s) après le sous-titre principal */
   paragraphes?: string[];
   /** Mini-carte "titre du guide" affichée au-dessus du formulaire (ex: durée de lecture) */
-  resourceCard?: { titre: string; meta: string };
+  resourceCard?: { titre: string; description?: string; meta: string };
   /** Points détaillés (titre en gras + description). Remplace les pills si présent. */
   points?: { titre: string; description?: string }[];
   /** Encadré d'alerte/insight affiché après les points */
   encadre?: { titre: string; texte: string };
   /** Signature en bas de page (remplace la ligne par défaut) */
   signature?: string;
-  /** Personnalisation de la page merci (remplace le titre/texte par défaut) */
-  merci?: { titre: string; texte: string };
+  /**
+   * Personnalisation de la page merci (remplace le titre/texte par défaut).
+   * ctaTitre/ctaTexte personnalisent le second bloc (relance call) ;
+   * ctaTexte omis = texte par défaut, ctaTexte: "" = pas de texte sous le titre.
+   */
+  merci?: {
+    titre: string;
+    texte: string;
+    ctaTitre?: string;
+    ctaTexte?: string;
+  };
 }
 
 export const RESSOURCES: Record<string, Ressource> = {
@@ -149,6 +158,56 @@ export const RESSOURCES: Record<string, Ressource> = {
       titre: "C'est parti — le guide arrive dans votre boîte mail.",
       texte:
         "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
+    },
+  },
+
+  /* ─────────────────────────────────────────────────────────────
+   * Guide Claude pour le droit — 10 cas d'usage
+   * ──────────────────────────────────────────────────────────── */
+  "claude-droit-10-cas-usage": {
+    slug: "claude-droit-10-cas-usage",
+    badge: "GUIDE GRATUIT",
+    titre:
+      "Vous passez plus de temps à lire des contrats qu'à les négocier.",
+    sousTitre: "Et la partie qui a de la valeur pour votre client, c'est la seconde.",
+    resourceCard: {
+      titre: "10 cas d'usage de Claude en droit",
+      description:
+        "Les prompts, le paramétrage du compte, les précautions liées au secret professionnel.",
+      meta: "Guide gratuit · aucun connecteur, aucune compétence technique",
+    },
+    points: [
+      {
+        titre: "Analyse et comparaison de contrats",
+        description: "les prompts à copier tels quels",
+      },
+      {
+        titre: "Rédaction à partir de vos propres modèles",
+        description: "sans qu'ils soient réécrits",
+      },
+      {
+        titre: "Le paramétrage à faire avant de charger un document client",
+        description: "entraînement, DPA, rétention",
+      },
+      {
+        titre: "Ce qu'on ne charge jamais",
+        description: "et comment anonymiser en amont",
+      },
+    ],
+    pills: [],
+    urlRessource:
+      "https://espoir-metareglage.notion.site/10-cas-d-usage-de-Claude-en-droit-le-param-trage-et-les-pr-cautions-3bec7d01a0e881898436ea4809c4049a",
+    brevoListId: 12, // "LM - Guide Claude Droit" (dossier Lead Magnets)
+    style: "modal",
+    cta: "Recevoir le guide",
+    signature: "Guide rédigé par Espoir Mwami — Althoce",
+    merci: {
+      titre: "C'est parti — le guide arrive dans votre boîte mail.",
+      texte:
+        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
+      ctaTitre:
+        "Une question sur le paramétrage de votre compte ou sur le cadre RGPD ?",
+      ctaTexte: "",
     },
   },
 };

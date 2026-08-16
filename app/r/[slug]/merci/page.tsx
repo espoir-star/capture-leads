@@ -22,6 +22,12 @@ export default async function PageMerci({ params }: Props) {
   const r = getRessource(slug);
   if (!r) notFound();
 
+  const ctaTitre = r.merci?.ctaTitre ?? "On l'applique ensemble à votre cas ?";
+  const ctaTexte =
+    r.merci?.ctaTexte !== undefined
+      ? r.merci.ctaTexte
+      : "30 minutes pour regarder votre situation et voir ce que l'IA peut automatiser chez vous. Sans engagement.";
+
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-12 overflow-hidden">
       <div
@@ -69,13 +75,12 @@ export default async function PageMerci({ params }: Props) {
 
         {/* Deuxième conversion : le call */}
         <div className="mt-5 rounded-2xl border border-accent/25 bg-accent/5 p-8">
-          <p className="font-display text-xl font-semibold">
-            On l&apos;applique ensemble à votre cas ?
-          </p>
-          <p className="mx-auto mt-3 max-w-md text-sm text-secondaire leading-relaxed">
-            30 minutes pour regarder votre situation et voir ce que
-            l&apos;IA peut automatiser chez vous. Sans engagement.
-          </p>
+          <p className="font-display text-xl font-semibold">{ctaTitre}</p>
+          {ctaTexte && (
+            <p className="mx-auto mt-3 max-w-md text-sm text-secondaire leading-relaxed">
+              {ctaTexte}
+            </p>
+          )}
           <a
             href={CAL_URL}
             target="_blank"

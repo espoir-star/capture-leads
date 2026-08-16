@@ -75,13 +75,26 @@ function Paragraphes({ items }: { items: string[] }) {
   );
 }
 
-function ResourceCard({ titre, meta }: { titre: string; meta: string }) {
+function ResourceCard({
+  titre,
+  description,
+  meta,
+}: {
+  titre: string;
+  description?: string;
+  meta: string;
+}) {
   return (
     <div className="mt-6 rounded-xl border border-bordure bg-fond/60 p-4 sm:p-5">
       <p className="font-display text-[15px] sm:text-base font-semibold leading-snug">
         {titre}
       </p>
-      <p className="mt-1 text-xs text-secondaire">{meta}</p>
+      {description && (
+        <p className="mt-1.5 text-sm text-secondaire leading-relaxed">
+          {description}
+        </p>
+      )}
+      <p className="mt-2 text-xs text-secondaire">{meta}</p>
     </div>
   );
 }
@@ -194,6 +207,7 @@ export default async function PageCapture({ params }: Props) {
           {r.resourceCard && (
             <ResourceCard
               titre={r.resourceCard.titre}
+              description={r.resourceCard.description}
               meta={r.resourceCard.meta}
             />
           )}
