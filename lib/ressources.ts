@@ -210,6 +210,35 @@ export const RESSOURCES: Record<string, Ressource> = {
       ctaTexte: "",
     },
   },
+
+  /* ─────────────────────────────────────────────────────────────
+   * 12 skills Claude pour la finance
+   * ──────────────────────────────────────────────────────────── */
+  "12-skills-claude-finance": {
+    slug: "12-skills-claude-finance",
+    badge: "GUIDE GRATUIT",
+    titre:
+      "Un prompt, vous le collez.\nUn skill, vous l'installez une fois.",
+    sousTitre:
+      "Vous chargez votre balance. Claude reconnaît la situation et applique votre procédure, sans que vous ayez à lui demander.",
+    resourceCard: {
+      titre: "12 skills Claude pour la finance",
+      description: "Les fichiers, l'installation et la méthode.",
+      meta: "Guide gratuit",
+    },
+    pills: [],
+    urlRessource:
+      "https://espoir-metareglage.notion.site/12-skills-Claude-pour-la-finance-les-fichiers-l-installation-et-la-m-thode-3c0c7d01a0e8810dac7ec917d2a378e8",
+    brevoListId: 13, // "LM - 12 skills Claude finance" (dossier Lead Magnets)
+    style: "modal",
+    cta: "Recevoir le guide",
+    signature: "Espoir Mwami — Althoce",
+    merci: {
+      titre: "C'est parti — le guide arrive dans votre boîte mail.",
+      texte:
+        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
+    },
+  },
 };
 
 export function getRessource(slug: string): Ressource | undefined {
