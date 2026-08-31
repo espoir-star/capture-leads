@@ -239,6 +239,36 @@ export const RESSOURCES: Record<string, Ressource> = {
         "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
     },
   },
+
+  /* ─────────────────────────────────────────────────────────────
+   * Claude × data.gouv — 20 prompts
+   * ──────────────────────────────────────────────────────────── */
+  "claude-data-gouv-20-prompts": {
+    slug: "claude-data-gouv-20-prompts",
+    badge: "GUIDE GRATUIT",
+    titre:
+      "Les données sont publiques depuis des années.\nLe problème, c'est de savoir où chercher.",
+    sousTitre:
+      "Ratios sectoriels, bilans déposés, valeurs foncières, registre des entreprises. Tout est sur data.gouv.fr, gratuitement. Encore faut-il connaître le catalogue.",
+    resourceCard: {
+      titre: "Claude × data.gouv : 20 prompts pour exploiter les données publiques",
+      description:
+        "Le connecteur officiel, l'installation en 2 minutes, et les prompts prêts à copier.",
+      meta: "Guide gratuit",
+    },
+    pills: [],
+    urlRessource:
+      "https://espoir-metareglage.notion.site/Claude-data-gouv-20-prompts-pour-exploiter-les-donn-es-publiques-3ccc7d01a0e881098c94f3a4e67310a0",
+    brevoListId: 14, // "LM - Claude data.gouv" (dossier Lead Magnets)
+    style: "modal",
+    cta: "Recevoir le guide",
+    signature: "Espoir Mwami — Althoce",
+    merci: {
+      titre: "C'est parti — le guide arrive dans votre boîte mail.",
+      texte:
+        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
+    },
+  },
 };
 
 export function getRessource(slug: string): Ressource | undefined {
