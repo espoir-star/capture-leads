@@ -8,13 +8,42 @@ interface Props {
   cta: string;
 }
 
-/** Normalise un numéro FR : "06 12 34 56 78" → "+33612345678" */
-function normaliserTel(brut: string): string | null {
-  const chiffres = brut.replace(/[\s.\-()]/g, "");
-  if (/^\+33[67]\d{8}$/.test(chiffres)) return chiffres;
-  if (/^0[67]\d{8}$/.test(chiffres)) return "+33" + chiffres.slice(1);
-  if (/^33[67]\d{8}$/.test(chiffres)) return "+" + chiffres;
-  return null;
+/** Indicatifs proposés : France + pays où Althoce a déjà des leads (francophonie, Europe proche, Amérique du Nord) */
+const INDICATIFS = [
+  { code: "33", pays: "France", drapeau: "🇫🇷" },
+  { code: "32", pays: "Belgique", drapeau: "🇧🇪" },
+  { code: "41", pays: "Suisse", drapeau: "🇨🇭" },
+  { code: "352", pays: "Luxembourg", drapeau: "🇱🇺" },
+  { code: "1", pays: "Canada / États-Unis", drapeau: "🇨🇦" },
+  { code: "212", pays: "Maroc", drapeau: "🇲🇦" },
+  { code: "213", pays: "Algérie", drapeau: "🇩🇿" },
+  { code: "216", pays: "Tunisie", drapeau: "🇹🇳" },
+  { code: "225", pays: "Côte d'Ivoire", drapeau: "🇨🇮" },
+  { code: "221", pays: "Sénégal", drapeau: "🇸🇳" },
+  { code: "237", pays: "Cameroun", drapeau: "🇨🇲" },
+  { code: "44", pays: "Royaume-Uni", drapeau: "🇬🇧" },
+  { code: "49", pays: "Allemagne", drapeau: "🇩🇪" },
+  { code: "34", pays: "Espagne", drapeau: "🇪🇸" },
+  { code: "39", pays: "Italie", drapeau: "🇮🇹" },
+  { code: "351", pays: "Portugal", drapeau: "🇵🇹" },
+] as const;
+
+/** Normalise un numéro international : indicatif choisi + saisie locale → format E.164 ("+33612345678") */
+function normaliserTel(indicatif: string, brut: string): string | null {
+  let chiffres = brut.replace(/\D/g, "");
+  if (!chiffres) return null;
+
+  // L'utilisateur a peut-être déjà saisi l'indicatif (avec ou sans 0 initial)
+  if (chiffres.startsWith(indicatif)) {
+    chiffres = chiffres.slice(indicatif.length);
+  } else if (chiffres.startsWith("0")) {
+    chiffres = chiffres.slice(1);
+  }
+
+  const complet = indicatif + chiffres;
+  // E.164 : 8 à 15 chiffres au total après le "+"
+  if (!/^[1-9]\d{7,14}$/.test(complet)) return null;
+  return "+" + complet;
 }
 
 export default function CaptureForm({ slug, cta }: Props) {
@@ -23,6 +52,7 @@ export default function CaptureForm({ slug, cta }: Props) {
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [utm, setUtm] = useState({ source: "", medium: "", campaign: "" });
+  const [indicatif, setIndicatif] = useState<string>(INDICATIFS[0].code);
 
   useEffect(() => {
     setUtm({
@@ -43,11 +73,9 @@ export default function CaptureForm({ slug, cta }: Props) {
     const telBrut = String(form.get("tel") ?? "").trim();
     const honeypot = String(form.get("website") ?? "");
 
-    const tel = normaliserTel(telBrut);
+    const tel = normaliserTel(indicatif, telBrut);
     if (!tel) {
-      setErreur(
-        "Le numéro doit être un mobile français (06 ou 07)."
-      );
+      setErreur("Numéro de mobile invalide pour l'indicatif choisi.");
       return;
     }
 
@@ -149,19 +177,28 @@ export default function CaptureForm({ slug, cta }: Props) {
           Numéro de mobile
         </label>
         <div className="flex items-stretch rounded-lg border border-bordure bg-fond focus-within:border-accent transition-colors">
-          <span
-            className="flex items-center gap-2 whitespace-nowrap border-r border-bordure px-4 text-secondaire select-none"
-            aria-hidden
+          <label htmlFor="indicatif" className="sr-only">
+            Pays
+          </label>
+          <select
+            id="indicatif"
+            name="indicatif"
+            value={indicatif}
+            onChange={(e) => setIndicatif(e.target.value)}
+            className="shrink-0 whitespace-nowrap border-r border-bordure bg-transparent px-3 text-sm font-medium text-white outline-none"
           >
-            <span className="leading-none">🇫🇷</span>
-            <span className="text-sm font-medium">FR</span>
-          </span>
+            {INDICATIFS.map((i) => (
+              <option key={i.code} value={i.code} className="bg-fond text-white">
+                {i.drapeau} +{i.code}
+              </option>
+            ))}
+          </select>
           <input
             id="tel"
             name="tel"
             type="tel"
             required
-            placeholder="06 12 34 56 78"
+            placeholder="6 12 34 56 78"
             autoComplete="tel-national"
             inputMode="tel"
             className="w-full bg-transparent py-3.5 pl-3.5 pr-4 text-white placeholder:text-secondaire outline-none"

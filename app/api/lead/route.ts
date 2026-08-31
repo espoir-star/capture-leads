@@ -47,8 +47,9 @@ function emailValide(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
+/** E.164 générique : "+" suivi de 8 à 15 chiffres, le premier non nul */
 function telValide(tel: string): boolean {
-  return /^\+33[67]\d{8}$/.test(tel);
+  return /^\+[1-9]\d{7,14}$/.test(tel);
 }
 
 export async function POST(req: NextRequest) {
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
   }
   if (!telValide(tel)) {
     return NextResponse.json(
-      { message: "Numéro de mobile invalide (format +336... ou +337...)." },
+      { message: "Numéro de mobile invalide." },
       { status: 400 }
     );
   }
