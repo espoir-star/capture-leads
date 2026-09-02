@@ -269,6 +269,35 @@ export const RESSOURCES: Record<string, Ressource> = {
         "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
     },
   },
+
+  /* ─────────────────────────────────────────────────────────────
+   * 12 agents IA pour la direction financière
+   * ──────────────────────────────────────────────────────────── */
+  "12-agents-ia-direction-financiere": {
+    slug: "12-agents-ia-direction-financiere",
+    badge: "GUIDE GRATUIT",
+    titre:
+      "Vos données sortent déjà de votre ERP.\nC'est tout ce dont vous avez besoin.",
+    sousTitre:
+      "Pas de projet d'intégration. Pas de ticket DSI.\nVous exportez, vous chargez, l'agent s'active.",
+    resourceCard: {
+      titre: "12 agents IA pour votre direction financière",
+      description: "Les fichiers, le paramétrage, la conformité.",
+      meta: "Guide gratuit",
+    },
+    pills: [],
+    urlRessource:
+      "https://espoir-metareglage.notion.site/12-agents-IA-pour-votre-direction-financi-re-les-fichiers-le-param-trage-et-la-conformit-3cfc7d01a0e8817281a3c36a0c8e7f5e",
+    brevoListId: 15, // "LM - 12 agents IA direction financière" (dossier Lead Magnets)
+    style: "modal",
+    cta: "Recevoir le guide",
+    signature: "Espoir Mwami — Althoce",
+    merci: {
+      titre: "C'est parti — le guide arrive dans votre boîte mail.",
+      texte:
+        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
+    },
+  },
 };
 
 export function getRessource(slug: string): Ressource | undefined {
