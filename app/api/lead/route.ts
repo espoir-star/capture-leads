@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRessource } from "@/lib/ressources";
+import { domaineJetable } from "@/lib/validationEmail";
+import { formatE164Valide, numeroSuspect, partieLocale } from "@/lib/validationTel";
 
 const BREVO_API = "https://api.brevo.com/v3/contacts";
 
@@ -39,17 +41,40 @@ interface LeadPayload {
   nom?: string;
   email?: string;
   tel?: string;
+  indicatif?: string;
   website?: string; // honeypot
   utm?: { source?: string; medium?: string; campaign?: string };
+  sessionId?: string;
 }
 
 function emailValide(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
-/** E.164 générique : "+" suivi de 8 à 15 chiffres, le premier non nul */
-function telValide(tel: string): boolean {
-  return /^\+[1-9]\d{7,14}$/.test(tel);
+/**
+ * Journalise chaque rejet (et chaque succès) : horodatage, motif, valeur
+ * saisie, sessionId. Les logs sont regroupables par sessionId pour savoir
+ * si une personne a corrigé et soumis ensuite avec succès.
+ * Sortie sur stdout, capturée par les logs Vercel.
+ */
+function journaliser(
+  evenement: "rejet" | "succes",
+  donnees: {
+    motif?: string;
+    valeur?: string;
+    slug?: string;
+    sessionId?: string;
+    ip?: string;
+  }
+) {
+  console.log(
+    JSON.stringify({
+      type: "lead",
+      evenement,
+      horodatage: new Date().toISOString(),
+      ...donnees,
+    })
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -72,16 +97,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Honeypot rempli = bot. On répond OK sans rien faire.
+  const slug = nettoyer(body.slug, 80);
+  const sessionId = nettoyer(body.sessionId, 60);
+
+  // Honeypot rempli = bot. On affiche la page de remerciement normalement,
+  // sans rien enregistrer. Seul cas de rejet silencieux (pas de message d'erreur).
   if (body.website && body.website.length > 0) {
+    journaliser("rejet", { motif: "honeypot", slug, sessionId, ip });
     return NextResponse.json({ ok: true });
   }
 
-  const slug = nettoyer(body.slug, 80);
   const prenom = nettoyer(body.prenom, 60);
   const nom = nettoyer(body.nom, 60);
   const email = nettoyer(body.email, 254).toLowerCase();
   const tel = nettoyer(body.tel, 20);
+  const indicatif = nettoyer(body.indicatif, 4);
 
   const ressource = getRessource(slug);
   if (!ressource) {
@@ -91,26 +121,42 @@ export async function POST(req: NextRequest) {
     );
   }
   if (prenom.length < 2 || prenom.length > 60) {
+    journaliser("rejet", { motif: "prenom_invalide", valeur: prenom, slug, sessionId, ip });
     return NextResponse.json(
       { message: "Prénom invalide." },
       { status: 400 }
     );
   }
   if (nom.length < 2 || nom.length > 60) {
+    journaliser("rejet", { motif: "nom_invalide", valeur: nom, slug, sessionId, ip });
     return NextResponse.json(
       { message: "Nom invalide." },
       { status: 400 }
     );
   }
   if (!emailValide(email)) {
+    journaliser("rejet", { motif: "email_invalide", valeur: email, slug, sessionId, ip });
     return NextResponse.json(
       { message: "Email invalide." },
       { status: 400 }
     );
   }
-  if (!telValide(tel)) {
+  if (domaineJetable(email)) {
+    journaliser("rejet", { motif: "email_jetable", valeur: email, slug, sessionId, ip });
     return NextResponse.json(
-      { message: "Numéro de mobile invalide." },
+      {
+        message:
+          "Merci d'utiliser une adresse email habituelle (pas une adresse jetable).",
+      },
+      { status: 400 }
+    );
+  }
+  const local = partieLocale(tel, indicatif);
+  const motifTel = !formatE164Valide(tel) ? "format" : numeroSuspect(local);
+  if (motifTel) {
+    journaliser("rejet", { motif: `tel_${motifTel}`, valeur: tel, slug, sessionId, ip });
+    return NextResponse.json(
+      { message: "Ce numéro ne semble pas valide. Vérifiez la saisie." },
       { status: 400 }
     );
   }
@@ -184,7 +230,10 @@ export async function POST(req: NextRequest) {
             updateEnabled: true,
           }),
         });
-        if (retry.ok) return NextResponse.json({ ok: true });
+        if (retry.ok) {
+          journaliser("succes", { slug, sessionId, ip });
+          return NextResponse.json({ ok: true });
+        }
       }
 
       console.error("Erreur Brevo:", res.status, err);
@@ -194,6 +243,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    journaliser("succes", { slug, sessionId, ip });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("Erreur réseau Brevo:", e);

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { construireE164 } from "@/lib/validationTel";
+import { suggestionEmail } from "@/lib/validationEmail";
 
 interface Props {
   slug: string;
@@ -28,24 +30,6 @@ const INDICATIFS = [
   { code: "351", pays: "Portugal", drapeau: "🇵🇹" },
 ] as const;
 
-/** Normalise un numéro international : indicatif choisi + saisie locale → format E.164 ("+33612345678") */
-function normaliserTel(indicatif: string, brut: string): string | null {
-  let chiffres = brut.replace(/\D/g, "");
-  if (!chiffres) return null;
-
-  // L'utilisateur a peut-être déjà saisi l'indicatif (avec ou sans 0 initial)
-  if (chiffres.startsWith(indicatif)) {
-    chiffres = chiffres.slice(indicatif.length);
-  } else if (chiffres.startsWith("0")) {
-    chiffres = chiffres.slice(1);
-  }
-
-  const complet = indicatif + chiffres;
-  // E.164 : 8 à 15 chiffres au total après le "+"
-  if (!/^[1-9]\d{7,14}$/.test(complet)) return null;
-  return "+" + complet;
-}
-
 export default function CaptureForm({ slug, cta }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,6 +37,15 @@ export default function CaptureForm({ slug, cta }: Props) {
   const [erreur, setErreur] = useState<string | null>(null);
   const [utm, setUtm] = useState({ source: "", medium: "", campaign: "" });
   const [indicatif, setIndicatif] = useState<string>(INDICATIFS[0].code);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  // Identifiant de session côté client, pour recouper dans les logs serveur
+  // une tentative rejetée avec la soumission réussie qui a suivi.
+  const [sessionId] = useState<string>(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2)
+  );
 
   useEffect(() => {
     setUtm({
@@ -73,11 +66,7 @@ export default function CaptureForm({ slug, cta }: Props) {
     const telBrut = String(form.get("tel") ?? "").trim();
     const honeypot = String(form.get("website") ?? "");
 
-    const tel = normaliserTel(indicatif, telBrut);
-    if (!tel) {
-      setErreur("Numéro de mobile invalide pour l'indicatif choisi.");
-      return;
-    }
+    const tel = construireE164(indicatif, telBrut);
 
     setEnvoi(true);
     try {
@@ -90,8 +79,10 @@ export default function CaptureForm({ slug, cta }: Props) {
           nom,
           email,
           tel,
+          indicatif,
           website: honeypot,
           utm,
+          sessionId,
         }),
       });
 
@@ -162,14 +153,33 @@ export default function CaptureForm({ slug, cta }: Props) {
           Email
         </label>
         <input
+          ref={emailRef}
           id="email"
           name="email"
           type="email"
           required
           placeholder="Email professionnel"
           autoComplete="email"
+          onBlur={(e) => setSuggestion(suggestionEmail(e.target.value.trim()))}
+          onChange={() => setSuggestion(null)}
           className="w-full rounded-lg border border-bordure bg-fond px-4 py-3.5 text-white placeholder:text-secondaire focus:border-accent transition-colors"
         />
+        {suggestion && (
+          <p className="mt-1.5 text-sm text-secondaire">
+            Vouliez-vous dire{" "}
+            <button
+              type="button"
+              onClick={() => {
+                if (emailRef.current) emailRef.current.value = suggestion;
+                setSuggestion(null);
+              }}
+              className="font-medium text-accent underline underline-offset-2"
+            >
+              {suggestion}
+            </button>{" "}
+            ?
+          </p>
+        )}
       </div>
 
       <div>
@@ -204,6 +214,9 @@ export default function CaptureForm({ slug, cta }: Props) {
             className="w-full bg-transparent py-3.5 pl-3.5 pr-4 text-white placeholder:text-secondaire outline-none"
           />
         </div>
+        <p className="mt-1.5 text-xs text-secondaire">
+          Pour vous envoyer le lien par SMS si l&apos;email n&apos;arrive pas.
+        </p>
       </div>
 
       {erreur && (
