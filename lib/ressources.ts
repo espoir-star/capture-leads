@@ -298,6 +298,34 @@ export const RESSOURCES: Record<string, Ressource> = {
         "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
     },
   },
+
+  /* ─────────────────────────────────────────────────────────────
+   * Les 7 chantiers — intégrer l'IA dans un cabinet
+   * ──────────────────────────────────────────────────────────── */
+  "7-chantiers-ia-cabinet": {
+    slug: "7-chantiers-ia-cabinet",
+    badge: "GUIDE GRATUIT",
+    titre: "L'outil n'est jamais le problème.\nC'est ce qu'on met autour.",
+    sousTitre:
+      "Trois collaborateurs, trois méthodes, trois comptes.\nDes gains individuels, rien au niveau du cabinet.",
+    resourceCard: {
+      titre: "Intégrer l'IA dans un cabinet : les 7 chantiers, dans l'ordre",
+      description: "Aucun n'est technique. Tous relèvent de l'organisation.",
+      meta: "Guide gratuit",
+    },
+    pills: [],
+    urlRessource:
+      "https://espoir-metareglage.notion.site/Int-grer-l-IA-dans-un-cabinet-les-7-chantiers-dans-l-ordre-3d8c7d01a0e8812ba6e2ffcdee9c7dc0",
+    brevoListId: 16, // "LM - 7 chantiers IA cabinet" (dossier Lead Magnets)
+    style: "modal",
+    cta: "Recevoir le guide",
+    signature: "Espoir Mwami — Althoce",
+    merci: {
+      titre: "C'est parti — le guide arrive dans votre boîte mail.",
+      texte:
+        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
+    },
+  },
 };
 
 export function getRessource(slug: string): Ressource | undefined {
