@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AnalyticsChoice } from "@/components/AnalyticsConsent";
 import { trackLead } from "@/lib/analytics";
 import { construireE164 } from "@/lib/validationTel";
 import { suggestionEmail } from "@/lib/validationEmail";
@@ -220,6 +221,8 @@ export default function CaptureForm({ slug, cta }: Props) {
           Pour vous envoyer le lien par SMS si l&apos;email n&apos;arrive pas.
         </p>
       </div>
+
+      <AnalyticsChoice />
 
       {erreur && (
         <p role="alert" className="text-sm text-red-400">

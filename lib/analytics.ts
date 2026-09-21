@@ -28,11 +28,13 @@ export function initializeAnalytics() {
     page_location: cleanUrl(location.href),
     page_referrer: cleanUrl(document.referrer),
   });
-  const script = document.createElement('script');
-  script.id = 'althoce-ga4';
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
-  document.head.appendChild(script);
+  if (!document.getElementById('althoce-ga4')) {
+    const script = document.createElement('script');
+    script.id = 'althoce-ga4';
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
+    document.head.appendChild(script);
+  }
   initialized = true;
   return true;
 }
