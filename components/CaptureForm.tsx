@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { trackLead } from "@/lib/analytics";
 import { construireE164 } from "@/lib/validationTel";
 import { suggestionEmail } from "@/lib/validationEmail";
 
@@ -91,6 +92,7 @@ export default function CaptureForm({ slug, cta }: Props) {
         throw new Error(data?.message ?? "Une erreur est survenue.");
       }
 
+      trackLead("guide", slug);
       router.push(`/r/${slug}/merci`);
     } catch (err) {
       setErreur(
