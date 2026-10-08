@@ -281,7 +281,7 @@ En cas de doute : SUSPECT plutôt qu'INVALID. INVALID ne vient que du backfill o
 ### Anti-bot et résilience
 
 - **Honeypot** rempli → succès factice, aucun contact. **Rate limit** : 6/min et 30/h par IP. **Turnstile** (mode Managed, `interaction-only`) vérifié côté serveur (`siteverify`) : jeton absent ou refusé → 403, aucun contact. Indépendant des cookies, d'OPT_IN, de GA, Meta et du tracker.
-- Turnstile sans clés (local / Preview) : désactivé avec un avertissement dans les logs ; Production : clés obligatoires (garde-fou de build). Cloudflare injoignable : fail-open journalisé.
+- Turnstile sans clés : local → désactivé (avertissement) ; Preview → clés de test Cloudflare automatiques ; Production → vraies clés obligatoires (garde-fou de build). Cloudflare injoignable : fail-open journalisé.
 - Priorité : sécurité → validation essentielle → création du lead → accès au guide → événements CRM → analytics. Erreur fondamentale (email invalide, Turnstile invalide, payload invalide) : blocage propre avec message. Brevo indisponible : message « Réessayez », double clic neutralisé, une nouvelle tentative serveur.
 
 **Mise en place Turnstile** : Cloudflare → Turnstile → *Add widget* → domaines `guide-gratuit-pi.vercel.app` (+ `vercel.app` pour les Preview, + domaine personnalisé) → mode *Managed* → copier les deux clés dans Vercel.
@@ -452,7 +452,7 @@ Navigateur : `npx tsx tests/e2e/serve.ts` (app sur faux Brevo, http://localhost:
 
 1. Branche dédiée poussée sur GitHub → Vercel crée un déploiement **Preview** automatiquement (URL de branche stable : `capture-leads-git-feat-brevo-a-c06368-espoirs-projects-0a605452.vercel.app`).
 2. **Accès** : Preview protégée par Vercel Authentication (à conserver). Se connecter à Vercel dans le navigateur suffit. Shareable Link : bouton *Share* du déploiement → « Anyone with the link » — ⚠️ sur le plan Hobby, **un seul lien actif par compte** : en créer un révoque les autres.
-3. Variables **Preview** sur Vercel : `BREVO_API_KEY` (présente). Turnstile en Preview : clés de **test** Cloudflare `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA`, `TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA` (environnement Preview uniquement), puis redéployer. Sans elles, Turnstile est désactivé en Preview (avertissement dans les logs).
+3. Variables **Preview** sur Vercel : `BREVO_API_KEY` (présente). Turnstile en Preview : sans vraies clés, le code utilise automatiquement les clés de **test** publiques Cloudflare (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`, uniquement si `VERCEL_ENV=preview`) : le widget se charge et la vérification serveur `siteverify` a bien lieu (le secret de test accepte tout jeton non vide ; un jeton absent est refusé). De vraies clés définies sur Vercel priment toujours. En Production, les vraies clés sont obligatoires (garde-fou de build).
 4. ⚠️ Avec la vraie clé Brevo, un test crée un **vrai contact** ajouté à la **vraie liste** → l'email #1 part. Utiliser une adresse de QA, un nom explicite (« Test QA ne pas appeler ») et un numéro réservé à la fiction ARCEP (ex. `01 99 00 47 21`, `02 61 91 47 21`).
 5. Vérifier : bannière, formulaire, guide, contact Brevo (attributs, OPT_IN, UTM, score, PENDING, EMAIL_CONFIRM_TOKEN), événements (après quelques minutes), mobile, URL LinkedIn trackée.
 6. Nettoyage : `npm run brevo:delete-test-contact` (dry run) puis `-- --apply` — ne supprime que les contacts de QA listés, vérifiés par email exact + empreinte.

@@ -49,3 +49,19 @@ test("rate limiting : 6/min par IP, IP distinctes indépendantes", () => {
   assert.deepEqual(results, [false, false, false, false, false, false, true]);
   assert.equal(isRateLimited("lead", "8.8.8.8", LEAD_LIMITS), false);
 });
+
+test("Turnstile Preview : clés de test Cloudflare si aucune vraie clé, jamais en Production", async () => {
+  const { turnstileSecret, TURNSTILE_TEST_SECRET } = await import("@/lib/security/turnstile");
+  delete process.env.TURNSTILE_SECRET_KEY;
+  process.env.VERCEL_ENV = "preview";
+  assert.deepEqual(turnstileSecret(), { secret: TURNSTILE_TEST_SECRET, test: true });
+  // la vérification serveur a bien lieu (jeton absent toujours refusé)
+  assert.equal((await verifyTurnstile(undefined)).ok, false);
+  process.env.VERCEL_ENV = "production";
+  assert.deepEqual(turnstileSecret(), { test: false });
+  process.env.TURNSTILE_SECRET_KEY = "vraie-cle";
+  process.env.VERCEL_ENV = "preview";
+  assert.deepEqual(turnstileSecret(), { secret: "vraie-cle", test: false }, "une vraie clé prime toujours");
+  delete process.env.TURNSTILE_SECRET_KEY;
+  delete process.env.VERCEL_ENV;
+});
