@@ -2,7 +2,9 @@
 
 Pages de capture pour les lead magnets Althoce (guides Notion / artifacts Claude distribués via LinkedIn).
 
-**Flux** : Post LinkedIn → lien 1er commentaire → `/r/[slug]` → capture (prénom + email + mobile) → contact poussé dans Brevo (liste dédiée + attributs) → automation Brevo (email #1 = ressource + P.S. call, puis nurture) → page merci (accès direct + CTA Cal.com).
+**Flux** : Post LinkedIn (URL trackée) → `/r/[slug]` (bannière cookies : Essentiels par défaut) → capture (prénom, nom, email, mobile, objectif IA, horizon, case newsletter facultative → OPT_IN) → validation serveur (DNS/MX, jetables, libphonenumber, Turnstile) → contact dédoublonné dans Brevo (liste dédiée + verticale + first touch + score) → automation Brevo (email #1 = ressource, puis nurture) → page merci (accès direct + CTA Cal.com).
+
+📘 **Documentation complète : [docs/BREVO_SETUP.md](docs/BREVO_SETUP.md)** (architecture, attributs, segments, data quality, scoring, newsletter-as-code, webinars, backfill, actions manuelles) · audit de départ : [docs/AUDIT.md](docs/AUDIT.md).
 
 ---
 
@@ -12,9 +14,7 @@ Pages de capture pour les lead magnets Althoce (guides Notion / artifacts Claude
 
 1. Créer un compte sur brevo.com (gratuit, sans CB).
 2. **Clé API** : Profil → SMTP & API → Clés API → Générer. La copier.
-3. **Attributs de contact** : Contacts → Paramètres → Attributs de contact → créer (type Texte) :
-   - `RESSOURCE`, `SOURCE_INSCRIPTION`, `DATE_OPTIN`, `UTM_SOURCE`, `UTM_MEDIUM`, `UTM_CAMPAIGN`, `TEL_DOUBLON`
-   - `PRENOM` et `SMS` existent déjà par défaut.
+3. **Attributs de contact** : `npm run brevo:attributes` (dry run) puis `-- --apply` crée uniquement les attributs manquants (liste dans `config/brevoAttributes.ts`).
 
 ### b) Authentification du domaine (SPF / DKIM) — OBLIGATOIRE avant tout envoi réel
 
@@ -33,7 +33,7 @@ Sans ça, les emails de délivrance partent en spam et le funnel est mort.
 
 1. Pousser ce repo sur GitHub.
 2. Vercel → Import du repo → framework Next.js détecté automatiquement.
-3. Settings → Environment Variables → `BREVO_API_KEY` = ta clé.
+3. Settings → Environment Variables → voir `.env.example` (Production : `BREVO_API_KEY`, clés Turnstile et `SIGNING_SECRET` obligatoires, sinon le build échoue).
 4. Deploy. Les pages sont sur `https://<projet>.vercel.app/r/<slug>`.
 
 ---
@@ -45,9 +45,9 @@ Sans ça, les emails de délivrance partent en spam et le funnel est mort.
 Contacts → Listes → Créer une liste, ex. `LM - Guide Meta Ads`.
 Noter l'**ID de la liste** (visible dans l'URL ou la colonne ID).
 
-### Étape 2 — Bloc de config
+### Étape 2 — Contenu + mapping CRM
 
-Ajouter un bloc dans `lib/ressources.ts` (copier un existant) :
+a) Ajouter le contenu de la page dans `lib/ressources.ts` (copier un existant) :
 
 ```ts
 "guide-meta-ads": {
@@ -57,11 +57,14 @@ Ajouter un bloc dans `lib/ressources.ts` (copier un existant) :
   sousTitre: "Pour qui + ce que ça contient, concret.",
   pills: ["Fait vérifié 1", "Fait vérifié 2", "Fait vérifié 3"],
   urlRessource: "https://notion.so/...",
-  brevoListId: 12, // l'ID noté à l'étape 1
   style: "modal", // ou "page"
   cta: "Recevoir le guide",
 },
 ```
+
+b) Ajouter le mapping CRM dans `config/leadMagnets.ts` : `brevoListId` (l'ID noté à l'étape 1), `vertical`, `subsector` (`null` + TODO si ambigu, ne jamais deviner).
+
+c) `npm test` vérifie que la page et son mapping existent tous les deux.
 
 > ⚠️ **RÈGLE ABSOLUE** : chaque affirmation factuelle (chiffres, noms d'outils,
 > méthodes, fonctionnalités) doit être **vérifiée** avant mise en ligne.
@@ -84,14 +87,15 @@ Automations → Créer un workflow personnalisé :
 git add . && git commit -m "ressource: guide-meta-ads" && git push
 ```
 
-Vercel déploie. Lien à coller en 1er commentaire LinkedIn **avec UTM** :
+Vercel déploie. Générer le lien du post **avec UTM** (dont `utm_content` = identifiant du post) :
 
-```
-https://<projet>.vercel.app/r/guide-meta-ads?utm_source=linkedin&utm_medium=organic&utm_campaign=post-meta-ads-0207
+```bash
+npm run utm -- --slug guide-claude-meta-ads --code MKT --date 20261008 --n 1 --campaign guide_meta_ads
 ```
 
-Les UTM sont capturés automatiquement et stockés sur le contact Brevo →
-tu sais quel post génère quels leads.
+Le first touch (source, campagne, post) est stocké sur le contact Brevo et
+n'est jamais écrasé → tu sais quel post génère quels leads. Ajouter ensuite
+l'URL du post dans `config/sourceRegistry.ts`.
 
 ### (Optionnel) Image de partage LinkedIn
 
@@ -103,14 +107,17 @@ LinkedIn reste correcte (titre + description) mais sans visuel.
 
 ## 3. Détails techniques
 
-- **Honeypot anti-bot** : champ caché `website` ; s'il est rempli, l'API répond OK sans rien enregistrer.
-- **Téléphone** : normalisé côté client en `+336…`/`+337…`, re-validé côté serveur. Si le numéro existe déjà sur un autre contact Brevo (erreur `duplicate_parameter`), le contact est quand même créé et le numéro stocké dans `TEL_DOUBLON`.
-- **Consentement** : ligne d'information sous le formulaire (prospection B2B = intérêt légitime, pas de case requise). `DATE_OPTIN` + `SOURCE_INSCRIPTION` stockés comme preuve.
-- **La clé Brevo ne transite jamais côté navigateur** : le formulaire poste sur `/api/lead`, qui appelle Brevo côté serveur.
+- **Anti-bot** : honeypot `website` (succès factice), rate limiting par IP, Cloudflare Turnstile vérifié côté serveur.
+- **Email** : syntaxe, valeurs factices, 9 225 domaines jetables, DNS/MX — sans service payant. Suggestion de typo côté client.
+- **Téléphone** : libphonenumber-js côté serveur (E.164, repli DOM-TOM) → `PHONE_STATUS` VALID_FORMAT / SUSPECT / INVALID. Numéro déjà porté par un autre contact Brevo → lead gardé, numéro dans `TEL_DOUBLON`.
+- **Newsletter** : case facultative non précochée → `OPT_IN` (jamais forcé, jamais lié aux cookies).
+- **Cookies** : bannière Tout accepter / Essentiels uniquement ; GA4, Meta Pixel et tracker Brevo chargés seulement après « Tout accepter » ; « Gérer mes cookies » en pied de page.
+- **La clé Brevo ne transite jamais côté navigateur** : `/api/lead` appelle Brevo côté serveur (`server-only`). La liste Brevo est déduite du slug côté serveur.
 - **`/r/[slug]/merci`** est en `noindex` (pas de fuite du lien ressource via Google).
+- **Qualité** : `npm run check` (lint, typecheck, tests, build) ; `npm run test:e2e` (scénarios complets sur faux Brevo).
 
 ## 4. Plus tard (hors v1)
 
 - Domaine custom `ressources.althoce.com` (Vercel → Domains, un CNAME).
-- n8n en aval de Brevo : export des mobiles opt-in vers le pipeline cold call (Kaspr / Lemlist), validation humaine avant envoi.
+- n8n en aval de Brevo : enrichissement LinkedIn des leads chauds (voir docs/BREVO_SETUP.md § 14), validation humaine avant envoi.
 - A/B test `style: "modal"` vs `style: "page"` sur une même ressource.

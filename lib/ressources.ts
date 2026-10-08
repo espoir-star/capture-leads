@@ -3,11 +3,15 @@
  *  CONFIG DES RESSOURCES — 1 bloc = 1 page de capture
  * ═══════════════════════════════════════════════════════════════
  *
+ *  Contenu des pages uniquement. Le mapping CRM (liste Brevo, verticale,
+ *  sous-secteur) est côté serveur dans config/leadMagnets.ts.
+ *
  *  Pour créer une nouvelle ressource :
  *  1. Ajouter un bloc ci-dessous (copier la structure d'un existant)
- *  2. Créer la liste correspondante dans Brevo → noter son ID → brevoListId
- *  3. (Optionnel) Ajouter une image de partage dans /public/covers/
- *  4. git push → la page /r/[slug] existe automatiquement
+ *  2. Créer la liste correspondante dans Brevo → noter son ID
+ *  3. Ajouter l'entrée dans config/leadMagnets.ts (listId, verticale…)
+ *  4. (Optionnel) Ajouter une image de partage dans /public/covers/
+ *  5. npm test (vérifie la cohérence) puis git push
  *
  *  ⚠️ RÈGLE ABSOLUE : chaque affirmation factuelle (chiffres, noms
  *  d'outils, méthodes) doit être VÉRIFIÉE avant mise en ligne.
@@ -29,8 +33,6 @@ export interface Ressource {
   pills: string[];
   /** Lien vers la ressource (Notion, artifact Claude, PDF...) */
   urlRessource: string;
-  /** ID de la liste Brevo dédiée à cette ressource */
-  brevoListId: number;
   /** "modal" = form au centre sur fond flouté / "page" = landing 2 colonnes */
   style: StylePage;
   /** Image OG pour la preview LinkedIn (dans /public/covers/), optionnel */
@@ -66,8 +68,6 @@ export interface Ressource {
 export const RESSOURCES: Record<string, Ressource> = {
   /* ─────────────────────────────────────────────────────────────
    * EXEMPLE 1 — Guide Claude × Pennylane (guide existant, corrigé)
-   * ⚠️ brevoListId à remplacer par le vrai ID après création
-   *    de la liste dans Brevo (Contacts → Listes)
    * ──────────────────────────────────────────────────────────── */
   "guide-claude-pennylane": {
     slug: "guide-claude-pennylane",
@@ -83,7 +83,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     ],
     urlRessource:
       "https://espoir-metareglage.notion.site/Claude-Pennylane-le-guide-pour-automatiser-ta-production-comptable-en-2026-387c7d01a0e88169b12dc48fee3de7c0",
-    brevoListId: 6, // "LM - Guide Claude Pennylane" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
   },
@@ -104,7 +103,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     ],
     urlRessource:
       "https://espoir-metareglage.notion.site/Claude-Meta-Ads-le-guide-pour-piloter-tes-campagnes-en-langage-naturel-388c7d01a0e88188bf67fb196260b017",
-    brevoListId: 7, // "LM - Guide Claude Meta Ads" (dossier Lead Magnets)
     style: "page",
     cta: "Recevoir le guide",
   },
@@ -127,7 +125,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     ],
     urlRessource:
       "https://espoir-metareglage.notion.site/12-cas-d-usage-concrets-de-Claude-pour-les-experts-comptables-3aac7d01a0e881caabc6c8d9d5555dc2",
-    brevoListId: 10, // "LM - 12 cas d'usage experts-comptables" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
   },
@@ -150,7 +147,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     pills: [],
     urlRessource:
       "https://espoir-metareglage.notion.site/Copilot-8-cas-d-usage-ton-premier-agent-et-la-checklist-de-gouvernance-3b1c7d01a0e8812b994ae14f8ce79bf9",
-    brevoListId: 11, // "LM - Guide Copilot 8 cas d'usage" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Guide rédigé par Espoir Mwami — Althoce",
@@ -197,7 +193,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     pills: [],
     urlRessource:
       "https://espoir-metareglage.notion.site/10-cas-d-usage-de-Claude-en-droit-le-param-trage-et-les-pr-cautions-3bec7d01a0e881898436ea4809c4049a",
-    brevoListId: 12, // "LM - Guide Claude Droit" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Guide rédigé par Espoir Mwami — Althoce",
@@ -229,7 +224,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     pills: [],
     urlRessource:
       "https://espoir-metareglage.notion.site/12-skills-Claude-pour-la-finance-les-fichiers-l-installation-et-la-m-thode-3c0c7d01a0e8810dac7ec917d2a378e8",
-    brevoListId: 13, // "LM - 12 skills Claude finance" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",
@@ -259,7 +253,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     pills: [],
     urlRessource:
       "https://espoir-metareglage.notion.site/Claude-data-gouv-20-prompts-pour-exploiter-les-donn-es-publiques-3ccc7d01a0e881098c94f3a4e67310a0",
-    brevoListId: 14, // "LM - Claude data.gouv" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",
@@ -288,7 +281,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     pills: [],
     urlRessource:
       "https://espoir-metareglage.notion.site/12-agents-IA-pour-votre-direction-financi-re-les-fichiers-le-param-trage-et-la-conformit-3cfc7d01a0e8817281a3c36a0c8e7f5e",
-    brevoListId: 15, // "LM - 12 agents IA direction financière" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",
@@ -316,7 +308,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     pills: [],
     urlRessource:
       "https://espoir-metareglage.notion.site/Int-grer-l-IA-dans-un-cabinet-les-7-chantiers-dans-l-ordre-3d8c7d01a0e8812ba6e2ffcdee9c7dc0",
-    brevoListId: 16, // "LM - 7 chantiers IA cabinet" (dossier Lead Magnets)
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",

@@ -9,7 +9,9 @@ let cookies = '_ga=test; _ga_TEST=test; unrelated=keep';
 const writes = [], scripts = [], window = {};
 const document = { title: 'Contact | Althoce', referrer: 'https://example.com/page?email=private@example.com', getElementById: id => scripts.find(script => script.id === id), createElement: () => ({}), head: { appendChild: s => scripts.push(s) }, get cookie() { return cookies; }, set cookie(value) { writes.push(value); } };
 const exports = {};
-vm.runInNewContext(code, { exports, process: { env: { NEXT_PUBLIC_GA_MEASUREMENT_ID: 'G-TEST12345' } }, window, document, location: { href: 'https://althoce.com/contact/?email=private@example.com#secret', origin: 'https://althoce.com', hostname: 'althoce.com' }, localStorage: { getItem: () => consent }, URL, Date });
+// Le consentement vient désormais de la bannière (lib/tracking/consent.ts) : « yes » = choix « Tout accepter »
+const require = (id) => { if (id === '@/lib/tracking/consent') return { hasMarketingConsent: () => consent === 'yes' }; throw new Error(`module inattendu : ${id}`); };
+vm.runInNewContext(code, { exports, require, process: { env: { NEXT_PUBLIC_GA_MEASUREMENT_ID: 'G-TEST12345' } }, window, document, location: { href: 'https://althoce.com/contact/?email=private@example.com#secret', origin: 'https://althoce.com', hostname: 'althoce.com' }, localStorage: { getItem: () => consent }, URL, Date });
 exports.trackPageView('/contact/'); exports.trackLead('contact');
 assert.equal(scripts.length, 0, 'No Google script before consent');
 consent = 'no'; exports.trackLead('contact'); assert.equal(scripts.length, 0);

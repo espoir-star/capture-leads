@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getRessource, getAllSlugs } from "@/lib/ressources";
+import GuideLink from "@/components/GuideLink";
 
 const CAL_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
 
@@ -63,14 +64,13 @@ export default async function PageMerci({ params }: Props) {
           <p className="font-display text-xl font-semibold">
             Accédez au guide maintenant
           </p>
-          <a
+          <GuideLink
             href={r.urlRessource}
-            target="_blank"
-            rel="noopener noreferrer"
+            slug={r.slug}
             className="mt-5 inline-block w-full rounded-lg bg-accent px-6 py-4 font-semibold text-white hover:bg-accent-clair transition sm:w-auto sm:px-10"
           >
             Lire le guide gratuitement ↗
-          </a>
+          </GuideLink>
         </div>
 
         {/* Deuxième conversion : le call */}

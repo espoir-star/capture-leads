@@ -1,13 +1,14 @@
 /** GA4: audience and successful lead submissions only; never form values. */
+import { hasMarketingConsent } from '@/lib/tracking/consent';
+
 export const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? 'G-W5TVSFJ2YX';
-export const ANALYTICS_CONSENT_KEY = 'althoce-analytics-consent';
 type AnalyticsWindow = Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void; [key: `ga-disable-${string}`]: boolean };
 let initialized = false;
 let lastPage = '';
 
 function allowed() {
   if (typeof window === 'undefined' || !/^G-[A-Z0-9]+$/.test(GA_ID)) return false;
-  try { return localStorage.getItem(ANALYTICS_CONSENT_KEY) === 'yes'; } catch { return false; }
+  return hasMarketingConsent(); // bannière cookies : choix « Tout accepter » uniquement
 }
 function cleanUrl(value: string) {
   try { const url = new URL(value); return url.origin + url.pathname; } catch { return ''; }
@@ -18,6 +19,8 @@ export function initializeAnalytics() {
   const w = window as unknown as AnalyticsWindow;
   w[`ga-disable-${GA_ID}`] = false;
   w.dataLayer = w.dataLayer || [];
+  // gtag exige l'objet `arguments` (snippet officiel Google), pas un tableau
+  // eslint-disable-next-line prefer-rest-params
   w.gtag = function () { w.dataLayer!.push(arguments); };
   w.gtag('consent', 'default', { analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
   w.gtag('js', new Date());
