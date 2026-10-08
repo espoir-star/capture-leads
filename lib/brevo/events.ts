@@ -64,9 +64,10 @@ export async function sendBrevoEvent(
       retries: 1,
       timeoutMs: 5000,
     });
-    if (!res.ok) {
-      console.error(JSON.stringify({ type: "brevo_event", name, ok: false, status: res.status, code: res.code }));
-    }
+    // Journalisé dans tous les cas : un événement CRM manquant doit être visible dans les logs
+    const line = JSON.stringify({ type: "brevo_event", name, ok: res.ok, status: res.status, code: res.code });
+    if (res.ok) console.log(line);
+    else console.error(line);
     return res.ok;
   } catch (e) {
     console.error(JSON.stringify({ type: "brevo_event", name, ok: false, error: String(e) }));
