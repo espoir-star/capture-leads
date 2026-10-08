@@ -325,6 +325,8 @@ Tous trois chargés **uniquement** par `initializeMarketingTrackers()` après «
 
 Les événements serveur servent le parcours CRM demandé (provenance, guide, confirmation) ; ce ne sont pas des traceurs publicitaires et ils ne déposent aucun cookie.
 
+Chaque envoi est journalisé (`{"type":"brevo_event","ok":…}` dans les logs Vercel). **Brevo indexe les événements avec quelques minutes de délai** (≈ 5 min constatées en recette) : un événement absent juste après un test n'est pas une erreur ; l'horodatage reste celui de l'envoi.
+
 ---
 
 ## 12. Scoring
@@ -448,11 +450,12 @@ Navigateur : `npx tsx tests/e2e/serve.ts` (app sur faux Brevo, http://localhost:
 
 ## 19. Procédure Preview
 
-1. Branche dédiée poussée sur GitHub → Vercel crée un déploiement **Preview** automatiquement.
-2. Variables **Preview** sur Vercel : `BREVO_API_KEY` (sinon le formulaire répond « Configuration serveur incomplète »), idéalement `SIGNING_SECRET` ; Turnstile facultatif en Preview (désactivé sans clés).
-3. ⚠️ Avec la vraie clé Brevo, un test crée un **vrai contact** ajouté à la **vraie liste** → l'email #1 part. Tester avec sa propre adresse, puis supprimer ce contact dans Brevo.
-4. Vérifier : bannière (Tout accepter / Essentiels / Gérer mes cookies), formulaire, guide, contact Brevo (attributs, OPT_IN, UTM, score, PENDING, EMAIL_CONFIRM_TOKEN), mobile, URL LinkedIn trackée.
-5. Si Vercel Deployment Protection est actif, l'URL Preview demande une connexion Vercel.
+1. Branche dédiée poussée sur GitHub → Vercel crée un déploiement **Preview** automatiquement (URL de branche stable : `capture-leads-git-feat-brevo-a-c06368-espoirs-projects-0a605452.vercel.app`).
+2. **Accès** : Preview protégée par Vercel Authentication (à conserver). Se connecter à Vercel dans le navigateur suffit. Shareable Link : bouton *Share* du déploiement → « Anyone with the link » — ⚠️ sur le plan Hobby, **un seul lien actif par compte** : en créer un révoque les autres.
+3. Variables **Preview** sur Vercel : `BREVO_API_KEY` (présente). Turnstile en Preview : clés de **test** Cloudflare `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA`, `TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA` (environnement Preview uniquement), puis redéployer. Sans elles, Turnstile est désactivé en Preview (avertissement dans les logs).
+4. ⚠️ Avec la vraie clé Brevo, un test crée un **vrai contact** ajouté à la **vraie liste** → l'email #1 part. Utiliser une adresse de QA, un nom explicite (« Test QA ne pas appeler ») et un numéro réservé à la fiction ARCEP (ex. `01 99 00 47 21`, `02 61 91 47 21`).
+5. Vérifier : bannière, formulaire, guide, contact Brevo (attributs, OPT_IN, UTM, score, PENDING, EMAIL_CONFIRM_TOKEN), événements (après quelques minutes), mobile, URL LinkedIn trackée.
+6. Nettoyage : `npm run brevo:delete-test-contact` (dry run) puis `-- --apply` — ne supprime que les contacts de QA listés, vérifiés par email exact + empreinte.
 
 ## 20. Procédure Production (après validation explicite)
 
@@ -463,4 +466,4 @@ Navigateur : `npx tsx tests/e2e/serve.ts` (app sur faux Brevo, http://localhost:
 5. Créer les segments (§ 5), `npm run brevo:segments`, recopier les IDs.
 6. Mettre à jour la politique de confidentialité ([POLITIQUE_CONFIDENTIALITE.md](POLITIQUE_CONFIDENTIALITE.md)).
 7. Observer les nouveaux leads ; **ensuite seulement** : backfill (dry run, puis `--apply`).
-8. Supprimer le contact de QA : `npm run brevo:delete-test-contact -- --apply` (email exact vérifié, aucun autre contact touché).
+8. Supprimer les contacts de QA : `npm run brevo:delete-test-contact -- --apply` (3 contacts listés, email exact + empreinte vérifiés, aucun autre contact touché).
