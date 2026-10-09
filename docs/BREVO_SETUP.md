@@ -488,9 +488,9 @@ Aucune boîte n'est nécessaire derrière `newsletter@` / `bonjour@` : Brevo val
 
 - Registrar : **IONOS** (domaine acheté le 29/08/2026).
 - Serveurs DNS faisant autorité : **Cloudflare** (`josephine.ns.cloudflare.com`, `otto.ns.cloudflare.com`, délégation AFNIC vérifiée). Les enregistrements se créent donc **dans Cloudflare** (DNS → Records) ; un enregistrement ajouté dans la zone DNS IONOS n'aurait aucun effet.
-- Zone au 09/10/2026 : MX `mx00.ionos.fr` / `mx01.ionos.fr` (à conserver), A `217.160.0.133` + AAAA (hébergement IONOS), aucun TXT à la racine (pas de SPF), aucun DMARC, aucun DKIM.
+- Zone avant intervention (09/10/2026, 10 enregistrements, tous conservés) : A `217.160.0.133` + AAAA (IONOS), MX `mx00.ionos.fr` / `mx01.ionos.fr`, CNAME `autodiscover` → `adsredir.ionos.info`, `_domainconnect` → `_domainconnect.ionos.com`, DKIM IONOS `s1-ionos._domainkey` / `s2-ionos._domainkey`, tunnel `crm`, TXT `_dep_ws_mutex`. Aucun TXT à la racine (pas de SPF), aucun DMARC.
 
-### Enregistrements demandés par Brevo (valeurs lues dans l'API Brevo le 09/10/2026)
+### Enregistrements demandés par Brevo (valeurs lues dans l'API Brevo, créés dans Cloudflare le 09/10/2026)
 
 | Type | Nom (Cloudflare) | Contenu | Proxy |
 | --- | --- | --- | --- |
@@ -499,7 +499,9 @@ Aucune boîte n'est nécessaire derrière `newsletter@` / `bonjour@` : Brevo val
 | CNAME | `brevo2._domainkey` | `b2.althoce-fr.dkim.brevo.com` | **DNS only** (nuage gris) |
 | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com` | — |
 
-- Aucun conflit : pas de TXT racine, pas de DMARC, pas de DKIM existants. Ne pas toucher aux MX, A, AAAA, NS.
+- Aucun conflit : pas de TXT racine ni de DMARC existants ; sélecteurs DKIM distincts de ceux d'IONOS (conservés). Ne pas toucher aux MX, A, AAAA, NS.
+
+**État au 09/10/2026** : les 4 enregistrements sont publiés (vérifiés sur Cloudflare, 1.1.1.1 et 8.8.8.8), `althoce.fr` est **authentifié et vérifié** dans Brevo, expéditeurs `newsletter@althoce.fr` (id 3) et `bonjour@althoce.fr` (id 4) **actifs** (validés sans email de vérification). Test d'envoi vers une boîte QA (Google Workspace) depuis chacun : reçu en boîte de réception, `dkim=pass` (d=althoce.fr, s=brevo2), `spf=pass` (Return-Path Brevo), `dmarc=pass` (header.from=althoce.fr), From « Althoce », Reply-To `espoir@contact.althoce.com`, désinscription en un clic présente.
 - SPF : non demandé par Brevo (le Return-Path est sur un domaine Brevo, DKIM aligné suffit pour DMARC). Aucun SPF n'existe sur althoce.fr ; rien n'est ajouté. Si un autre service envoie un jour depuis althoce.fr, créer UN SEUL enregistrement SPF qui les liste tous.
 - DMARC `p=none` : surveillance seule, aucun email bloqué. Durcir (`quarantine`) plus tard, une fois les rapports propres.
 
@@ -517,23 +519,25 @@ Le script ne supprime ni ne modifie aucun expéditeur ou domaine existant. Les a
 
 L'API Brevo permet de lire les emails des automations, mais pas de les modifier (`PUT /smtp/templates/{id}` → 404 `document_not_found`). Toute correction se fait dans Brevo → Automations. Sauvegarde HTML des 34 modèles : `CAPTURE LEADS/brevo-backups/2026-10-09/` (hors du dépôt public).
 
-Rattachement établi par les envois réels sur 90 jours (modèle → listes des destinataires) :
+Rattachement établi par les envois réels sur 90 jours (modèle → listes des destinataires), puis confirmé dans l'éditeur d'automations (volumes identiques) :
 
-| Guide (liste) | Email #1 | Relance J+2 | Problème |
+| Guide (liste) — workflow Brevo | Email #1 | Relance J+2 | Problème |
 | --- | --- | --- | --- |
-| Pennylane (6) | #1 | #2 | Reply-To de #2 = `espoirmwami13@gmail.com` |
-| Meta Ads (7) | #6 | #5 | aucun envoi de #6 depuis 90 j ; Reply-To de #5 = gmail |
-| 12 cas experts-comptables (10) | #9 | **#8** | **objet de #8 : « … guide Pennylane »** (contenu et lien = 12 cas) ; Reply-To gmail |
-| Copilot (11) | #11 | #12 | Reply-To de #12 = gmail ; aucun envoi depuis le 02/09 |
-| Droit (12) | **#16** | **#15** | **objets « Copilot »** (contenu et lien = Droit). Objets prévus par l'auteur (commentaire HTML) : #16 « Ton guide Claude pour le droit est là », #15 « Tu as pu ouvrir le guide ? » ; Reply-To de #15 = gmail |
-| Skills Finance (13) | #19 | #21 | — |
-| data.gouv (14) | #26 | #25 | — |
-| Agents DAF (15) | #29 | #30 | — |
-| 7 chantiers (16) | #34 | #33 | — |
+| Pennylane (6) — #2 « LM - Guide Claude Pennylane » | #1 | #2 | Reply-To de #2 = `espoirmwami13@gmail.com` |
+| Meta Ads (7) — #3 « LM - Meta MCP » | #6 | #5 | aucun envoi de #6 depuis 90 j ; Reply-To de #5 = gmail |
+| 12 cas experts-comptables (10) — #4 | #9 | **#8** | **objet de #8 : « … guide Pennylane »** (contenu et lien = 12 cas) ; Reply-To gmail |
+| Copilot (11) — #6 | #11 | #12 | Reply-To de #12 = gmail ; aucun envoi depuis le 02/09 |
+| Droit (12) — #7 « Guide claude droit » | **#16** | **#15** | **objets « Copilot »** (contenu et lien = Droit). Objets prévus par l'auteur (commentaire HTML) : #16 « Ton guide Claude pour le droit est là », #15 « Tu as pu ouvrir le guide ? » ; Reply-To de #15 = gmail |
+| Skills Finance (13) — #8 | #19 | #21 | — |
+| data.gouv (14) — #9 | #26 | #25 | — |
+| Agents DAF (15) — #10 | #29 | #30 | — |
+| 7 chantiers (16) — #11 | #34 | #33 | — |
 
 Non utilisés depuis 90 jours (ne pas activer) : #3, #4, #7, #10, #13, #14, #17, #18, #20, #22, #23, #24, #27, #28, #31, #32. #20 porte la même erreur d'objet que #15.
 
-Corrections proposées (objet uniquement) : #8 → « Tu as eu le temps de regarder le guide ? » ; #15 → « Tu as pu ouvrir le guide ? » ; #16 → « Ton guide Claude pour le droit est là ».
+**Corrigé le 09/10/2026 dans l'éditeur d'automations (objet uniquement, contrôle API : aucun autre champ ni HTML modifié, workflows restés actifs)** : #8 → « Tu as eu le temps de regarder le guide ? » ; #15 → « Tu as pu ouvrir le guide ? » ; #16 → « Ton guide Claude pour le droit est là ». Reste : Reply-To `espoirmwami13@gmail.com` sur #2, #5, #8, #12, #15 (à passer sur `espoir@contact.althoce.com` lors de la migration).
+
+⚠️ Brevo signale plus de 80 % de la limite de 2 000 contacts en automation (offre gratuite) : au-delà, les nouveaux inscrits risquent de ne plus entrer dans les workflows de livraison.
 
 ### Migration des expéditeurs (après authentification)
 
