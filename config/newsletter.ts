@@ -9,12 +9,12 @@
  * introuvable. Aucun ID fictif.
  */
 
-export const NEWSLETTER_SENDER = {
-  name: "Espoir Mwami",
-  email: "espoir@contact.althoce.com", // expéditeur Brevo actif, domaine authentifié (DKIM)
-};
+import { REPLY_TO, SENDERS } from "@/config/senders";
 
-export const NEWSLETTER_REPLY_TO = "espoir@contact.althoce.com";
+/** Althoce <newsletter@althoce.fr>, réponses sur espoir@contact.althoce.com (config/senders.ts) */
+export const NEWSLETTER_SENDER = SENDERS.newsletter;
+
+export const NEWSLETTER_REPLY_TO = REPLY_TO;
 
 export const CAMPAIGN_TAGS = [
   "NL_FINANCE",

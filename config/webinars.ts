@@ -13,7 +13,15 @@
  *  Étapes complètes : docs/BREVO_SETUP.md § Webinars.
  */
 
+import { SENDERS, type Sender } from "@/config/senders";
 import type { Subsector, Vertical } from "@/config/taxonomy";
+
+/**
+ * Expéditeur des emails webinar (confirmation, J-1, H-1, replay, suivi) dans
+ * les automations Brevo : Althoce <bonjour@althoce.fr>, réponses sur
+ * REPLY_TO. Un webinar peut en déclarer un autre via `sender`.
+ */
+export const WEBINAR_DEFAULT_SENDER: Sender = SENDERS.resources;
 
 export interface WebinarConfig {
   slug: string;
@@ -35,6 +43,8 @@ export interface WebinarConfig {
   /** Lien de connexion : envoyé par email uniquement, jamais affiché sur la page */
   joinUrl?: string;
   replayUrl?: string;
+  /** Expéditeur des emails de ce webinar (défaut : WEBINAR_DEFAULT_SENDER) */
+  sender?: Sender;
   status: "draft" | "open" | "closed" | "done";
 }
 

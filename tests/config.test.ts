@@ -53,3 +53,14 @@ test("schéma serveur : le navigateur ne peut imposer ni liste ni valeur hors r�
   assert.equal(leadSchema.safeParse({ ...valid, prenom: "<script>" }).success, false);
   assert.equal(leadSchema.safeParse({ ...valid, nom: "http://spam.example" }).success, false);
 });
+
+test("expéditeurs : newsletter@ et bonjour@ sur althoce.fr, réponses centralisées", async () => {
+  const { REPLY_TO, SENDERS, SENDING_DOMAIN } = await import("@/config/senders");
+  const { NEWSLETTER_REPLY_TO, NEWSLETTER_SENDER } = await import("@/config/newsletter");
+  const { WEBINAR_DEFAULT_SENDER } = await import("@/config/webinars");
+  assert.deepEqual(NEWSLETTER_SENDER, { name: "Althoce", email: "newsletter@althoce.fr" });
+  assert.deepEqual(WEBINAR_DEFAULT_SENDER, { name: "Althoce", email: "bonjour@althoce.fr" });
+  assert.equal(NEWSLETTER_REPLY_TO, "espoir@contact.althoce.com");
+  for (const s of Object.values(SENDERS)) assert.ok(s.email.endsWith(`@${SENDING_DOMAIN}`), s.email);
+  assert.ok(!REPLY_TO.endsWith(`@${SENDING_DOMAIN}`), "les réponses vont vers une boîte réelle");
+});

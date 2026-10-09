@@ -12,6 +12,7 @@
  *        → crée ET programme à `scheduledAt`
  *
  * Garde-fous : status "ready" exigé, segment d'audience existant dans Brevo,
+ * expéditeur actif dans Brevo (domaine althoce.fr authentifié),
  * date future, refus si une campagne du même nom existe déjà ou si le
  * fichier porte déjà un brevoCampaignId. Un fichier Markdown seul ne
  * déclenche jamais d'envoi.
@@ -21,6 +22,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { brevoRequest, getApiKey } from "@/lib/brevo/api";
 import { listSegments, resolveSegmentId, type BrevoSegment } from "@/lib/brevo/segments";
+import { findActiveSender, listSenders, type BrevoSender } from "@/lib/brevo/senders";
 import { AUDIENCES, NEWSLETTER_REPLY_TO, NEWSLETTER_SENDER, NEWSLETTER_TIMEZONE } from "@/config/newsletter";
 import { campaignUtm, loadNewsletter, renderNewsletterHtml } from "@/lib/newsletter";
 
@@ -62,7 +64,12 @@ async function main() {
 
   // Segments : ID configuré, sinon nom exact dans Brevo (jamais d'ID inventé)
   let segments: BrevoSegment[] | null = null;
-  if (getApiKey()) segments = await listSegments().catch(() => null);
+  let senders: BrevoSender[] | null = null;
+  if (getApiKey()) {
+    segments = await listSegments().catch(() => null);
+    senders = await listSenders().catch(() => null);
+  }
+  const senderOk = senders ? !!findActiveSender(senders, NEWSLETTER_SENDER.email) : null;
   const targetId = segments ? resolveSegmentId(audience.segment, segments) : audience.segment.id;
   const excludeIds = audience.exclude
     .map((ref) => (segments ? resolveSegmentId(ref, segments) : ref.id))
@@ -85,6 +92,7 @@ async function main() {
   console.log(`  Tag          ${meta.tag}`);
   console.log(`  UTM          ${new URLSearchParams(utm as Record<string, string>).toString()}`);
   console.log(`  Expéditeur   ${NEWSLETTER_SENDER.name} <${NEWSLETTER_SENDER.email}> · réponse ${NEWSLETTER_REPLY_TO}`);
+  if (senderOk === false) console.log("               ⚠ expéditeur absent ou inactif dans Brevo (npm run brevo:domain)");
   console.log(`  Statut       ${meta.status}${meta.brevoCampaignId ? ` · campagne Brevo #${meta.brevoCampaignId}` : ""}`);
   console.log(`  Aperçu HTML  ${previewFile}`);
 
@@ -99,6 +107,7 @@ async function main() {
   if (meta.status !== "ready") errors.push(`status doit être "ready" (actuel : ${meta.status})`);
   if (meta.brevoCampaignId) errors.push(`déjà créée (brevoCampaignId ${meta.brevoCampaignId})`);
   if (!targetId) errors.push(`segment « ${audience.segment.name} » introuvable dans Brevo (créer puis npm run brevo:segments)`);
+  if (!senderOk) errors.push(`expéditeur ${NEWSLETTER_SENDER.email} absent ou inactif dans Brevo (npm run brevo:domain)`);
   if (SCHEDULE) {
     if (!meta.scheduledAt) errors.push("scheduledAt manquant");
     else if (new Date(meta.scheduledAt).getTime() < Date.now() + 15 * 60_000)

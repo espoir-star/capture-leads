@@ -258,6 +258,9 @@ hard bounce (webhook Brevo) ─────────────────�
 - Dans l'email de bienvenue de chaque workflow « LM - … » (Brevo → Automations → workflow → email), ajouter un bouton :
   - texte : **« Confirmer mon adresse email »**
   - lien : `https://<domaine>/confirmer-email?t={{ contact.EMAIL_CONFIRM_TOKEN }}`
+  - entouré d'une condition, pour qu'un contact sans jeton (inscrit avant la mise en production) ne reçoive pas un lien vide :
+    `{% if contact.EMAIL_CONFIRM_TOKEN %}` … bouton … `{% endif %}`
+  - le lien « Ouvrir le guide » reste le premier bouton : la confirmation ne conditionne jamais l'accès au guide.
 - La page `/confirmer-email` affiche l'adresse masquée, une case newsletter facultative et un bouton **Confirmer mon adresse**. Seul ce clic (POST `/api/email/confirm`) passe le contact en VERIFIED : les antivirus et aperçus qui ouvrent le lien ne confirment rien. Cocher la case passe OPT_IN à `true` (jamais l'inverse).
 - Idempotent : une 2e confirmation ne réécrit rien et ne renvoie pas l'événement `email_confirmed`.
 - Si le libellé du bouton évoque « recevoir les prochaines ressources », c'est la case de la page qui recueille ce consentement.
@@ -367,7 +370,7 @@ Route `POST /api/webhooks/brevo` (404 tant que `BREVO_WEBHOOK_SECRET` est vide).
 
 ## 14. Newsletter
 
-Campagnes Brevo (pas une automation), ~2/semaine, préparées à l'avance. Expéditeur : Espoir Mwami `<espoir@contact.althoce.com>` (domaine authentifié). Tags : `NL_FINANCE`, `NL_EXPERT_COMPTABLE`, `NL_MARKETING`, `WEBINAR_FINANCE`, `CASE_STUDY`, `COMMERCIAL`. Audiences = segments NEWSLETTER (OPT_IN = Oui), exclusion DATA QUALITY — REJECTED.
+Campagnes Brevo (pas une automation), ~2/semaine, préparées à l'avance. Expéditeur : Althoce `<newsletter@althoce.fr>`, réponses sur `espoir@contact.althoce.com` (`config/senders.ts`, § 21) ; `--create` refuse tant que cet expéditeur n'est pas actif dans Brevo. Tags : `NL_FINANCE`, `NL_EXPERT_COMPTABLE`, `NL_MARKETING`, `WEBINAR_FINANCE`, `CASE_STUDY`, `COMMERCIAL`. Audiences = segments NEWSLETTER (OPT_IN = Oui), exclusion DATA QUALITY — REJECTED.
 
 **Newsletter-as-code** : `content/newsletters/AAAA-MM-JJ-audience.md` (frontmatter title, subject, previewText, scheduledAt, audience, tag, utmCampaign, status + Markdown avec blocs `:::usecase` / `:::insight`) → template `emails/templates/newsletter.html` (Althoce · hook · intro · contenu · cas d'usage · insight · CTA · signature · footer `{{ unsubscribe }}` ; tables, CSS inline, sans JS). Détails : `content/newsletters/README.md`.
 
@@ -387,7 +390,7 @@ Refus si : `status` ≠ `ready`, segment introuvable, date passée, campagne du 
 
 Rien n'est publié tant qu'un webinar réel (date, heure, plateforme, URL) n'est pas renseigné.
 
-1. Liste Brevo `WB - <titre>`. 2. Bloc dans `config/webinars.ts` (`status: "open"`). 3. Automation sur la liste : confirmation, J-1, H-1. 4. `/w/[slug]` → `webinar_registered` → `/w/[slug]/confirmation`. 5. Après le live : plateforme → n8n → `webinar_attended` / `webinar_no_show` → replay → `webinar_replay_clicked` → `webinar_cta_clicked`. 6. Activer `EVENT_SCORING_ENABLED` quand ces données existent.
+1. Liste Brevo `WB - <titre>`. 2. Bloc dans `config/webinars.ts` (`status: "open"`). 3. Automation sur la liste : confirmation, J-1, H-1, replay, suivi — expéditeur Althoce `<bonjour@althoce.fr>`, réponses sur `espoir@contact.althoce.com` (`WEBINAR_DEFAULT_SENDER`, surchargeable par webinar via `sender`). 4. `/w/[slug]` → `webinar_registered` → `/w/[slug]/confirmation`. 5. Après le live : plateforme → n8n → `webinar_attended` / `webinar_no_show` → replay → `webinar_replay_clicked` → `webinar_cta_clicked`. 6. Activer `EVENT_SCORING_ENABLED` quand ces données existent.
 
 ---
 
@@ -439,7 +442,7 @@ Données disponibles : PRENOM, NOM, EMAIL, SMS, ENTREPRISE, JOB_TITLE, UTM_CONTE
 
 | Commande | Contenu |
 | --- | --- |
-| `npm test` | 72 tests unitaires (cookies A/B/C/F, scoring, téléphone, email/DNS, jetables, fusion des contacts, OPT_IN, PHONE_STATUS, confirmation, webhooks, backfill, config, UTM, sécurité, newsletter) + test GA4 existant |
+| `npm test` | 74 tests unitaires (cookies A/B/C/F, scoring, téléphone, email/DNS, jetables, fusion des contacts, OPT_IN, PHONE_STATUS, confirmation, webhooks, backfill, config, UTM, sécurité, newsletter) + test GA4 existant |
 | `npm run test:e2e` | 21 scénarios : app en production locale + faux Brevo (nécessite `npm run build`) |
 | `npm run brevo:smoke -- --email qa-capture-test@example.com` | vrai Brevo, contact de QA **sans liste** (aucun email) |
 | `npm run check` | lint + typecheck + tests + build |
@@ -467,3 +470,71 @@ Navigateur : `npx tsx tests/e2e/serve.ts` (app sur faux Brevo, http://localhost:
 6. Mettre à jour la politique de confidentialité ([POLITIQUE_CONFIDENTIALITE.md](POLITIQUE_CONFIDENTIALITE.md)).
 7. Observer les nouveaux leads ; **ensuite seulement** : backfill (dry run, puis `--apply`).
 8. Supprimer les contacts de QA : `npm run brevo:delete-test-contact -- --apply` (3 contacts listés, email exact + empreinte vérifiés, aucun autre contact touché).
+
+---
+
+## 21. Domaine d'envoi althoce.fr et expéditeurs
+
+### Expéditeurs cibles (`config/senders.ts`)
+
+| Usage | Expéditeur | Réponses |
+| --- | --- | --- |
+| Newsletters (newsletter-as-code) | Althoce `<newsletter@althoce.fr>` | `espoir@contact.althoce.com` |
+| Guides, automations de livraison, webinaires | Althoce `<bonjour@althoce.fr>` | `espoir@contact.althoce.com` |
+
+Aucune boîte n'est nécessaire derrière `newsletter@` / `bonjour@` : Brevo valide sans email de vérification un expéditeur dont le domaine est authentifié. Les réponses vont sur `espoir@contact.althoce.com` (MX Google, boîte réelle). Le Reply-To se règle dans chaque campagne (automatique pour la newsletter-as-code) et dans chaque email d'automation (Brevo → Automations → email → « Répondre à »), pas sur l'expéditeur.
+
+### Où sont les DNS d'althoce.fr
+
+- Registrar : **IONOS** (domaine acheté le 29/08/2026).
+- Serveurs DNS faisant autorité : **Cloudflare** (`josephine.ns.cloudflare.com`, `otto.ns.cloudflare.com`, délégation AFNIC vérifiée). Les enregistrements se créent donc **dans Cloudflare** (DNS → Records) ; un enregistrement ajouté dans la zone DNS IONOS n'aurait aucun effet.
+- Zone au 09/10/2026 : MX `mx00.ionos.fr` / `mx01.ionos.fr` (à conserver), A `217.160.0.133` + AAAA (hébergement IONOS), aucun TXT à la racine (pas de SPF), aucun DMARC, aucun DKIM.
+
+### Enregistrements demandés par Brevo (valeurs lues dans l'API Brevo le 09/10/2026)
+
+| Type | Nom (Cloudflare) | Contenu | Proxy |
+| --- | --- | --- | --- |
+| TXT | `@` | `brevo-code:6d70ae7981c93aa4fdac680b41668829` | — |
+| CNAME | `brevo1._domainkey` | `b1.althoce-fr.dkim.brevo.com` | **DNS only** (nuage gris) |
+| CNAME | `brevo2._domainkey` | `b2.althoce-fr.dkim.brevo.com` | **DNS only** (nuage gris) |
+| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com` | — |
+
+- Aucun conflit : pas de TXT racine, pas de DMARC, pas de DKIM existants. Ne pas toucher aux MX, A, AAAA, NS.
+- SPF : non demandé par Brevo (le Return-Path est sur un domaine Brevo, DKIM aligné suffit pour DMARC). Aucun SPF n'existe sur althoce.fr ; rien n'est ajouté. Si un autre service envoie un jour depuis althoce.fr, créer UN SEUL enregistrement SPF qui les liste tous.
+- DMARC `p=none` : surveillance seule, aucun email bloqué. Durcir (`quarantine`) plus tard, une fois les rapports propres.
+
+### Commandes
+
+```bash
+npm run brevo:domain            # état Brevo + DNS public + expéditeurs (aucune écriture)
+npm run brevo:domain -- --apply # demande l'authentification quand les 4 enregistrements sont publiés,
+                                # puis crée newsletter@ et bonjour@ (seulement si le domaine est authentifié)
+```
+
+Le script ne supprime ni ne modifie aucun expéditeur ou domaine existant. Les anciens expéditeurs (`espoirmwami13@gmail.com`, `espoir@contact.althoce.com`) restent actifs.
+
+### Audit des emails d'automation (09/10/2026)
+
+L'API Brevo permet de lire les emails des automations, mais pas de les modifier (`PUT /smtp/templates/{id}` → 404 `document_not_found`). Toute correction se fait dans Brevo → Automations. Sauvegarde HTML des 34 modèles : `CAPTURE LEADS/brevo-backups/2026-10-09/` (hors du dépôt public).
+
+Rattachement établi par les envois réels sur 90 jours (modèle → listes des destinataires) :
+
+| Guide (liste) | Email #1 | Relance J+2 | Problème |
+| --- | --- | --- | --- |
+| Pennylane (6) | #1 | #2 | Reply-To de #2 = `espoirmwami13@gmail.com` |
+| Meta Ads (7) | #6 | #5 | aucun envoi de #6 depuis 90 j ; Reply-To de #5 = gmail |
+| 12 cas experts-comptables (10) | #9 | **#8** | **objet de #8 : « … guide Pennylane »** (contenu et lien = 12 cas) ; Reply-To gmail |
+| Copilot (11) | #11 | #12 | Reply-To de #12 = gmail ; aucun envoi depuis le 02/09 |
+| Droit (12) | **#16** | **#15** | **objets « Copilot »** (contenu et lien = Droit). Objets prévus par l'auteur (commentaire HTML) : #16 « Ton guide Claude pour le droit est là », #15 « Tu as pu ouvrir le guide ? » ; Reply-To de #15 = gmail |
+| Skills Finance (13) | #19 | #21 | — |
+| data.gouv (14) | #26 | #25 | — |
+| Agents DAF (15) | #29 | #30 | — |
+| 7 chantiers (16) | #34 | #33 | — |
+
+Non utilisés depuis 90 jours (ne pas activer) : #3, #4, #7, #10, #13, #14, #17, #18, #20, #22, #23, #24, #27, #28, #31, #32. #20 porte la même erreur d'objet que #15.
+
+Corrections proposées (objet uniquement) : #8 → « Tu as eu le temps de regarder le guide ? » ; #15 → « Tu as pu ouvrir le guide ? » ; #16 → « Ton guide Claude pour le droit est là ».
+
+### Migration des expéditeurs (après authentification)
+
+Pour chacun des 18 emails utilisés ci-dessus : expéditeur → Althoce `<bonjour@althoce.fr>`, « Répondre à » → `espoir@contact.althoce.com`. Envoyer un test à une adresse de QA avant d'enregistrer le workflow. Ne pas modifier les emails non utilisés.

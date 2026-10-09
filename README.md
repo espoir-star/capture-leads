@@ -28,6 +28,10 @@ Sans ça, les emails de délivrance partent en spam et le funnel est mort.
 
 > ✅ Fait le 03/07/2026 : domaine `contact.althoce.com` authentifié (DKIM, DNS IONOS),
 > expéditeur `espoir@contact.althoce.com` actif.
+>
+> Nouveau domaine d'envoi `althoce.fr` (DNS chez Cloudflare) : expéditeurs `newsletter@althoce.fr`
+> et `bonjour@althoce.fr`, réponses sur `espoir@contact.althoce.com`. Procédure et état :
+> [docs/BREVO_SETUP.md § 21](docs/BREVO_SETUP.md), `npm run brevo:domain`.
 
 ### c) Déploiement Vercel
 
