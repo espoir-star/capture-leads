@@ -462,14 +462,16 @@ Navigateur : `npx tsx tests/e2e/serve.ts` (app sur faux Brevo, http://localhost:
 
 ## 20. Procédure Production (après validation explicite)
 
-1. Créer le widget Turnstile ; poser en **Production** : `BREVO_API_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `SIGNING_SECRET`, `BREVO_WEBHOOK_SECRET`.
-2. Fusionner la branche dans `main` → Vercel déploie (le build échoue si une variable obligatoire manque).
-3. `npm run brevo:webhooks -- --url https://guide-gratuit-pi.vercel.app/api/webhooks/brevo` puis `--apply`.
-4. Ajouter le bouton « Confirmer mon adresse email » dans l'email #1 de chaque workflow LM.
-5. Créer les segments (§ 5), `npm run brevo:segments`, recopier les IDs.
+**Mise en Production le 09/10/2026** (`main` → `fd7e843`, déploiement Vercel en ~50 s). Étapes 1 à 5 faites ; restent 6 à 8.
+
+1. ✅ Widget Turnstile « Althoce Guides - Production » ; variables **Production** posées ; `SIGNING_SECRET` et `BREVO_WEBHOOK_SECRET` régénérés (`openssl rand -hex 32`) le 09/10 avant la mise en ligne (même `BREVO_WEBHOOK_SECRET` dans le `.env` local).
+2. ✅ Fusion dans `main` → déploiement. Test réel depuis un navigateur normal : inscription OK (contact créé, liste 10, PENDING, jeton de confirmation), email de livraison reçu en 7 s, confirmation → VERIFIED. ⚠️ Turnstile échoue dans un navigateur piloté par automatisation (normal) : tester la Production depuis un navigateur ordinaire.
+3. ✅ Webhooks hard bounce créés (#2241079 marketing, #2241080 transactionnel) ; mauvais jeton → 401, bon jeton → 200.
+4. ✅ Bouton « Confirmer mon adresse email » ajouté (sous condition `{% if contact.EMAIL_CONFIRM_TOKEN %}`, après le bouton du guide) dans les 9 emails #1 : #1, #6, #9, #11, #16, #19, #26, #29, #34. Contrôle API : +14 lignes, rien d'autre modifié ; rendu testé (bouton présent avec jeton, absent sans jeton).
+5. ✅ 9 segments créés (IDs 1 à 9, recopiés dans `config/newsletter.ts`). Les conditions « est différent de » de Brevo incluent les contacts dont l'attribut est vide.
 6. Mettre à jour la politique de confidentialité ([POLITIQUE_CONFIDENTIALITE.md](POLITIQUE_CONFIDENTIALITE.md)).
 7. Observer les nouveaux leads ; **ensuite seulement** : backfill (dry run, puis `--apply`).
-8. Supprimer les contacts de QA : `npm run brevo:delete-test-contact -- --apply` (3 contacts listés, email exact + empreinte vérifiés, aucun autre contact touché).
+8. Supprimer les contacts de QA : `npm run brevo:delete-test-contact -- --apply` (4 contacts listés : #1764, #1782, #1783, #1794 ; email exact + empreinte vérifiés, aucun autre contact touché).
 
 ---
 
