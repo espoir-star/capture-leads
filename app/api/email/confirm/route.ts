@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (nextStatus) attributes.EMAIL_STATUS = nextStatus;
 
     if (Object.keys(attributes).length) {
-      await updateContactAttributes({ id: contact.id }, attributes);
+      if (!(await updateContactAttributes({ id: contact.id }, attributes))) throw new Error("ecriture_refusee");
       if (nextStatus) await sendBrevoEvent(BREVO_EVENTS.EMAIL_CONFIRMED, { contact_id: contact.id }, { marketing_status: String(contact.attributes.MARKETING_STATUS ?? "TO_REVIEW") });
       logLead("succes", { motif: "email_confirme", statut: nextStatus ?? "inchange", valeur: maskEmail(email) });
     }

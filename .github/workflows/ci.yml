@@ -1,0 +1,34 @@
+# Vérifications à chaque pull request et sur main. Aucun secret : les tests
+# de bout en bout tournent contre un faux Brevo et un faux n8n en mémoire
+# (tests/e2e/mock-brevo.ts) ; Turnstile utilise la clé de TEST Cloudflare.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, types, tests, build, e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run test:e2e
