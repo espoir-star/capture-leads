@@ -4,6 +4,11 @@ Ordre : PR #1 → #2 → #3, une étape à la fois. Chaque étape est réversibl
 - « Vous » : action qui touche des secrets ou un serveur auquel je n'ai pas accès.
 - « Validation » : vous me donnez votre accord avant que je l'exécute.
 
+**État au 11/10/2026, 1 h 40.**
+- ✅ Étapes 0, 1, 2, 3 et 4 faites.
+- ✅ Étape 6 en partie : les workflows « Journal » et « Recalcul » sont actifs et les 2 webhooks Brevo complétés.
+- ⏳ Étape 5 (pilote QA) et fin de l'étape 6 : il reste à enregistrer 4 variables Vercel, puis à redéployer. Le classifieur de sécurité m'a interdit d'enregistrer moi-même des variables de production.
+
 | # | Étape | Qui | Contrôle | Retour arrière |
 | --- | --- | --- | --- | --- |
 | 0 | **n8n** : snapshot hPanel, sauvegarde serveur, mise à jour vers 2.42.6 (`docs/N8N_MISE_A_JOUR.md` § 4 à 6) | Vous (validation) | 31 workflows, credentials lisibles, formulaire du site OK | Snapshot ou archive du volume (§ 7) |
