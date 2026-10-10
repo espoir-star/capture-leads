@@ -1,0 +1,143 @@
+{
+  "name": "ALTHOCE | Webinar | Présences vers Brevo — v1",
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "XDp4BEtctA5ogbDg"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ALTHOCE | Webinar | Présences vers Brevo — v1\nAprès un webinar : présences / absences → événements Brevo (webinar_attended / webinar_no_show) via Vercel (/api/sequences/event), pour le scoring et le suivi commercial. Les rappels et le replay sont envoyés par le moteur de séquences.\n\n**Avant usage** : renseigner le slug dans « Config — Webinar », brancher la source des présences, rattacher « Althoce · n8n → Vercel (Bearer) ».",
+        "height": 220,
+        "width": 700
+      },
+      "id": "e76969d5-9ef1-4653-a67e-297582638a7d",
+      "name": "Note 692d",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -60
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c484c5d9-0349-4cd0-b135-bf52593286be",
+      "name": "Lancer après le webinar",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2d6fde8-ada5-4bc5-a7f1-5d56315f7223",
+              "name": "webinarSlug",
+              "value": "slug-du-webinar",
+              "type": "string"
+            },
+            {
+              "id": "c4e30dd3-4b4b-42bc-80f0-f3dc6e315535",
+              "name": "eventUrl",
+              "value": "https://guide-gratuit-pi.vercel.app/api/sequences/event",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "00fa8e64-6ef6-4715-bb4d-98c61d50cf91",
+      "name": "Config — Webinar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// À ADAPTER à la plateforme (Zoom, Livestorm, Teams…) : un item par inscrit,\n// { email, attended: true|false }. Laisser vide tant qu'aucun webinar réel n'a eu lieu.\nconst cfg = $('Config — Webinar').first().json;\nconst participants = []; // ← brancher ici l'export ou l'API de la plateforme\nreturn participants.map((p) => ({ json: {\n  email: String(p.email).trim().toLowerCase(),\n  event: p.attended ? 'webinar_attended' : 'webinar_no_show',\n  properties: { webinar: cfg.webinarSlug },\n} }));"
+      },
+      "id": "84d144ea-639d-41a7-8956-d3f5db8838dd",
+      "name": "Lister les présences (à adapter)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config — Webinar').first().json.eventUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email, event: $json.event, properties: $json.properties }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 1000
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "id": "ab383bc8-f781-4632-b6e7-2bc4e404b4c7",
+      "name": "Enregistrer l'événement Brevo (Vercel)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        240
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Lancer après le webinar": {
+      "main": [
+        [
+          {
+            "node": "Config — Webinar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config — Webinar": {
+      "main": [
+        [
+          {
+            "node": "Lister les présences (à adapter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lister les présences (à adapter)": {
+      "main": [
+        [
+          {
+            "node": "Enregistrer l'événement Brevo (Vercel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -10,6 +10,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { request } from "node:http";
 import assert from "node:assert/strict";
 import { MOCK_API_KEY, startMockBrevo, type MockContact, type MockState } from "./mock-brevo";
 
@@ -18,6 +19,7 @@ const APP_PORT = 3100;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const MOCK = `http://127.0.0.1:${MOCK_PORT}`;
 const WEBHOOK_SECRET = "e2e-webhook-secret";
+const SEQUENCE_SECRET = "e2e-sequence-secret";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let ipCounter = 10;
@@ -64,6 +66,9 @@ const reset = () => fetch(`${MOCK}/__reset`, { method: "POST" });
 const seed = (c: Partial<MockContact>) =>
   fetch(`${MOCK}/__seed`, { method: "POST", body: JSON.stringify(c) });
 const contactOf = async (email: string) => (await state()).contacts.find((c) => c.email === email);
+const configure = (c: { credits?: number; ledgerDown?: boolean; idemTtlMs?: number; clockOffsetMs?: number; turnstile?: string }) =>
+  fetch(`${MOCK}/__config`, { method: "POST", body: JSON.stringify(c) });
+const today = () => new Date().toISOString().slice(0, 10);
 
 const results: { name: string; ok: boolean; error?: string }[] = [];
 async function scenario(name: string, fn: () => Promise<void>) {
@@ -73,8 +78,9 @@ async function scenario(name: string, fn: () => Promise<void>) {
     results.push({ name, ok: true });
     console.log(`  ✓ ${name}`);
   } catch (e) {
-    results.push({ name, ok: false, error: e instanceof Error ? e.message : String(e) });
-    console.log(`  ✗ ${name}\n      ${e instanceof Error ? e.message.split("\n").join("\n      ") : e}`);
+    const cause = e instanceof Error && e.cause ? ` (cause : ${String((e.cause as Error).message ?? e.cause)})` : "";
+    results.push({ name, ok: false, error: (e instanceof Error ? e.message : String(e)) + cause });
+    console.log(`  ✗ ${name}\n      ${results.at(-1)!.error!.split("\n").join("\n      ")}`);
   }
 }
 
@@ -86,8 +92,16 @@ async function main() {
       BREVO_API_KEY: MOCK_API_KEY,
       BREVO_API_BASE_URL: `${MOCK}/v3`,
       TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+      TURNSTILE_VERIFY_URL: `${MOCK}/__turnstile`, // faux Cloudflare : e2e sans dépendance réseau
       BREVO_WEBHOOK_SECRET: WEBHOOK_SECRET,
       SIGNING_SECRET: "e2e",
+      // Moteur de séquences : seul le guide pilote a basculé
+      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables",
+      N8N_SEQUENCE_WEBHOOK_URL: `${MOCK}/__n8n`,
+      N8N_WEBHOOK_TOKEN: "e2e-n8n-token",
+      N8N_EVENTS_WEBHOOK_URL: `${MOCK}/__n8n_events`,
+      SEQUENCE_API_SECRET: SEQUENCE_SECRET,
+      SITE_URL: APP,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -132,7 +146,7 @@ async function main() {
       PRENOM: "Claire",
       NOM: "Martin",
       SOURCE_INSCRIPTION: "page-capture",
-      OPT_IN: false,
+      MARKETING_STATUS: "B2B_ELIGIBLE",
     };
     for (const [k, v] of Object.entries(expected)) assert.equal(a[k], v, k);
     assert.match(String(a.EMAIL_CONFIRM_TOKEN), /^v1\./, "lien de confirmation prêt pour l'email de bienvenue");
@@ -270,21 +284,156 @@ async function main() {
     assert.equal(codes[6], 429);
   });
 
-  await scenario("D · newsletter cochée : OPT_IN = true (sans lien avec les cookies)", async () => {
-    const r = await post("/api/lead", lead({ optIn: true }));
+  await scenario("D · nouveau prospect métier informé : B2B éligible et sans OPT_IN artificiel", async () => {
+    const r = await post("/api/lead", lead());
     assert.equal(r.status, 200);
-    assert.equal((await contactOf("claire.martin.e2e@gmail.com"))!.attributes.OPT_IN, true);
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.equal(c.attributes.MARKETING_STATUS, "B2B_ELIGIBLE");
+    assert.equal(c.emailBlacklisted, false);
+    assert.equal("OPT_IN" in c.attributes, false);
   });
 
-  await scenario("E · newsletter non cochée : OPT_IN = false, guide délivré quand même", async () => {
-    const r = await post("/api/lead", lead({ optIn: false }));
+  await scenario("E · opposition dès la capture : guide accessible, mais campagnes bloquées", async () => {
+    const r = await post("/api/lead", lead({ marketingOpposition: true }));
     assert.equal(r.status, 200);
-    assert.ok(r.body.leadRef, "accès au guide");
-    assert.equal((await contactOf("claire.martin.e2e@gmail.com"))!.attributes.OPT_IN, false);
-    // un OPT_IN = true existant n'est pas retiré par une case non cochée
+    assert.ok(r.body.leadRef, "accès au guide indépendamment de l'opposition");
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal(c.emailBlacklisted, true);
+
+    // Une nouvelle soumission ne peut pas annuler l'opposition.
+    const again = await post("/api/lead", lead({ marketingOpposition: false }));
+    assert.equal(again.status, 200);
+    const after = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.equal(after.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal(after.emailBlacklisted, true);
+  });
+
+  await scenario("E2 · ancien consentement préservé, ancien refus non converti", async () => {
     await seed({ email: "abonne@cabinet.fr", attributes: { OPT_IN: true } });
-    await post("/api/lead", lead({ email: "abonne@cabinet.fr", tel: "06 45 87 12 38", optIn: false }));
-    assert.equal((await contactOf("abonne@cabinet.fr"))!.attributes.OPT_IN, true);
+    await post("/api/lead", lead({ email: "abonne@cabinet.fr", tel: "06 45 87 12 38" }));
+    const subscribed = (await contactOf("abonne@cabinet.fr"))!;
+    assert.equal(subscribed.attributes.OPT_IN, true);
+    assert.equal(subscribed.attributes.MARKETING_STATUS, "CONSENT");
+
+    await seed({ email: "refus@cabinet.fr", attributes: { OPT_IN: false } });
+    await post("/api/lead", lead({ email: "refus@cabinet.fr", tel: "06 45 87 12 37" }));
+    const refused = (await contactOf("refus@cabinet.fr"))!;
+    assert.equal(refused.attributes.MARKETING_STATUS, "TO_REVIEW");
+    assert.equal(refused.attributes.OPT_IN, false);
+  });
+
+  await scenario("E3 · lien de désinscription : POST confirmé, idem au 2e clic, pas de re-opt-in", async () => {
+    await post("/api/lead", lead());
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    const token = String(c.attributes.MARKETING_OPTOUT_TOKEN);
+    assert.match(token, /^m1\./);
+    const landing = await fetch(`${APP}/desinscription?t=${encodeURIComponent(token)}`);
+    assert.equal(landing.status, 200, "GET est uniquement consultatif");
+    assert.equal((await contactOf(c.email))!.emailBlacklisted, false);
+
+    const first = await post("/api/marketing/unsubscribe", { t: token });
+    assert.equal(first.status, 200);
+    assert.equal((await contactOf(c.email))!.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal((await contactOf(c.email))!.emailBlacklisted, true);
+    const writes = (await state()).requests.filter((x) => x === `PUT /v3/contacts/${c.id}`).length;
+    assert.equal((await post("/api/marketing/unsubscribe", { t: token })).status, 200);
+    assert.equal((await state()).requests.filter((x) => x === `PUT /v3/contacts/${c.id}`).length, writes);
+    assert.equal((await post("/api/marketing/unsubscribe", { t: "m1.bad" })).status, 400);
+  });
+
+  /** Les envois se font après la réponse (after()) : on attend qu'ils apparaissent */
+  async function until(pred: (s: MockState) => boolean, label: string) {
+    for (let i = 0; i < 40; i++) {
+      const s = await state();
+      if (pred(s)) return s;
+      await sleep(100);
+    }
+    throw new Error(`délai dépassé : ${label}`);
+  }
+
+  await scenario("S1 · pilote basculé : guide livré tout de suite, séquence n8n ; 2e inscription : rien en double", async () => {
+    const r = await post("/api/lead", lead());
+    assert.equal(r.status, 200);
+    const s = await until((x) => x.emails.length === 1 && x.n8n.length === 1, "livraison + inscription");
+    assert.equal(s.emails[0].templateId, 35, "modèle de livraison du pilote");
+    assert.equal(s.emails[0].to[0].email, "claire.martin.e2e@gmail.com");
+    assert.match(s.emails[0].headers["List-Unsubscribe"], /\/api\/marketing\/unsubscribe\?t=m1\./);
+    assert.equal(s.n8n[0].authorization, "Bearer e2e-n8n-token");
+    assert.equal(s.n8n[0].body.stepId, "relance-j2");
+    assert.equal(JSON.stringify(s.n8n[0].body).includes("@"), false);
+
+    const again = await post("/api/lead", lead());
+    assert.equal(again.status, 200);
+    await sleep(800);
+    const s2 = await state();
+    assert.equal(s2.emails.length, 1, "même jour : pas de 2e email");
+    assert.equal(s2.n8n.length, 1, "déjà dans la liste : pas de 2e séquence");
+    // Tâche de livraison durable : écrite avec le contact, soldée après l'envoi ; la reprise horaire n'a rien à faire
+    const c = s2.contacts.find((x) => x.email === "claire.martin.e2e@gmail.com")!;
+    assert.equal(c.attributes.GUIDE_DELIVERY_STATUS, "SENT");
+    assert.match(String(c.attributes.GUIDE_DELIVERY_REF), /^guide-12-cas-ec-v1\|12-cas-usage-experts-comptables\|/);
+    const m = await post("/api/marketing/maintenance", {}, { Authorization: `Bearer ${SEQUENCE_SECRET}` });
+    assert.equal(m.body.deliveries.sent, 0);
+    assert.equal((await state()).emails.length, 1);
+  });
+
+  await scenario("S2 · opposant sur un guide encore en automation Brevo : hors liste, guide livré en transactionnel", async () => {
+    const r = await post("/api/lead", lead({ slug: "guide-claude-pennylane", marketingOpposition: true }));
+    assert.equal(r.status, 200);
+    assert.equal(r.body.marketing, "opposed", "opposition confirmée par le serveur");
+    const s = await until((x) => x.emails.length === 1, "livraison");
+    assert.equal(s.emails[0].templateId, 37, "modèle générique");
+    assert.equal(s.emails[0].params.GUIDE_URL.startsWith("https://"), true);
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.deepEqual(c.listIds, [], "pas d'ajout à la liste 6 : l'automation n'envoie rien");
+    assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal(s.n8n.length, 0, "aucune séquence");
+  });
+
+  await scenario("S3 · /api/sequences/step : secret exigé, étape prématurée reportée, identifiant falsifié refusé", async () => {
+    await post("/api/lead", lead());
+    const s = await until((x) => x.n8n.length === 1, "inscription");
+    const body = { enrollmentId: s.n8n[0].body.enrollmentId, stepId: "relance-j2" };
+    assert.equal((await post("/api/sequences/step", body)).status, 401);
+    assert.equal((await post("/api/sequences/step", body, { Authorization: "Bearer faux" })).status, 401);
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const early = await post("/api/sequences/step", body, auth);
+    assert.equal(early.status, 200);
+    assert.equal(early.body.action, "wait");
+    assert.equal(early.body.at, s.n8n[0].body.at);
+    assert.equal((await post("/api/sequences/step", { ...body, enrollmentId: "e1.faux.faux" }, auth)).status, 400);
+    assert.equal((await state()).emails.length, 1, "seule la livraison est partie");
+  });
+
+  await scenario("S4 · « Se désabonner » de la messagerie (RFC 8058) : POST ?t= → opposé ; GET sans effet", async () => {
+    await post("/api/lead", lead());
+    const s = await until((x) => x.emails.length === 1, "livraison");
+    const url = s.emails[0].headers["List-Unsubscribe"].slice(1, -1);
+    const get = await fetch(url);
+    assert.notEqual(get.status, 200, "GET (aperçu, antivirus) ne désinscrit pas");
+    assert.equal((await contactOf("claire.martin.e2e@gmail.com"))!.emailBlacklisted, false);
+    const oneClick = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "x-real-ip": "10.9.9.9" },
+      body: "List-Unsubscribe=One-Click",
+    });
+    assert.equal(oneClick.status, 200);
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal(c.emailBlacklisted, true);
+  });
+
+  await scenario("S5 · alerte n8n : secret exigé, email envoyé à la boîte de réponse, une seule fois par exécution", async () => {
+    const alert = { workflow: "Marketing — Séquences (moteur) — v1", executionId: "123", node: "Exécuter l'étape", message: "HTTP 502" };
+    assert.equal((await post("/api/sequences/alert", alert)).status, 401);
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    assert.equal((await post("/api/sequences/alert", alert, auth)).status, 200);
+    assert.equal((await post("/api/sequences/alert", alert, auth)).status, 200, "même exécution : pas de 2e email");
+    const s = await state();
+    assert.equal(s.emails.length, 1);
+    assert.equal(s.emails[0].to[0].email, "espoir@contact.althoce.com");
+    assert.ok(s.emails[0].tags.includes("alerte-sequences"));
   });
 
   await scenario("54 · confirmation dédiée → VERIFIED ; 2e clic sans effet ; jeton falsifié refusé", async () => {
@@ -292,15 +441,15 @@ async function main() {
     const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
     assert.equal(c.attributes.EMAIL_STATUS, "PENDING");
     const t = String(c.attributes.EMAIL_CONFIRM_TOKEN);
-    const first = await post("/api/email/confirm", { t, optIn: true });
+    const first = await post("/api/email/confirm", { t });
     assert.equal(first.status, 200);
     assert.equal(first.body.status, "verified");
-    const second = await post("/api/email/confirm", { t, optIn: true });
+    const second = await post("/api/email/confirm", { t });
     assert.equal(second.body.status, "already_verified");
     await sleep(300);
     const s = await state();
     assert.equal(s.contacts[0].attributes.EMAIL_STATUS, "VERIFIED");
-    assert.equal(s.contacts[0].attributes.OPT_IN, true, "case newsletter de la page de confirmation");
+    assert.equal("OPT_IN" in s.contacts[0].attributes, false, "confirmer l'email ne crée pas de consentement");
     assert.equal(s.events.filter((e) => e.event_name === "email_confirmed").length, 1, "un seul événement");
     const forged = await post("/api/email/confirm", { t: t.slice(0, -3) + "abc" });
     assert.equal(forged.status, 400);
@@ -312,6 +461,17 @@ async function main() {
     const r = await post("/api/webhooks/brevo", { event: "click", email: "lecteur@cabinet.fr", URL: "https://althoce.com/blog" }, auth);
     assert.deepEqual(r.body.results, ["ignored_click"]);
     assert.equal((await contactOf("lecteur@cabinet.fr"))!.attributes.EMAIL_STATUS, "PENDING");
+  });
+
+  await scenario("54b · webhook Brevo unsubscribe → opposition marketing", async () => {
+    await seed({ email: "stop@cabinet.fr", attributes: { MARKETING_STATUS: "CONSENT" } });
+    const auth = { Authorization: `Bearer ${WEBHOOK_SECRET}` };
+    const evt = { event: "unsubscribe", email: "stop@cabinet.fr" };
+    assert.equal((await post("/api/webhooks/brevo", evt)).status, 401);
+    assert.deepEqual((await post("/api/webhooks/brevo", evt, auth)).body.results, ["marketing_opposed"]);
+    assert.deepEqual((await post("/api/webhooks/brevo", evt, auth)).body.results, ["unchanged"]);
+    assert.equal((await contactOf("stop@cabinet.fr"))!.emailBlacklisted, true);
+    assert.equal((await contactOf("stop@cabinet.fr"))!.attributes.MARKETING_STATUS, "OPPOSED");
   });
 
   await scenario("54 · hard bounce → BOUNCED ; reçu deux fois → une seule écriture ; secret exigé", async () => {
@@ -327,6 +487,272 @@ async function main() {
     assert.equal(s.contacts[0].attributes.LEAD_SCORE, 12, "score jamais modifié");
   });
 
+  /* ── Scoring comportemental (journal n8n simulé) ───────────────────── */
+  const hook = (evt: unknown) => post("/api/webhooks/brevo", evt, { Authorization: `Bearer ${WEBHOOK_SECRET}` });
+  const click = (email: string, messageId: string, link: string) => ({
+    event: "click", email, "message-id": messageId, link, ts_event: Math.floor(Date.now() / 1000), tags: ["sequence"], template_id: 35,
+  });
+  const hotAlerts = (s: MockState) => s.emails.filter((e) => e.tags?.includes("alerte-lead-chaud"));
+
+  await scenario("SC1 · clic RDV (transactionnel) → +10 ; rejeu → rien ; clic guide → +5, lead chaud, alerte UNE fois", async () => {
+    await seed({ email: "chaud@cabinet.fr", attributes: { LEAD_SCORE: 12, LIFECYCLE_STAGE: "LEAD", EMAIL_STATUS: "PENDING", PRENOM: "Léa", ENTREPRISE: "Cabinet <Test>" } });
+    const offer = click("chaud@cabinet.fr", "<m1@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min");
+    const r1 = await hook(offer);
+    assert.equal(r1.status, 200, JSON.stringify(r1.body));
+    assert.deepEqual(r1.body.results, ["click_scored"]);
+    let c = (await contactOf("chaud@cabinet.fr"))!;
+    assert.equal(c.attributes.FORM_SCORE, 12, "score formulaire historique figé");
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
+    assert.equal(c.attributes.LEAD_SCORE, 22);
+    assert.equal(c.attributes.LAST_EMAIL_CLICK_AT, today());
+
+    await hook(offer); // Brevo rejoue
+    await hook([offer, { ...offer, link: "https://cal.com/althoce-conseil-4ncbuz/30min?x=1" }]); // 2e clic RDV, même email
+    let s = await state();
+    assert.equal(s.ledger.length, 1, "un seul événement journalisé");
+    assert.equal(s.contacts[0].attributes.LEAD_SCORE, 22, "aucun double comptage");
+
+    await hook(click("chaud@cabinet.fr", "<m1@relay>", "https://espoir-metareglage.notion.site/12-cas"));
+    c = (await contactOf("chaud@cabinet.fr"))!;
+    assert.equal(c.attributes.LEAD_SCORE, 27);
+    assert.equal(c.attributes.LIFECYCLE_STAGE, "HOT_LEAD");
+    assert.equal(c.attributes.HOT_ALERT_SENT_AT, today());
+    s = await state();
+    assert.equal(hotAlerts(s).length, 1);
+    assert.equal(hotAlerts(s)[0].to[0].email, "espoir@contact.althoce.com");
+    const html = String((hotAlerts(s)[0] as unknown as { htmlContent: string }).htmlContent);
+    assert.match(html, /Cabinet &lt;Test&gt;/, "valeurs échappées");
+    assert.match(html, /formulaire 12 \+ comportement 15/);
+
+    await hook({ event: "click", email: "chaud@cabinet.fr", camp_id: 41, URL: "https://www.linkedin.com/posts/x", ts_event: 1 });
+    s = await state();
+    assert.equal(s.contacts[0].attributes.LEAD_SCORE, 30, "clic newsletter +3");
+    assert.equal(hotAlerts(s).length, 1, "pas de 2e alerte");
+  });
+
+  await scenario("SC2 · n8n arrêté → 429 (Brevo rejoue), rien écrit ; au rejeu → compté une fois", async () => {
+    await seed({ email: "panne@cabinet.fr", attributes: { LEAD_SCORE: 4 } });
+    await configure({ ledgerDown: true });
+    const evt = click("panne@cabinet.fr", "<m2@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min");
+    const r = await hook(evt);
+    assert.equal(r.status, 429);
+    assert.equal((await contactOf("panne@cabinet.fr"))!.attributes.LEAD_SCORE, 4);
+    await configure({ ledgerDown: false });
+    assert.equal((await hook(evt)).status, 200);
+    assert.equal((await hook(evt)).status, 200);
+    const c = (await contactOf("panne@cabinet.fr"))!;
+    assert.equal(c.attributes.LEAD_SCORE, 14);
+    assert.equal((await state()).ledger.length, 1);
+  });
+
+  await scenario("SC3 · liens jamais comptés (désinscription, confirmation, mailto) ; spam → opposition ; email interne ignoré", async () => {
+    await seed({ email: "neutre@cabinet.fr", attributes: { LEAD_SCORE: 3, MARKETING_STATUS: "B2B_ELIGIBLE" } });
+    const r = await hook([
+      click("neutre@cabinet.fr", "<m3@relay>", `${APP}/desinscription?t=abc`),
+      click("neutre@cabinet.fr", "<m3@relay>", `${APP}/confirmer-email?t=abc`),
+      click("neutre@cabinet.fr", "<m3@relay>", "mailto:espoir@contact.althoce.com"),
+      { ...click("neutre@cabinet.fr", "<m4@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min"), tags: ["alerte-lead-chaud"] },
+      { event: "spam", email: "neutre@cabinet.fr" },
+    ]);
+    assert.deepEqual(r.body.results, ["ignored_click", "ignored_click", "ignored_click", "ignored_click", "marketing_opposed"]);
+    const c = (await contactOf("neutre@cabinet.fr"))!;
+    assert.equal(c.attributes.LEAD_SCORE, 3);
+    assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal((await state()).ledger.length, 0);
+  });
+
+  await scenario("SC4 · passe horaire /api/marketing/score : secret exigé, idempotente, ne baisse jamais", async () => {
+    await seed({ email: "manuel@cabinet.fr", attributes: { LEAD_SCORE: 40, BEHAVIOR_SCORE: 20, FORM_SCORE: 10, LIFECYCLE_STAGE: "CONTACTED" } });
+    const id = (await contactOf("manuel@cabinet.fr"))!.id;
+    const rows = [
+      { event_key: `clk.${"a".repeat(32)}`, contact_id: id, category: "guide_click", points: 5, occurred_at: "2026-10-01T10:00:00Z" },
+      { event_key: `clk.${"a".repeat(32)}`, contact_id: id, category: "guide_click", points: 5, occurred_at: "2026-10-01T10:00:00Z" },
+      { event_key: `clk.${"b".repeat(32)}`, contact_id: id, category: "content_click", points: 3, occurred_at: "2026-10-02T10:00:00Z" },
+    ];
+    assert.equal((await post("/api/marketing/score", { rows })).status, 401);
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const r = await post("/api/marketing/score", { rows }, auth);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const c = (await contactOf("manuel@cabinet.fr"))!;
+    assert.equal(c.attributes.LEAD_SCORE, 40, "score manuel conservé");
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 20, "comportement jamais réduit (8 < 20)");
+    assert.equal(c.attributes.LIFECYCLE_STAGE, "CONTACTED", "étape commerciale intouchée");
+    assert.equal(c.attributes.LAST_EMAIL_CLICK_AT, "2026-10-02");
+    const puts = (await state()).requests.filter((q) => q.startsWith("PUT")).length;
+    await post("/api/marketing/score", { rows }, auth);
+    assert.equal((await state()).requests.filter((q) => q.startsWith("PUT")).length, puts, "2e passe : aucune écriture");
+    assert.equal(hotAlerts(await state()).length, 0, "contact déjà contacté : pas d'alerte");
+  });
+
+  await scenario("SC5 · tâches horaires : quota bas → alerte une fois/jour ; RDV confirmé → +25 une fois, sans alerte", async () => {
+    await seed({ email: "rdv@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "Prévu" } });
+    await seed({ email: "rien@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "À préciser" } });
+    await configure({ credits: 50 });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    assert.equal((await post("/api/marketing/maintenance", {})).status, 401);
+    const r1 = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(r1.status, 200, JSON.stringify(r1.body));
+    assert.equal(r1.body.quota.remaining, 50);
+    assert.equal(r1.body.quota.alert, "sent");
+    assert.equal(r1.body.meetings.events, 1);
+    const r2 = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(r2.body.meetings.inserted, 0, "RDV déjà compté");
+    const s = await state();
+    assert.equal(s.emails.filter((e) => e.tags?.includes("alerte-quota")).length, 1, "une alerte quota par jour");
+    const rdv = s.contacts.find((c) => c.email === "rdv@cabinet.fr")!;
+    assert.equal(rdv.attributes.BEHAVIOR_SCORE, 25);
+    assert.equal(rdv.attributes.LEAD_SCORE, 30);
+    assert.equal(hotAlerts(s).length, 0, "RDV en cours : pas d'alerte lead chaud");
+    assert.equal(s.contacts.find((c) => c.email === "rien@cabinet.fr")!.attributes.LEAD_SCORE, 5);
+  });
+
+  await scenario("SC6 · présence webinar (n8n → /api/sequences/event) → +15, une fois", async () => {
+    await seed({ email: "present@cabinet.fr", attributes: { LEAD_SCORE: 8 } });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const evt = { email: "present@cabinet.fr", event: "webinar_attended", properties: { webinar: "ia-cabinet-2026" } };
+    assert.equal((await post("/api/sequences/event", evt, auth)).status, 200);
+    assert.equal((await post("/api/sequences/event", evt, auth)).status, 200);
+    const c = (await contactOf("present@cabinet.fr"))!;
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 15);
+    assert.equal(c.attributes.LEAD_SCORE, 23);
+  });
+
+  /* ── Sécurité des échanges (Brevo → Vercel, n8n → Vercel) ──────────── */
+  const ROUTES: { path: string; secret: string; valid: () => unknown; expect: number }[] = [
+    { path: "/api/webhooks/brevo", secret: WEBHOOK_SECRET, valid: () => ({ event: "opened", email: "sec@cabinet.fr" }), expect: 200 },
+    { path: "/api/sequences/step", secret: SEQUENCE_SECRET, valid: () => ({ enrollmentId: "e1.inconnu.inconnu", stepId: "relance-j2" }), expect: 400 },
+    { path: "/api/sequences/event", secret: SEQUENCE_SECRET, valid: () => ({ email: "sec@cabinet.fr", event: "webinar_no_show", properties: { webinar: "test" } }), expect: 200 },
+    { path: "/api/sequences/alert", secret: SEQUENCE_SECRET, valid: () => ({ workflow: "test", executionId: `sec-${Date.now()}`, node: "n", message: "m" }), expect: 200 },
+    { path: "/api/marketing/score", secret: SEQUENCE_SECRET, valid: () => ({ rows: [] }), expect: 200 },
+    { path: "/api/marketing/maintenance", secret: SEQUENCE_SECRET, valid: () => ({}), expect: 200 },
+  ];
+
+  await scenario("SEC1 · matrice : sans jeton / jeton faux → 401 sans aucun traitement ; GET → 405 ; JSON cassé → 400 ; trop gros → 413 ; valide → OK", async () => {
+    await seed({ email: "sec@cabinet.fr", attributes: { LEAD_SCORE: 1 } });
+    for (const r of ROUTES) {
+      const before = (await state()).requests.length;
+      assert.equal((await post(r.path, r.valid())).status, 401, `${r.path} sans jeton`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: "Bearer faux" })).status, 401, `${r.path} jeton faux`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: `Bearer ${r.secret}x` })).status, 401, `${r.path} jeton presque juste`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: r.secret })).status, 401, `${r.path} sans « Bearer »`);
+      assert.equal((await state()).requests.length, before, `${r.path} : aucun appel Brevo avant authentification`);
+      const auth = { Authorization: `Bearer ${r.secret}` };
+      assert.equal((await fetch(`${APP}${r.path}`, { method: "GET", headers: auth })).status, 405, `${r.path} GET`);
+      assert.equal((await fetch(`${APP}${r.path}`, { method: "PUT", headers: auth })).status, 405, `${r.path} PUT`);
+      if (r.path !== "/api/marketing/maintenance") {
+        const broken = await post(r.path, "{pas du json", auth);
+        assert.equal(broken.status, 400, `${r.path} JSON cassé`);
+        const big = await fetch(`${APP}${r.path}`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ x: "a".repeat(700_000) }) });
+        assert.equal(big.status, 413, `${r.path} corps trop volumineux`);
+      }
+      const ok = await post(r.path, r.valid(), auth);
+      assert.equal(ok.status, r.expect, `${r.path} requête valide : ${JSON.stringify(ok.body)}`);
+    }
+    // Corps envoyé en flux (chunked, sans Content-Length) sur une connexion dédiée : coupé à la limite
+    const streamedStatus = await new Promise<number>((resolve, reject) => {
+      const r = request(`${APP}/api/webhooks/brevo`, { method: "POST", agent: false, headers: { Authorization: `Bearer ${WEBHOOK_SECRET}`, "Content-Type": "application/json" } }, (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+        r.destroy();
+      });
+      r.on("error", (e) => (r.destroyed ? undefined : reject(e)));
+      for (let i = 0; i < 40; i++) r.write("x".repeat(20_000));
+      r.end();
+    });
+    assert.equal(streamedStatus, 413, "flux de 800 Ko sans Content-Length → 413");
+    // Jeton dans l'URL : plus accepté (il finirait dans les journaux d'accès)
+    assert.equal((await post(`/api/webhooks/brevo?token=${WEBHOOK_SECRET}`, { event: "opened", email: "sec@cabinet.fr" })).status, 401);
+  });
+
+  await scenario("SEC2 · étape n8n : 5 appels simultanés, rejeu 30 min et 2 h plus tard → un seul email", async () => {
+    process.env.SIGNING_SECRET = "e2e";
+    const { signEnrollment } = await import("@/lib/sequences/enrollment");
+    const id = await (await seed({ email: "concurrence@cabinet.fr", attributes: { VERTICAL: "FINANCE", MARKETING_STATUS: "B2B_ELIGIBLE", EMAIL_STATUS: "PENDING" }, listIds: [10] })).json().then((x: { id: number }) => x.id);
+    const enr = signEnrollment({ s: "guide-12-cas-ec-v1", c: id, t: Date.now() - 48 * 3_600_000, r: "12-cas-usage-experts-comptables" })!;
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const outs = await Promise.all(Array.from({ length: 5 }, () => post("/api/sequences/step", { enrollmentId: enr, stepId: "relance-j2" }, auth)));
+    assert.ok(outs.every((o) => o.status === 200 || o.status === 502), JSON.stringify(outs.map((o) => o.status)));
+    await configure({ idemTtlMs: 15 * 60_000 });
+    for (const offset of [30 * 60_000, 2 * 3_600_000]) {
+      await fetch(`${MOCK}/__config`, { method: "POST", body: JSON.stringify({ clockOffsetMs: offset }) });
+      const again = await post("/api/sequences/step", { enrollmentId: enr, stepId: "relance-j2" }, auth);
+      assert.equal(again.status, 200, JSON.stringify(again.body));
+    }
+    const s = await state();
+    assert.equal(s.emails.filter((e) => e.to[0]?.email === "concurrence@cabinet.fr").length, 1, "une seule relance");
+    assert.ok(s.events.some((e) => e.event_name === "email_send_attempt" && e.event_properties?.message_id), "messageId historisé");
+  });
+
+  await scenario("SEC4 · Turnstile : absent / invalide / déjà utilisé → 403 sans contact ; Cloudflare en panne → mode dégradé plafonné, aucun email", async () => {
+    const reject = async (mode: string, over: Record<string, unknown> = {}) => {
+      await configure({ turnstile: mode });
+      const r = await post("/api/lead", lead({ email: `ts-${mode}@gmail.com`, tel: "06 11 22 33 44", ...over }));
+      return r.status;
+    };
+    assert.equal(await reject("ok", { turnstileToken: undefined }), 403, "jeton absent");
+    assert.equal(await reject("invalid"), 403, "jeton invalide");
+    assert.equal(await reject("duplicate"), 403, "jeton déjà utilisé ou expiré (timeout-or-duplicate)");
+    assert.equal((await state()).contacts.length, 0, "aucun contact créé");
+
+    for (const mode of ["down", "internal"]) {
+      await configure({ turnstile: mode });
+      const ip = { "x-real-ip": `10.9.9.${mode === "down" ? 1 : 2}` };
+      const ok = await post("/api/lead", lead({ email: `degrade-${mode}@gmail.com`, tel: mode === "down" ? "06 45 87 12 36" : "06 45 87 12 35" }), ip);
+      assert.equal(ok.status, 200, `${mode} : prospect accepté (${JSON.stringify(ok.body)})`);
+    }
+    await sleep(600);
+    let s = await state();
+    assert.equal(s.contacts.length, 2, "contacts enregistrés");
+    assert.ok(s.contacts.every((c) => c.listIds.length === 0), "pas d'ajout à la liste (l'automation Brevo enverrait un email)");
+    assert.equal(s.emails.length, 0, "aucun email automatique en mode dégradé");
+    assert.equal(s.n8n.length, 0, "aucune inscription de séquence");
+    assert.ok(s.events.some((e) => e.event_properties?.turnstile === "unverified"), "marqué non vérifié");
+
+    await configure({ turnstile: "down" });
+    const same = { "x-real-ip": "10.9.9.1" };
+    assert.equal((await post("/api/lead", lead({ email: "degrade-2@gmail.com", tel: "06 45 87 12 38" }), same)).status, 200, "2e soumission de l'IP");
+    assert.equal((await post("/api/lead", lead({ email: "degrade-3@gmail.com", tel: "06 45 87 12 37" }), same)).status, 503, "3e en 10 min : plafond par IP");
+    s = await state();
+    assert.equal(s.emails.length, 0);
+    await configure({ turnstile: "ok" });
+  });
+
+  await scenario("SC7 · clic de robot (< 15 s après l'envoi) non compté ; clic humain compté", async () => {
+    await seed({ email: "robot@cabinet.fr", attributes: { LEAD_SCORE: 2 } });
+    const sent = Math.floor(Date.now() / 1000) - 3600;
+    const r = await hook([
+      { event: "click", email: "robot@cabinet.fr", camp_id: 51, URL: "https://cal.com/althoce-conseil-4ncbuz/30min", ts_sent: sent, ts_event: sent + 4 },
+      { event: "click", email: "robot@cabinet.fr", camp_id: 52, URL: "https://www.linkedin.com/posts/x", ts_sent: sent, ts_event: sent + 600 },
+    ]);
+    assert.equal(r.status, 200);
+    const s = await state();
+    assert.equal(s.ledger.length, 1, "seul le clic humain est journalisé");
+    assert.equal(s.contacts[0].attributes.BEHAVIOR_SCORE, 3);
+  });
+
+  await scenario("SC8 · webhook abandonné par Brevo : rattrapé par la tâche horaire (journal des clics), puis rejeu sans double comptage", async () => {
+    await seed({ email: "perdu@cabinet.fr", attributes: { LEAD_SCORE: 5 } });
+    const sentAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const clickAt = new Date(Date.now() - 3_600_000).toISOString();
+    await fetch(`${MOCK}/__stats`, { method: "POST", body: JSON.stringify({ events: [
+      { event: "requests", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: sentAt, templateId: 36 },
+      { event: "clicks", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: clickAt, templateId: 36, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+      { event: "clicks", email: "espoir@contact.althoce.com", messageId: "<m-interne@relay>", date: clickAt, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    ] }) });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const m = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(m.status, 200, JSON.stringify(m.body));
+    assert.equal(m.body.clicks.inserted, 1, "clic rattrapé ; email interne ignoré");
+    let c = (await contactOf("perdu@cabinet.fr"))!;
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
+    // Brevo finit par livrer le webhook : même clé, aucun double comptage
+    await hook(click("perdu@cabinet.fr", "<m-perdu@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min"));
+    await post("/api/marketing/maintenance", {}, auth);
+    c = (await contactOf("perdu@cabinet.fr"))!;
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
+    assert.equal((await state()).ledger.length, 1);
+  });
+
   await scenario("Brevo en panne : message clair, réessai possible", async () => {
     mock.close();
     await sleep(200);
@@ -336,6 +762,10 @@ async function main() {
   });
 
   app.kill();
+  const journal = logs.join("");
+  const leaked = [WEBHOOK_SECRET, SEQUENCE_SECRET, "e2e-n8n-token", MOCK_API_KEY].filter((x) => journal.includes(x));
+  results.push({ name: "SEC3 · aucun secret dans les journaux du serveur", ok: leaked.length === 0, error: leaked.length ? "secret trouvé dans les logs" : undefined });
+  console.log(`  ${leaked.length ? "✗" : "✓"} SEC3 · aucun secret dans les journaux du serveur`);
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} scénarios OK\n`);
   if (failed.length) {

@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 
-/** Bouton de confirmation d'adresse + case newsletter facultative (OPT_IN). */
+/** Confirmation d'adresse uniquement : les préférences marketing sont indépendantes. */
 export default function ConfirmEmail({ token, maskedEmail }: { token: string; maskedEmail: string }) {
-  const [optIn, setOptIn] = useState(false);
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -16,7 +15,7 @@ export default function ConfirmEmail({ token, maskedEmail }: { token: string; ma
       const res = await fetch("/api/email/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ t: token, optIn }),
+        body: JSON.stringify({ t: token }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message ?? "Confirmation impossible. Réessayez.");
@@ -35,7 +34,7 @@ export default function ConfirmEmail({ token, maskedEmail }: { token: string; ma
         </h1>
         <p className="mt-3 text-secondaire leading-relaxed">
           Merci, votre adresse {maskedEmail} est confirmée.
-          {optIn && " Vous recevrez nos prochaines ressources par email."}
+
         </p>
       </>
     );
@@ -47,18 +46,6 @@ export default function ConfirmEmail({ token, maskedEmail }: { token: string; ma
       <p className="mt-3 text-secondaire leading-relaxed">
         Confirmez que l&apos;adresse {maskedEmail} vous appartient.
       </p>
-      <label className="mt-5 flex cursor-pointer items-start gap-2.5 py-1 text-xs leading-relaxed text-secondaire">
-        <input
-          type="checkbox"
-          checked={optIn}
-          onChange={(e) => setOptIn(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
-        />
-        <span>
-          Je souhaite recevoir les actualités, conseils, ressources et invitations aux webinaires
-          d&apos;Althoce par email. Je peux me désinscrire à tout moment.
-        </span>
-      </label>
       {message && (
         <p role="alert" className="mt-3 text-sm text-red-400">
           {message}

@@ -29,47 +29,48 @@ export type CampaignTag = (typeof CAMPAIGN_TAGS)[number];
 export interface SegmentRef {
   /** Nom exact du segment dans Brevo */
   name: string;
-  /** ID réel (Brevo → Contacts → Segments), null tant qu'il n'est pas recopié */
+  /** ID réel (Brevo → Contacts → Segments), null tant qu'il n'est pas recopié. Créés le 09/10/2026. */
   id: number | null;
   /** Conditions à saisir dans Brevo */
   conditions: string;
 }
 
 const EMAIL_OK = "EMAIL_STATUS ≠ INVALID ET ≠ DISPOSABLE ET ≠ BOUNCED";
+const MARKETING_OK = "(MARKETING_STATUS = CONSENT OU MARKETING_STATUS = B2B_ELIGIBLE) ET MARKETING_STATUS ≠ OPPOSED";
 
 export const SEGMENTS = {
-  financeAll: { name: "FINANCE — ALL", id: null, conditions: "VERTICAL = FINANCE" },
+  financeAll: { name: "FINANCE — ALL", id: 1, conditions: "VERTICAL = FINANCE" },
   financeEc: {
     name: "FINANCE — EXPERTISE COMPTABLE",
-    id: null,
+    id: 2,
     conditions: "VERTICAL = FINANCE ET SUBSECTOR = EXPERTISE_COMPTABLE",
   },
-  financeDaf: { name: "FINANCE — DAF", id: null, conditions: "VERTICAL = FINANCE ET SUBSECTOR = DAF_FINANCE" },
-  dqReview: { name: "DATA QUALITY — REVIEW", id: null, conditions: "EMAIL_STATUS = PENDING OU PHONE_STATUS = SUSPECT" },
+  financeDaf: { name: "FINANCE — DAF", id: 3, conditions: "VERTICAL = FINANCE ET SUBSECTOR = DAF_FINANCE" },
+  dqReview: { name: "DATA QUALITY — REVIEW", id: 4, conditions: "EMAIL_STATUS = PENDING OU PHONE_STATUS = SUSPECT" },
   dqRejected: {
     name: "DATA QUALITY — REJECTED",
-    id: null,
+    id: 5,
     conditions: "EMAIL_STATUS = INVALID OU = DISPOSABLE OU = BOUNCED",
   },
   leadsHot: {
     name: "LEADS — HOT",
-    id: null,
+    id: 6,
     conditions: `LEAD_SCORE ≥ 25 ET LIFECYCLE_STAGE ≠ CLIENT ET ≠ LOST ET ${EMAIL_OK} ET PHONE_STATUS ≠ INVALID`,
   },
   newsletterFinance: {
     name: "NEWSLETTER — FINANCE",
-    id: null,
-    conditions: `VERTICAL = FINANCE ET OPT_IN = Oui (true) ET ${EMAIL_OK} (désabonnés/blocklistés exclus d'office par Brevo)`,
+    id: 7,
+    conditions: `VERTICAL = FINANCE ET ${MARKETING_OK} ET ${EMAIL_OK} (blocklistés exclus d'office par Brevo)`,
   },
   newsletterEc: {
     name: "NEWSLETTER — EXPERTISE COMPTABLE",
-    id: null,
-    conditions: `VERTICAL = FINANCE ET SUBSECTOR = EXPERTISE_COMPTABLE ET OPT_IN = Oui (true) ET ${EMAIL_OK}`,
+    id: 8,
+    conditions: `VERTICAL = FINANCE ET SUBSECTOR = EXPERTISE_COMPTABLE ET ${MARKETING_OK} ET ${EMAIL_OK}`,
   },
   newsletterDaf: {
     name: "NEWSLETTER — DAF",
-    id: null,
-    conditions: `VERTICAL = FINANCE ET SUBSECTOR = DAF_FINANCE ET OPT_IN = Oui (true) ET ${EMAIL_OK}`,
+    id: 9,
+    conditions: `VERTICAL = FINANCE ET SUBSECTOR = DAF_FINANCE ET ${MARKETING_OK} ET ${EMAIL_OK}`,
   },
 } satisfies Record<string, SegmentRef>;
 
@@ -82,7 +83,7 @@ export interface Audience {
 }
 
 /**
- * Audiences newsletter : OPT_IN = true est obligatoire (consentement explicite).
+ * Newsletter : consentement ancien OU B2B éligible, jamais un opposant.
  * EMAIL_STATUS n'est jamais utilisé comme substitut de consentement.
  */
 export const AUDIENCES: Record<string, Audience> = {

@@ -103,6 +103,11 @@ async function main() {
 
   /* ── Garde-fous ── */
   const errors: string[] = [];
+  // Les segments actuels doivent être validés manuellement après la migration
+  // de OPT_IN vers MARKETING_STATUS avant toute création de campagne.
+  if (process.env.MARKETING_SEGMENTS_REVIEWED !== "true") {
+    errors.push("Segments marketing non validés : reconfigurer Brevo puis MARKETING_SEGMENTS_REVIEWED=true");
+  }
   if (!getApiKey()) errors.push("BREVO_API_KEY absente");
   if (meta.status !== "ready") errors.push(`status doit être "ready" (actuel : ${meta.status})`);
   if (meta.brevoCampaignId) errors.push(`déjà créée (brevoCampaignId ${meta.brevoCampaignId})`);
@@ -130,7 +135,9 @@ async function main() {
       sender: NEWSLETTER_SENDER,
       replyTo: NEWSLETTER_REPLY_TO,
       htmlContent: html,
-      tag: meta.tag,
+      // Brevo Free refuse l'option tag sur les campagnes (« not allowed to avail tag option ») :
+      // le tag reste dans le fichier et le nom de campagne ; envoyé seulement si l'offre le permet.
+      ...(process.env.BREVO_CAMPAIGN_TAGS === "true" && { tag: meta.tag }),
       recipients: {
         segmentIds: [targetId],
         ...(excludeIds.length && { exclusionSegmentIds: excludeIds }),

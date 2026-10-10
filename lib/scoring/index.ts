@@ -1,8 +1,8 @@
 /**
  * Scoring et cycle de vie — volontairement simple et lisible.
  *
- * Score formulaire = horizon + besoin (max 15).
- * Contact existant : LEAD_SCORE = max(score existant, score formulaire).
+ * Score formulaire = horizon + besoin (max 15), conservé dans FORM_SCORE.
+ * LEAD_SCORE = max(existant, formulaire + comportement), plafonné à 100.
  * Le score ne diminue jamais automatiquement.
  */
 
@@ -31,17 +31,7 @@ export const MAX_FORM_SCORE = 15;
 /** Seuil du segment « leads chauds » et de la promotion HOT_LEAD */
 export const HOT_LEAD_THRESHOLD = 25;
 
-/**
- * Scores d'événements futurs (webinar). NON ACTIFS : à activer quand les
- * données réelles de la plateforme webinar remonteront (voir docs/BREVO_SETUP.md).
- */
-export const EVENT_SCORING_ENABLED = false;
-export const EVENT_SCORES = {
-  webinar_registered: 5,
-  webinar_attended: 8,
-  webinar_replay_clicked: 5,
-  webinar_cta_clicked: 10,
-} as const;
+/* Scoring comportemental (clics, webinars, RDV) : config/scoring.ts et lib/scoring/behavior.ts */
 
 export function formIntentScore(besoin: Besoin, horizon: Horizon): number {
   return Math.min(MAX_FORM_SCORE, (HORIZON_SCORES[horizon] ?? 0) + (BESOIN_SCORES[besoin] ?? 0));

@@ -6,12 +6,16 @@
  *                                  local : protection désactivée (log d'avertissement),
  *                                  le honeypot et le rate limiting restent actifs.
  *                                  Production : impossible (garde-fou de build).
- * Jeton absent / refusé         → soumission rejetée (aucun contact créé).
- * Cloudflare injoignable         → fail-open journalisé : une panne d'un service
- *                                  tiers ne doit pas bloquer les vrais prospects.
+ * Jeton absent / refusé / expiré / déjà utilisé → soumission rejetée (aucun contact créé).
+ * Cloudflare injoignable         → `skipped: "unreachable"` : la route applique le MODE
+ *                                  DÉGRADÉ (app/api/lead/route.ts) : volume plafonné,
+ *                                  contact enregistré, guide affiché, AUCUN email
+ *                                  automatique (le formulaire ne peut pas servir à
+ *                                  envoyer des emails à des tiers).
  */
 
-const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+/** TURNSTILE_VERIFY_URL : réservé aux tests (faux Cloudflare) ; interdit en Production (garde-fou de build) */
+const VERIFY_URL = process.env.TURNSTILE_VERIFY_URL?.trim() || "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 /**
  * Clé secrète de TEST officielle Cloudflare (publique, documentée : accepte
@@ -66,12 +70,12 @@ export async function verifyTurnstile(
     if (data.success) return { ok: true };
     const codes = data["error-codes"] ?? [];
     if (codes.includes("internal-error")) {
-      console.error("Turnstile internal-error : fail-open");
+      console.error("Turnstile internal-error : mode dégradé");
       return { ok: true, skipped: "unreachable" };
     }
     return { ok: false, reason: "rejected", codes };
   } catch (e) {
-    console.error("Turnstile injoignable, fail-open :", e instanceof Error ? e.message : e);
+    console.error("Turnstile injoignable, mode dégradé :", e instanceof Error ? e.message : e);
     return { ok: true, skipped: "unreachable" };
   }
 }

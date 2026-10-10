@@ -1,9 +1,19 @@
 /**
- * Webhooks Brevo → /api/webhooks/brevo (hard bounce → EMAIL_STATUS = BOUNCED).
- * API officielle : POST /v3/webhooks, authentification Bearer.
+ * Webhooks Brevo → /api/webhooks/brevo (point d'entrée UNIQUE, voir la route) :
+ *   hardBounce         → EMAIL_STATUS = BOUNCED
+ *   unsubscribed, spam → MARKETING_STATUS = OPPOSED (désinscription d'une
+ *                        campagne ou du lien Brevo d'un email transactionnel)
+ *   click              → scoring comportemental (journal n8n)
+ *   autres             → reçus, sans effet (0 point) : delivered, opened…
+ * Les deux webhooks existants sont COMPLÉTÉS (PUT), jamais dupliqués.
+ * API officielle : POST /v3/webhooks (création), PUT /v3/webhooks/{id}
+ * (ajout d'événements à un webhook existant), authentification Bearer.
  *
  *   npm run brevo:webhooks -- --url https://<domaine>/api/webhooks/brevo            → DRY RUN
- *   npm run brevo:webhooks -- --url https://<domaine>/api/webhooks/brevo --apply    → création
+ *   npm run brevo:webhooks -- --url https://<domaine>/api/webhooks/brevo --apply    → création / mise à jour
+ *
+ * L'événement unsubscribed n'est utile qu'une fois déployée la version de la
+ * route qui le traite (branche marketing) : la version précédente l'ignore.
  *
  * BREVO_WEBHOOK_SECRET (même valeur que sur Vercel) est envoyé par Brevo dans
  * l'en-tête « Authorization: Bearer … ». À créer UNIQUEMENT quand la route est
@@ -17,8 +27,16 @@ const APPLY = argv.includes("--apply");
 const url = argv[argv.indexOf("--url") + 1];
 
 const WEBHOOKS = [
-  { type: "marketing", events: ["hardBounce"], description: "Althoce — hard bounce campagnes → EMAIL_STATUS" },
-  { type: "transactional", events: ["hardBounce"], description: "Althoce — hard bounce transactionnel → EMAIL_STATUS" },
+  {
+    type: "marketing",
+    events: ["delivered", "opened", "click", "hardBounce", "softBounce", "spam", "unsubscribed"],
+    description: "Althoce — événements campagnes (statuts, opposition, scoring)",
+  },
+  {
+    type: "transactional",
+    events: ["request", "delivered", "opened", "uniqueOpened", "click", "hardBounce", "softBounce", "blocked", "invalid", "deferred", "spam", "unsubscribed"],
+    description: "Althoce — événements transactionnels (statuts, opposition, scoring)",
+  },
 ];
 
 async function main() {
@@ -37,7 +55,20 @@ async function main() {
   for (const w of WEBHOOKS) {
     const twin = current.find((c) => c.url.split("?")[0] === url && c.type === w.type);
     if (twin) {
-      console.log(`  = ${w.type.padEnd(13)} existe déjà (#${twin.id}, événements ${twin.events.join(", ")})`);
+      const missing = w.events.filter((e) => !twin.events.includes(e));
+      if (!missing.length) {
+        console.log(`  = ${w.type.padEnd(13)} à jour (#${twin.id}, événements ${twin.events.join(", ")})`);
+        continue;
+      }
+      console.log(`  ~ ${w.type.padEnd(13)} #${twin.id} : ajout de ${missing.join(", ")}`);
+      if (!APPLY) continue;
+      const upd = await brevoRequest(`/webhooks/${twin.id}`, {
+        method: "PUT",
+        body: { events: [...new Set([...twin.events, ...w.events])], auth: { type: "bearer", token: secret } },
+        retries: 0,
+      });
+      console.log(upd.ok ? "    ✓ mis à jour" : `    ✗ ${upd.status} ${upd.code ?? ""} ${upd.message ?? ""}`);
+      if (!upd.ok) process.exitCode = 1;
       continue;
     }
     console.log(`  + ${w.type.padEnd(13)} événements ${w.events.join(", ")}, auth Bearer`);

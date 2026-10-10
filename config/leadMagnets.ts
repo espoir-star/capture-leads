@@ -13,7 +13,16 @@
  *  `npm test` vérifie que chaque ressource a son entrée et inversement.
  */
 
+import type { SequenceId } from "@/config/sequences";
 import type { Subsector, Vertical } from "@/config/taxonomy";
+
+/** Automation Brevo historique (dossier « LM - … ») : rattachement prouvé par les envois réels */
+export interface LegacyAutomation {
+  /** ID du workflow dans Brevo → Automatisations */
+  automationId: number;
+  deliveryTemplateId: number;
+  followupTemplateIds: number[];
+}
 
 export interface LeadMagnetConfig {
   /** Slug d'URL, identique à la clé */
@@ -28,6 +37,10 @@ export interface LeadMagnetConfig {
   subsector: Subsector | null;
   /** Justification du mapping, ou TODO si ambigu */
   note: string;
+  /** Séquence du moteur Althoce, utilisée quand le slug est dans ALTHOCE_SEQUENCE_GUIDES */
+  sequence: SequenceId;
+  /** Automation Brevo qui livre le guide tant qu'il n'a pas basculé */
+  legacy: LegacyAutomation;
 }
 
 export const LEAD_MAGNETS = {
@@ -39,6 +52,8 @@ export const LEAD_MAGNETS = {
     vertical: "FINANCE",
     subsector: "EXPERTISE_COMPTABLE",
     note: "Page pilote. Mapping fourni dans le cahier des charges.",
+    sequence: "guide-12-cas-ec-v1",
+    legacy: { automationId: 4, deliveryTemplateId: 9, followupTemplateIds: [8] },
   },
   "guide-claude-pennylane": {
     slug: "guide-claude-pennylane",
@@ -48,6 +63,8 @@ export const LEAD_MAGNETS = {
     vertical: "FINANCE",
     subsector: "EXPERTISE_COMPTABLE",
     note: "Sous-titre de la page : « Pour les experts-comptables et cabinets ».",
+    sequence: "guide-generique-v1",
+    legacy: { automationId: 2, deliveryTemplateId: 1, followupTemplateIds: [2] },
   },
   "guide-claude-meta-ads": {
     slug: "guide-claude-meta-ads",
@@ -57,6 +74,8 @@ export const LEAD_MAGNETS = {
     vertical: "MARKETING",
     subsector: null,
     note: "TODO sous-secteur : la page vise « PME et agences » (AGENCE_MARKETING ne couvre qu'une partie).",
+    sequence: "guide-generique-v1",
+    legacy: { automationId: 3, deliveryTemplateId: 6, followupTemplateIds: [5] },
   },
   "copilot-8-cas-usage": {
     slug: "copilot-8-cas-usage",
@@ -66,6 +85,8 @@ export const LEAD_MAGNETS = {
     vertical: "GENERAL",
     subsector: null,
     note: "Guide Microsoft Copilot sans cible métier (licences, gouvernance, agents).",
+    sequence: "guide-generique-v1",
+    legacy: { automationId: 6, deliveryTemplateId: 11, followupTemplateIds: [12] },
   },
   "claude-droit-10-cas-usage": {
     slug: "claude-droit-10-cas-usage",
@@ -75,6 +96,8 @@ export const LEAD_MAGNETS = {
     vertical: "LEGAL",
     subsector: null,
     note: "TODO sous-secteur : avocats et juristes d'entreprise mélangés, aucun code SUBSECTOR juridique défini.",
+    sequence: "guide-generique-v1",
+    legacy: { automationId: 7, deliveryTemplateId: 16, followupTemplateIds: [15] },
   },
   "12-skills-claude-finance": {
     slug: "12-skills-claude-finance",
@@ -84,6 +107,8 @@ export const LEAD_MAGNETS = {
     vertical: "FINANCE",
     subsector: null,
     note: "TODO sous-secteur : « charger votre balance » vaut pour cabinets comme pour DAF.",
+    sequence: "guide-generique-v1",
+    legacy: { automationId: 8, deliveryTemplateId: 19, followupTemplateIds: [21] },
   },
   "claude-data-gouv-20-prompts": {
     slug: "claude-data-gouv-20-prompts",
@@ -93,6 +118,8 @@ export const LEAD_MAGNETS = {
     vertical: null,
     subsector: null,
     note: "TODO verticale : données publiques (ratios, bilans, foncier, registre) sans cible explicite.",
+    sequence: "guide-generique-v1",
+    legacy: { automationId: 9, deliveryTemplateId: 26, followupTemplateIds: [25] },
   },
   "12-agents-ia-direction-financiere": {
     slug: "12-agents-ia-direction-financiere",
@@ -102,6 +129,8 @@ export const LEAD_MAGNETS = {
     vertical: "FINANCE",
     subsector: "DAF_FINANCE",
     note: "Titre : « pour votre direction financière ».",
+    sequence: "guide-generique-v1",
+    legacy: { automationId: 10, deliveryTemplateId: 29, followupTemplateIds: [30] },
   },
   "7-chantiers-ia-cabinet": {
     slug: "7-chantiers-ia-cabinet",
@@ -111,6 +140,8 @@ export const LEAD_MAGNETS = {
     vertical: null,
     subsector: null,
     note: "TODO verticale : « cabinet » peut désigner expertise comptable, avocats ou conseil.",
+    sequence: "guide-generique-v1",
+    legacy: { automationId: 11, deliveryTemplateId: 34, followupTemplateIds: [33] },
   },
 } as const satisfies Record<string, LeadMagnetConfig>;
 

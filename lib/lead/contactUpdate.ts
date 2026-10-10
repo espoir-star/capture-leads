@@ -6,19 +6,21 @@
  * Règles :
  *  - identité (PRENOM, NOM, SMS) et intention (BESOIN, HORIZON) : dernière saisie
  *  - RESSOURCE : dernière ressource demandée (l'historique est dans les listes)
- *  - SOURCE_INSCRIPTION, DATE_OPTIN : renseignés seulement s'ils sont vides
+ *  - SOURCE_INSCRIPTION : renseigné si vide. DATE_OPTIN historique conservé,
+ *    jamais créé en absence de consentement explicite.
  *  - VERTICAL / SUBSECTOR : renseignés si vides (ou si VERTICAL = GENERAL)
  *  - UTM_* + SOURCE_CONTENT_URL : first touch, écrits UNIQUEMENT si aucun
  *    UTM n'existe déjà sur le contact (bloc indivisible)
- *  - LEAD_SCORE = max(existant, score formulaire) ; jamais à la baisse
+ *  - FORM_SCORE = max(existant, score formulaire) ;
+ *    LEAD_SCORE = max(existant, min(100, FORM_SCORE + BEHAVIOR_SCORE)) ; jamais à la baisse
  *  - LIFECYCLE_STAGE : jamais rétrogradé (lib/scoring)
  *  - EMAIL_STATUS : VERIFIED et BOUNCED sont conservés, sinon PENDING
  *    (VERIFIED n'est posé que par un clic réel : app/api/webhooks/brevo)
  *  - PHONE_STATUS : décrit le numéro réellement stocké dans SMS ; jamais
  *    écrit sans numéro. VERIFIED conservé si le numéro n'a pas changé
- *  - OPT_IN : case newsletter cochée → true ; non cochée → false, SAUF si le
- *    contact avait déjà OPT_IN = true (ne pas cocher n'est pas se désinscrire :
- *    le retrait passe par le lien de désinscription Brevo)
+ *  - MARKETING_STATUS : opposition explicite prioritaire ; préserver les choix
+ *    anciens et n'utiliser B2B_ELIGIBLE que pour une nouvelle capture métier
+ *    informée. OPT_IN historique n'est jamais réécrit.
  *  - EMAIL_CONFIRM_TOKEN : écrit s'il est vide (lien de confirmation stable)
  */
 
@@ -28,9 +30,11 @@ import { FIRST_TOUCH_ATTRIBUTES } from "@/config/brevoAttributes";
 import type { LeadMagnetConfig } from "@/config/leadMagnets";
 import { getSourceContent } from "@/config/sourceRegistry";
 import type { Besoin, EmailStatus, Horizon, PhoneStatus } from "@/config/taxonomy";
-import { formIntentScore, mergeScore, nextLifecycleStage } from "@/lib/scoring";
+import { SCORE_CAP } from "@/config/scoring";
+import { formIntentScore, mergeScore, nextLifecycleStage, toScore } from "@/lib/scoring";
 import type { Touch } from "@/lib/tracking/utm";
 import { checkPhone, type PhoneCheck } from "@/lib/data-quality/phone";
+import { marketingStatusForCapture, type MarketingStatus } from "@/lib/marketing/status";
 
 /** Ce qu'il faut savoir d'une source de capture (lead magnet ou webinar) */
 export type CaptureSource = Pick<
@@ -44,8 +48,10 @@ export interface CaptureData {
   nom: string;
   besoin: Besoin;
   horizon: Horizon;
-  /** Case newsletter cochée */
-  optIn: boolean;
+  /** L'utilisateur s'oppose explicitement aux communications marketing */
+  marketingOpposition: boolean;
+  /** Jeton de désinscription chiffré */
+  marketingOptoutToken?: string;
   /** Jeton chiffré du lien de confirmation (lib/security/emailConfirm.ts) */
   confirmToken?: string;
   phone: PhoneCheck;
@@ -60,6 +66,7 @@ export interface ContactUpdate {
   formScore: number;
   leadScore: number;
   emailStatus: EmailStatus | string;
+  marketingStatus: MarketingStatus;
   /** undefined = aucun numéro écrit par cette soumission */
   phoneStatus?: PhoneStatus;
   lifecycleStage: string;
@@ -84,7 +91,7 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
   /* Ressource (guides uniquement) et provenance d'inscription */
   if (data.kind !== "webinar") a.RESSOURCE = data.source.resource;
   setIfEmpty("SOURCE_INSCRIPTION", "page-capture");
-  setIfEmpty("DATE_OPTIN", data.now.toISOString());
+  // Ne pas fabriquer de nouvelle DATE_OPTIN sans consentement explicite.
 
   /* Verticale : on complète, on n'écrase pas une verticale précise */
   const exVertical = String(ex.VERTICAL ?? "").trim();
@@ -95,9 +102,13 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
     setIfEmpty("SUBSECTOR", data.source.subsector);
   }
 
-  /* Consentement newsletter : uniquement la case du formulaire */
-  if (data.optIn) a.OPT_IN = true;
-  else if (ex.OPT_IN !== true) a.OPT_IN = false;
+  /* Marketing : préserver les oppositions, ne jamais synthétiser OPT_IN. */
+  const marketingStatus = marketingStatusForCapture(existing, {
+    explicitOpposition: data.marketingOpposition,
+    vertical: data.source.vertical,
+  });
+  if (String(ex.MARKETING_STATUS ?? "") !== marketingStatus) a.MARKETING_STATUS = marketingStatus;
+  setIfEmpty("MARKETING_OPTOUT_TOKEN", data.marketingOptoutToken);
 
   /* Lien de confirmation d'adresse (inséré dans l'email de bienvenue Brevo) */
   setIfEmpty("EMAIL_CONFIRM_TOKEN", data.confirmToken);
@@ -134,7 +145,9 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
 
   /* Score et cycle de vie */
   const formScore = formIntentScore(data.besoin, data.horizon);
-  const leadScore = mergeScore(ex.LEAD_SCORE, formScore);
+  const bestForm = Math.max(toScore(ex.FORM_SCORE), formScore);
+  if (isEmptyValue(ex.FORM_SCORE) || bestForm !== toScore(ex.FORM_SCORE)) a.FORM_SCORE = bestForm;
+  const leadScore = mergeScore(ex.LEAD_SCORE, Math.min(SCORE_CAP, bestForm + toScore(ex.BEHAVIOR_SCORE)));
   a.LEAD_SCORE = leadScore;
   const lifecycleStage = nextLifecycleStage(
     isEmptyValue(ex.LIFECYCLE_STAGE) ? undefined : String(ex.LIFECYCLE_STAGE),
@@ -148,6 +161,7 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
     formScore,
     leadScore,
     emailStatus,
+    marketingStatus,
     phoneStatus,
     lifecycleStage,
     firstTouchWritten,

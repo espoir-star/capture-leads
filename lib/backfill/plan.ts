@@ -13,6 +13,11 @@
  *  - PHONE_STATUS : uniquement pour un SMS réellement stocké, et seulement
  *    INVALID ou SUSPECT (preuve dans le numéro lui-même)
  *
+ *  - MARKETING_STATUS (si vide) : OPPOSED si le contact est bloqué (désinscrit) ;
+ *    CONSENT si OPT_IN = true (consentement explicite ancien) ; sinon
+ *    TO_REVIEW. Jamais B2B_ELIGIBLE : l'information sur la prospection lors
+ *    de la collecte historique n'est pas prouvée.
+ *
  * Jamais : EMAIL_STATUS = VERIFIED ou PENDING, PHONE_STATUS = VALID_FORMAT ou
  * VERIFIED, OPT_IN, LEAD_SCORE, UTM. Seuls des attributs VIDES sont remplis
  * (exception : BOUNCED, constat Brevo plus fort que tout autre statut).
@@ -107,6 +112,11 @@ export function planContactBackfill(c: BrevoContact, ctx: BackfillContext): Cont
       if (offline) set.EMAIL_STATUS = offline.status;
       else if (dns === "domain_not_found" || dns === "no_mail_server") set.EMAIL_STATUS = "INVALID";
     }
+  }
+
+  /* Statut marketing : préserver les choix, ne rien convertir */
+  if (isEmptyValue(ex.MARKETING_STATUS)) {
+    set.MARKETING_STATUS = c.emailBlacklisted ? "OPPOSED" : ex.OPT_IN === true ? "CONSENT" : "TO_REVIEW";
   }
 
   /* Téléphone : SMS réellement stocké, preuves négatives uniquement */

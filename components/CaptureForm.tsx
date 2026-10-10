@@ -29,6 +29,8 @@ type Field = "prenom" | "nom" | "email" | "tel" | "besoin" | "horizon";
 
 /** Clé sessionStorage du jeton signé, lu par la page merci (lead_magnet_downloaded) */
 export const LEAD_REF_KEY = "althoce_lead_ref:";
+/** Posée UNIQUEMENT quand le serveur confirme l'opposition enregistrée (page merci) */
+export const OPPOSITION_KEY = "althoce_marketing_opposed:";
 
 const FIELD =
   "w-full rounded-lg border bg-fond px-4 py-3.5 placeholder:text-secondaire focus:border-accent transition-colors";
@@ -79,7 +81,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
   const [pays, setPays] = useState<PhoneCountry>("FR");
   const [besoin, setBesoin] = useState("");
   const [horizon, setHorizon] = useState("");
-  const [optIn, setOptIn] = useState(false);
+  const [marketingOpposition, setMarketingOpposition] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const turnstile = useRef<TurnstileHandle>(null);
@@ -116,7 +118,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
           pays,
           besoin,
           horizon,
-          optIn,
+          marketingOpposition,
           website: String(form.get("website") ?? ""),
           turnstileToken,
           firstTouch: readFirstTouch(),
@@ -141,12 +143,12 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         return;
       }
 
-      if (data?.leadRef) {
-        try {
-          sessionStorage.setItem(LEAD_REF_KEY + slug, data.leadRef);
-        } catch {
-          /* stockage indisponible : l'événement « guide ouvert » ne sera pas mesuré */
-        }
+      try {
+        if (data?.leadRef) sessionStorage.setItem(LEAD_REF_KEY + slug, data.leadRef);
+        if (data?.marketing === "opposed") sessionStorage.setItem(OPPOSITION_KEY + slug, "1");
+        else sessionStorage.removeItem(OPPOSITION_KEY + slug);
+      } catch {
+        /* stockage indisponible : mesure et message de confirmation non affichés */
       }
       identifyBrevoContact(email.toLowerCase());
       trackLead("guide", slug);
@@ -369,20 +371,24 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
 
       <Turnstile ref={turnstile} />
 
-      {/* Newsletter : facultative, non précochée, contrôle UNIQUEMENT OPT_IN (aucun lien avec les cookies) */}
-      <label className="flex cursor-pointer items-start gap-2.5 py-1 text-xs leading-relaxed text-secondaire">
-        <input
-          type="checkbox"
-          name="optIn"
-          checked={optIn}
-          onChange={(e) => setOptIn(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
-        />
-        <span>
-          Je souhaite recevoir les actualités, conseils, ressources et invitations aux webinaires
-          d&apos;Althoce par email. Je peux me désinscrire à tout moment.
-        </span>
-      </label>
+      {/* Information métier et opposition au marketing, distinctes des cookies. */}
+      <div className="space-y-1.5 text-xs leading-relaxed text-secondaire">
+        <p>
+          Dans le cadre de votre activité professionnelle, Althoce pourra vous adresser des
+          conseils, actualités IA et invitations en lien avec votre métier. Vous pouvez vous y
+          opposer dès maintenant, puis vous désinscrire à tout moment : le guide reste envoyé.
+        </p>
+        <button
+          type="button"
+          aria-pressed={marketingOpposition}
+          onClick={() => setMarketingOpposition((previous) => !previous)}
+          className="font-medium text-white underline underline-offset-2 hover:text-accent"
+        >
+          {marketingOpposition
+            ? "✓ Opposition demandée, enregistrée à l'envoi du formulaire — annuler"
+            : "Ne pas recevoir ces communications"}
+        </button>
+      </div>
 
       {erreur && (
         <p role="alert" className="text-sm text-red-400">

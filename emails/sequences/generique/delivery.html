@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!--
+  LIVRAISON GÉNÉRIQUE d'un guide (transactionnel : envoyé à chaque demande,
+  même en cas d'opposition marketing). Paramètres fournis par le moteur
+  (lib/sequences) : GUIDE_TITLE, GUIDE_URL, CTA_URL, CONFIRM_URL (absent si
+  l'adresse est déjà confirmée), UNSUBSCRIBE_URL.
+-->
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body style="margin:0;padding:0;background-color:#0A0A0A;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A0A0A;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+
+          <tr>
+            <td style="padding-bottom:28px;">
+              <span style="color:#FFFFFF;font-size:20px;font-weight:bold;">Althoce<span style="color:#1D9E75;">.</span></span>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#111311;border:1px solid #1E221E;border-radius:14px;padding:36px 32px;">
+              <p style="margin:0;color:#FFFFFF;font-size:22px;font-weight:bold;line-height:1.3;">
+                {% if contact.PRENOM %}Bonjour {{ contact.PRENOM }}, votre guide est prêt{% else %}Votre guide est prêt{% endif %}
+              </p>
+              <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">
+                Voici votre accès au guide
+                <strong style="color:#FFFFFF;">{{ params.GUIDE_TITLE }}</strong>.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0 8px;">
+                <tr>
+                  <td style="background-color:#1D9E75;border-radius:8px;">
+                    <a href="{{ params.GUIDE_URL }}" target="_blank" style="display:inline-block;padding:15px 32px;color:#FFFFFF;font-size:16px;font-weight:bold;text-decoration:none;">
+                      Accéder au guide →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:20px 0 0;color:#A0A0A0;font-size:13px;line-height:1.6;">
+                Gardez cet email : le lien reste actif.
+              </p>
+              {% if params.CONFIRM_URL %}
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 0;">
+                <tr>
+                  <td style="border:1px solid #1D9E75;border-radius:8px;">
+                    <a href="{{ params.CONFIRM_URL }}" target="_blank" style="display:inline-block;padding:11px 22px;color:#1D9E75;font-size:14px;font-weight:bold;text-decoration:none;">
+                      Confirmer mon adresse email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:8px 0 0;color:#A0A0A0;font-size:12px;line-height:1.5;">
+                Un clic pour confirmer que cette adresse est bien la vôtre.
+              </p>
+              {% endif %}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding-top:22px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0F1512;border:1px solid rgba(29,158,117,0.35);border-radius:14px;">
+                <tr>
+                  <td style="padding:24px 28px;">
+                    <p style="margin:0;color:#FFFFFF;font-size:15px;line-height:1.6;">
+                      <strong>P.S.</strong> — Si vous souhaitez l'appliquer à votre organisation, nous pouvons en parler 30 minutes.
+                    </p>
+                    <p style="margin:14px 0 0;">
+                      <a href="{{ params.CTA_URL }}" target="_blank" style="color:#1D9E75;font-size:15px;font-weight:bold;text-decoration:none;">→ Réserver 30 min</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding-top:30px;text-align:center;">
+              <p style="margin:0;color:#A0A0A0;font-size:12px;line-height:1.6;">
+                Althoce — Agence d'automatisation IA, Bordeaux<br />
+                Vous recevez cet email car vous avez demandé ce guide sur le site Althoce.<br />
+                <a href="{{ params.UNSUBSCRIBE_URL }}" style="color:#A0A0A0;text-decoration:underline;">Ne plus recevoir nos conseils par email</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

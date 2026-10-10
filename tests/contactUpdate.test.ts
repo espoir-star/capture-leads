@@ -13,7 +13,7 @@ function data(over: Partial<CaptureData> = {}): CaptureData {
     nom: "Martin",
     besoin: "DEPLOYER_AGENT_IA",
     horizon: "MOINS_3_MOIS",
-    optIn: false,
+    marketingOpposition: false,
     phone: checkPhone("06 45 87 12 39", "FR"),
     attribution: {
       utm_source: "linkedin",
@@ -41,7 +41,6 @@ test("scénario pilote : nouveau contact (test 65)", () => {
     SMS: "+33645871239",
     RESSOURCE: "12-cas-usage-experts-comptables",
     SOURCE_INSCRIPTION: "page-capture",
-    DATE_OPTIN: "2026-10-08T09:00:00.000Z",
     VERTICAL: "FINANCE",
     SUBSECTOR: "EXPERTISE_COMPTABLE",
     BESOIN_PRIORITAIRE: "DEPLOYER_AGENT_IA",
@@ -52,9 +51,10 @@ test("scénario pilote : nouveau contact (test 65)", () => {
     UTM_CONTENT: "LI_EC_20261008_01",
     EMAIL_STATUS: "PENDING",
     PHONE_STATUS: "VALID_FORMAT",
+    FORM_SCORE: 12,
     LEAD_SCORE: 12,
     LIFECYCLE_STAGE: "LEAD",
-    OPT_IN: false,
+    MARKETING_STATUS: "B2B_ELIGIBLE",
   });
 });
 
@@ -73,6 +73,11 @@ test("first touch conservé : aucun UTM écrasé (test 69)", () => {
 test("score existant conservé : max(30, 12) = 30 (test 70)", () => {
   const u = buildContactUpdate(contact({ LEAD_SCORE: 30, LIFECYCLE_STAGE: "MQL" }), data());
   assert.equal(u.attributes.LEAD_SCORE, 30);
+  // Comportement déjà acquis : max(FORM_SCORE 14, formulaire 12) + BEHAVIOR_SCORE 15 = 29 ; FORM_SCORE ne baisse jamais
+  const b = buildContactUpdate(contact({ LEAD_SCORE: 18, FORM_SCORE: 14, BEHAVIOR_SCORE: 15 }), data());
+  assert.equal(b.attributes.LEAD_SCORE, 29);
+  assert.equal(b.attributes.FORM_SCORE, undefined, "14 > 12 : FORM_SCORE inchangé, non réécrit");
+  assert.equal(b.lifecycleStage, "HOT_LEAD");
   assert.equal(u.formScore, 12);
   assert.equal(u.attributes.LIFECYCLE_STAGE, "HOT_LEAD"); // 30 >= 25 et email exploitable
 });
@@ -183,14 +188,29 @@ test("B · email techniquement valide, aucune interaction → PENDING, jamais VE
   assert.equal(buildContactUpdate(contact({ EMAIL_STATUS: "PENDING" }), data()).attributes.EMAIL_STATUS, undefined);
 });
 
-/* ── OPT_IN : uniquement la case newsletter ────────────────────────── */
+/* ── Préférences marketing B2B ─────────────────────────────────────── */
 
-test("OPT_IN : case cochée → true ; non cochée → false ; un true existant n'est jamais rétrogradé", () => {
-  assert.equal(buildContactUpdate(null, data({ optIn: true })).attributes.OPT_IN, true);
-  assert.equal(buildContactUpdate(null, data({ optIn: false })).attributes.OPT_IN, false);
-  assert.equal(buildContactUpdate(contact({}), data({ optIn: false })).attributes.OPT_IN, false);
-  assert.equal("OPT_IN" in buildContactUpdate(contact({ OPT_IN: true }), data({ optIn: false })).attributes, false);
-  assert.equal(buildContactUpdate(contact({ OPT_IN: false }), data({ optIn: true })).attributes.OPT_IN, true);
+test("nouveau lead métier informé sans opposition → B2B_ELIGIBLE", () => {
+  const u = buildContactUpdate(null, data());
+  assert.equal(u.attributes.MARKETING_STATUS, "B2B_ELIGIBLE");
+  assert.equal("OPT_IN" in u.attributes, false);
+});
+
+test("opposition explicite → OPPOSED, même avec ancien consentement", () => {
+  const u = buildContactUpdate(contact({ OPT_IN: true }), data({ marketingOpposition: true }));
+  assert.equal(u.attributes.MARKETING_STATUS, "OPPOSED");
+});
+
+test("contact déjà désabonné ne peut être réinscrit par une nouvelle capture", () => {
+  const u = buildContactUpdate(contact({ MARKETING_STATUS: "OPPOSED" }), data());
+  assert.equal(u.marketingStatus, "OPPOSED");
+  const blocked = { ...contact({}), emailBlacklisted: true };
+  assert.equal(buildContactUpdate(blocked, data()).marketingStatus, "OPPOSED");
+});
+
+test("ancien OPT_IN false reste TO_REVIEW, true devient CONSENT", () => {
+  assert.equal(buildContactUpdate(contact({ OPT_IN: false }), data()).marketingStatus, "TO_REVIEW");
+  assert.equal(buildContactUpdate(contact({ OPT_IN: true }), data()).marketingStatus, "CONSENT");
 });
 
 test("jeton de confirmation écrit une seule fois (lien stable)", () => {

@@ -4,7 +4,7 @@
  * recoupent par sessionId.
  *
  * Changement : les valeurs saisies ne sont plus journalisées en clair
- * (email masqué, téléphone réduit à ses 2 derniers chiffres).
+ * (email masqué, téléphone réduit à ses 2 derniers chiffres, IP tronquée).
  */
 
 export function maskEmail(email: string): string {
@@ -16,6 +16,13 @@ export function maskEmail(email: string): string {
 export function maskPhone(phone: string): string {
   const d = phone.replace(/\D/g, "");
   return d.length > 2 ? `***${d.slice(-2)}` : "***";
+}
+
+/** IP tronquée (IPv4 : dernier octet ; IPv6 : 3 premiers groupes) — assez pour recouper un abus, pas pour identifier */
+export function maskIp(ip: string): string {
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return ip.replace(/\.\d{1,3}$/, ".0");
+  if (ip.includes(":")) return `${ip.split(":").slice(0, 3).join(":")}::`;
+  return "inconnue";
 }
 
 export function logLead(

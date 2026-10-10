@@ -15,8 +15,24 @@ if (process.env.VERCEL_ENV === "production") {
   if (missing.length) {
     throw new Error(`Variables manquantes pour la Production : ${missing.join(", ")} (voir docs/BREVO_SETUP.md)`);
   }
-  if (process.env.BREVO_API_BASE_URL) {
-    throw new Error("BREVO_API_BASE_URL est réservée aux tests et ne doit pas être définie en Production");
+  // Moteur de séquences : dès qu'un guide bascule, n8n et le secret d'API sont indispensables
+  if (process.env.ALTHOCE_SEQUENCE_GUIDES?.trim()) {
+    const seqMissing = ["N8N_SEQUENCE_WEBHOOK_URL", "N8N_WEBHOOK_TOKEN", "SEQUENCE_API_SECRET"].filter(
+      (k) => !process.env[k]?.trim()
+    );
+    if (seqMissing.length) {
+      throw new Error(`ALTHOCE_SEQUENCE_GUIDES défini sans : ${seqMissing.join(", ")} (voir docs/PHASE_MARKETING_N8N.md)`);
+    }
+  }
+  // Scoring comportemental : le journal n8n exige le jeton Vercel → n8n et le secret des appels n8n → Vercel
+  if (process.env.N8N_EVENTS_WEBHOOK_URL?.trim()) {
+    const scoringMissing = ["N8N_WEBHOOK_TOKEN", "SEQUENCE_API_SECRET"].filter((k) => !process.env[k]?.trim());
+    if (scoringMissing.length) {
+      throw new Error(`N8N_EVENTS_WEBHOOK_URL défini sans : ${scoringMissing.join(", ")} (voir docs/PHASE_MARKETING_N8N.md)`);
+    }
+  }
+  for (const testOnly of ["BREVO_API_BASE_URL", "TURNSTILE_VERIFY_URL"]) {
+    if (process.env[testOnly]) throw new Error(`${testOnly} est réservée aux tests et ne doit pas être définie en Production`);
   }
 }
 
@@ -41,6 +57,13 @@ const nextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          // CSP minimale qui ne peut pas casser les scripts tiers (Turnstile, Meta, Brevo) :
+          // pas d'intégration en iframe, pas de plugin, pas de <base> ni d'envoi de formulaire ailleurs.
+          // Une CSP stricte des scripts (nonces) reste à faire : docs/SECURITE.md.
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },
