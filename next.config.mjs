@@ -15,6 +15,15 @@ if (process.env.VERCEL_ENV === "production") {
   if (missing.length) {
     throw new Error(`Variables manquantes pour la Production : ${missing.join(", ")} (voir docs/BREVO_SETUP.md)`);
   }
+  // Moteur de séquences : dès qu'un guide bascule, n8n et le secret d'API sont indispensables
+  if (process.env.ALTHOCE_SEQUENCE_GUIDES?.trim()) {
+    const seqMissing = ["N8N_SEQUENCE_WEBHOOK_URL", "N8N_WEBHOOK_TOKEN", "SEQUENCE_API_SECRET"].filter(
+      (k) => !process.env[k]?.trim()
+    );
+    if (seqMissing.length) {
+      throw new Error(`ALTHOCE_SEQUENCE_GUIDES défini sans : ${seqMissing.join(", ")} (voir docs/PHASE_MARKETING_N8N.md)`);
+    }
+  }
   if (process.env.BREVO_API_BASE_URL) {
     throw new Error("BREVO_API_BASE_URL est réservée aux tests et ne doit pas être définie en Production");
   }

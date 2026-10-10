@@ -71,5 +71,5 @@ export async function POST(req: NextRequest) {
   /* 6. Tracking secondaire après la réponse : ne ralentit jamais l'accès au guide */
   if (outcome.followUp) after(outcome.followUp);
 
-  return json({ ok: true, leadRef: outcome.leadRef });
+  return json({ ok: true, leadRef: outcome.leadRef, ...(outcome.marketingOpposed && { marketing: "opposed" }) });
 }

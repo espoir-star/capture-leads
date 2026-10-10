@@ -3,7 +3,9 @@
  * Reproduit les comportements utilisés par l'application :
  *   GET  /v3/contacts/:id(email|contact_id)   POST /v3/contacts (updateEnabled)
  *   PUT  /v3/contacts/:id                      POST /v3/events
+ *   POST /v3/smtp/email (en-tête idempotencyKey : 2e envoi refusé, comme Brevo)
  *   unicité de l'attribut SMS (duplicate_parameter), listes cumulées.
+ * Faux n8n : POST /__n8n (webhook d'inscription, enregistre en-tête et corps).
  * Routes de test : GET /__state, POST /__reset, POST /__seed.
  */
 
@@ -17,16 +19,29 @@ export interface MockContact {
   attributes: Record<string, unknown>;
 }
 
+export interface MockEmail {
+  to: { email: string }[];
+  templateId: number;
+  params: Record<string, string>;
+  tags: string[];
+  headers: Record<string, string>;
+}
+
 export interface MockState {
   contacts: MockContact[];
   events: { event_name: string; identifiers: Record<string, unknown>; event_properties?: Record<string, unknown> }[];
   requests: string[];
+  emails: MockEmail[];
+  n8n: { authorization?: string; body: Record<string, unknown> }[];
 }
+
+const emptyState = (): MockState => ({ contacts: [], events: [], requests: [], emails: [], n8n: [] });
 
 export const MOCK_API_KEY = "mock-key-e2e";
 
 export function startMockBrevo(port: number) {
-  let state: MockState = { contacts: [], events: [], requests: [] };
+  let state: MockState = emptyState();
+  let idempotencyKeys = new Set<string>();
   let nextId = 1;
 
   const find = (id: string, type: string | null) =>
@@ -64,7 +79,8 @@ export function startMockBrevo(port: number) {
 
     if (url.pathname === "/__state") return send(res, 200, state);
     if (url.pathname === "/__reset") {
-      state = { contacts: [], events: [], requests: [] };
+      state = emptyState();
+      idempotencyKeys = new Set();
       nextId = 1;
       return send(res, 204);
     }
@@ -72,6 +88,11 @@ export function startMockBrevo(port: number) {
       const c = body as unknown as Partial<MockContact>;
       state.contacts.push({ emailBlacklisted: false, listIds: [], attributes: {}, ...c, email: String(c.email), id: nextId++ });
       return send(res, 201, { id: nextId - 1 });
+    }
+
+    if (url.pathname === "/__n8n" && req.method === "POST") {
+      state.n8n.push({ authorization: req.headers.authorization, body });
+      return send(res, 200, { ok: true });
     }
 
     state.requests.push(`${req.method} ${url.pathname}`);
@@ -109,6 +130,16 @@ export function startMockBrevo(port: number) {
       if (typeof body.emailBlacklisted === "boolean") c.emailBlacklisted = body.emailBlacklisted;
       state.contacts.push(c);
       return send(res, 201, { id: c.id });
+    }
+    if (url.pathname === "/v3/smtp/email" && req.method === "POST") {
+      const email = body as unknown as MockEmail;
+      const key = email.headers?.idempotencyKey;
+      if (key && idempotencyKeys.has(key)) {
+        return send(res, 400, { code: "duplicate_parameter", message: "Email for the idempotency key has already been processed" });
+      }
+      if (key) idempotencyKeys.add(key);
+      state.emails.push(email);
+      return send(res, 201, { messageId: `<mock-${state.emails.length}@smtp>` });
     }
     if (url.pathname === "/v3/events" && req.method === "POST") {
       state.events.push(body as MockState["events"][number]);

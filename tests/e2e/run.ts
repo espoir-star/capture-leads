@@ -18,6 +18,7 @@ const APP_PORT = 3100;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const MOCK = `http://127.0.0.1:${MOCK_PORT}`;
 const WEBHOOK_SECRET = "e2e-webhook-secret";
+const SEQUENCE_SECRET = "e2e-sequence-secret";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let ipCounter = 10;
@@ -88,6 +89,12 @@ async function main() {
       TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
       BREVO_WEBHOOK_SECRET: WEBHOOK_SECRET,
       SIGNING_SECRET: "e2e",
+      // Moteur de séquences : seul le guide pilote a basculé
+      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables",
+      N8N_SEQUENCE_WEBHOOK_URL: `${MOCK}/__n8n`,
+      N8N_WEBHOOK_TOKEN: "e2e-n8n-token",
+      SEQUENCE_API_SECRET: SEQUENCE_SECRET,
+      SITE_URL: APP,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -326,6 +333,81 @@ async function main() {
     assert.equal((await post("/api/marketing/unsubscribe", { t: token })).status, 200);
     assert.equal((await state()).requests.filter((x) => x === `PUT /v3/contacts/${c.id}`).length, writes);
     assert.equal((await post("/api/marketing/unsubscribe", { t: "m1.bad" })).status, 400);
+  });
+
+  /** Les envois se font après la réponse (after()) : on attend qu'ils apparaissent */
+  async function until(pred: (s: MockState) => boolean, label: string) {
+    for (let i = 0; i < 40; i++) {
+      const s = await state();
+      if (pred(s)) return s;
+      await sleep(100);
+    }
+    throw new Error(`délai dépassé : ${label}`);
+  }
+
+  await scenario("S1 · pilote basculé : guide livré tout de suite, séquence n8n ; 2e inscription : rien en double", async () => {
+    const r = await post("/api/lead", lead());
+    assert.equal(r.status, 200);
+    const s = await until((x) => x.emails.length === 1 && x.n8n.length === 1, "livraison + inscription");
+    assert.equal(s.emails[0].templateId, 35, "modèle de livraison du pilote");
+    assert.equal(s.emails[0].to[0].email, "claire.martin.e2e@gmail.com");
+    assert.match(s.emails[0].headers["List-Unsubscribe"], /\/api\/marketing\/unsubscribe\?t=m1\./);
+    assert.equal(s.n8n[0].authorization, "Bearer e2e-n8n-token");
+    assert.equal(s.n8n[0].body.stepId, "relance-j2");
+    assert.equal(JSON.stringify(s.n8n[0].body).includes("@"), false);
+
+    const again = await post("/api/lead", lead());
+    assert.equal(again.status, 200);
+    await sleep(800);
+    const s2 = await state();
+    assert.equal(s2.emails.length, 1, "même jour : pas de 2e email");
+    assert.equal(s2.n8n.length, 1, "déjà dans la liste : pas de 2e séquence");
+  });
+
+  await scenario("S2 · opposant sur un guide encore en automation Brevo : hors liste, guide livré en transactionnel", async () => {
+    const r = await post("/api/lead", lead({ slug: "guide-claude-pennylane", marketingOpposition: true }));
+    assert.equal(r.status, 200);
+    assert.equal(r.body.marketing, "opposed", "opposition confirmée par le serveur");
+    const s = await until((x) => x.emails.length === 1, "livraison");
+    assert.equal(s.emails[0].templateId, 37, "modèle générique");
+    assert.equal(s.emails[0].params.GUIDE_URL.startsWith("https://"), true);
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.deepEqual(c.listIds, [], "pas d'ajout à la liste 6 : l'automation n'envoie rien");
+    assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal(s.n8n.length, 0, "aucune séquence");
+  });
+
+  await scenario("S3 · /api/sequences/step : secret exigé, étape prématurée reportée, identifiant falsifié refusé", async () => {
+    await post("/api/lead", lead());
+    const s = await until((x) => x.n8n.length === 1, "inscription");
+    const body = { enrollmentId: s.n8n[0].body.enrollmentId, stepId: "relance-j2" };
+    assert.equal((await post("/api/sequences/step", body)).status, 401);
+    assert.equal((await post("/api/sequences/step", body, { Authorization: "Bearer faux" })).status, 401);
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const early = await post("/api/sequences/step", body, auth);
+    assert.equal(early.status, 200);
+    assert.equal(early.body.action, "wait");
+    assert.equal(early.body.at, s.n8n[0].body.at);
+    assert.equal((await post("/api/sequences/step", { ...body, enrollmentId: "e1.faux.faux" }, auth)).status, 400);
+    assert.equal((await state()).emails.length, 1, "seule la livraison est partie");
+  });
+
+  await scenario("S4 · « Se désabonner » de la messagerie (RFC 8058) : POST ?t= → opposé ; GET sans effet", async () => {
+    await post("/api/lead", lead());
+    const s = await until((x) => x.emails.length === 1, "livraison");
+    const url = s.emails[0].headers["List-Unsubscribe"].slice(1, -1);
+    const get = await fetch(url);
+    assert.notEqual(get.status, 200, "GET (aperçu, antivirus) ne désinscrit pas");
+    assert.equal((await contactOf("claire.martin.e2e@gmail.com"))!.emailBlacklisted, false);
+    const oneClick = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "x-real-ip": "10.9.9.9" },
+      body: "List-Unsubscribe=One-Click",
+    });
+    assert.equal(oneClick.status, 200);
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal(c.emailBlacklisted, true);
   });
 
   await scenario("54 · confirmation dédiée → VERIFIED ; 2e clic sans effet ; jeton falsifié refusé", async () => {

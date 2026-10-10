@@ -19,6 +19,7 @@
     "data:disposable": "tsx scripts/data-quality/update-disposable-domains.ts",
     "brevo:segments": "tsx --env-file-if-exists=.env scripts/brevo/segments.ts",
     "brevo:domain": "tsx --env-file-if-exists=.env scripts/brevo/domain.ts",
+    "brevo:templates": "tsx --env-file-if-exists=.env scripts/brevo/templates.ts",
     "brevo:webhooks": "tsx --env-file-if-exists=.env scripts/brevo/setup-webhooks.ts",
     "brevo:delete-test-contact": "tsx --env-file-if-exists=.env scripts/brevo/delete-test-contact.ts"
   },

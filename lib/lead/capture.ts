@@ -4,11 +4,23 @@
  *   2. validation essentielle (schéma, email DNS/MX/jetable, téléphone)
  *   3. création / mise à jour du contact Brevo (dédoublonné par email)
  *   4. délivrance du guide (réponse OK → page merci)
- *   5. tracking secondaire (événement Brevo, après la réponse)
+ *   5. après la réponse : livraison email + séquence (moteur Althoce, si le
+ *      guide a basculé), puis événement Brevo
+ *
+ * Livraison par email :
+ *   - guide basculé (ALTHOCE_SEQUENCE_GUIDES) : email transactionnel envoyé
+ *     ici, puis inscription à la séquence n8n si le contact n'était pas déjà
+ *     dans la liste de ce guide (re-téléchargement ou ancienne séquence Brevo
+ *     en cours : pas de nouvelle séquence complète) ;
+ *   - guide encore sur son automation Brevo : l'automation livre, SAUF pour un
+ *     opposant (constaté le 10/10 : une automation Brevo envoie même à un
+ *     contact bloqué, relances comprises) → pas d'ajout à la liste, livraison
+ *     transactionnelle par le modèle générique.
  */
 
 import "server-only";
 import { getLeadMagnet } from "@/config/leadMagnets";
+import { getSequence } from "@/config/sequences";
 import { getWebinar } from "@/config/webinars";
 import { checkEmail, emailErrorMessage } from "@/lib/data-quality/email";
 import { checkPhone, PHONE_ERROR_MESSAGE } from "@/lib/data-quality/phone";
@@ -24,6 +36,8 @@ import { buildContactUpdate, withoutRejectedSms, type CaptureSource } from "@/li
 import { logLead, maskEmail, maskPhone } from "@/lib/lead/log";
 import { createEmailConfirmToken } from "@/lib/security/emailConfirm";
 import { createMarketingOptoutToken } from "@/lib/marketing/token";
+import { deliverGuide, enrollInSequence } from "@/lib/sequences/run";
+import { activeGuideSequence } from "@/lib/sequences/switch";
 import { signLeadRef } from "@/lib/security/leadToken";
 import { cleanTouch, resolveAttribution } from "@/lib/tracking/utm";
 import type { LeadInput } from "@/lib/validation/leadSchema";
@@ -32,6 +46,8 @@ export type CaptureOutcome =
   | {
       ok: true;
       leadRef?: string;
+      /** Opposition marketing enregistrée par cette soumission (affichée sur la page merci) */
+      marketingOpposed?: boolean;
       /** Tâche à exécuter après la réponse (événement Brevo) */
       followUp?: () => Promise<unknown>;
     }
@@ -96,8 +112,14 @@ export async function captureLead(
       source,
       now,
     });
+    const lm = isWebinar ? undefined : getLeadMagnet(source.slug);
+    const sequence = lm ? activeGuideSequence(lm) : null;
+    const opposed = update.marketingStatus === "OPPOSED";
+    const legacyOpposed = !!lm && !sequence && opposed;
+    const wasInList = existing?.listIds?.includes(source.brevoListId) ?? false;
+
     const result = await upsertContact(
-      email.email, update.attributes, [source.brevoListId], existing,
+      email.email, update.attributes, legacyOpposed ? [] : [source.brevoListId], existing,
       (attrs) => withoutRejectedSms(attrs, existing),
       input.marketingOpposition
     );
@@ -117,8 +139,29 @@ export async function captureLead(
     // Interaction de CETTE visite (la provenance initiale reste dans les attributs)
     const touch = currentTouch?.utm_source ? currentTouch : attribution;
     const identifiers = result.contactId ? { contact_id: result.contactId } : { email_id: email.email };
-    const followUp = () =>
-      sendBrevoEvent(
+    const deliverySequence = sequence ?? (legacyOpposed ? getSequence("guide-generique-v1") : undefined);
+    const followUp = async () => {
+      if (deliverySequence && result.contactId) {
+        const delivery = await deliverGuide({
+          seq: deliverySequence,
+          contactId: result.contactId,
+          email: email.email,
+          slug: source.slug,
+          emailStatus: update.emailStatus,
+          now,
+        });
+        logLead(delivery.status === "error" ? "erreur" : "succes", {
+          ...log,
+          motif: "livraison_guide",
+          statut: delivery.status,
+          sequence: deliverySequence.id,
+          valeur: maskEmail(email.email),
+        });
+        if (sequence && !opposed && !wasInList) {
+          await enrollInSequence({ seq: sequence, contactId: result.contactId, slug: source.slug, now });
+        }
+      }
+      return sendBrevoEvent(
         isWebinar ? BREVO_EVENTS.WEBINAR_REGISTERED : BREVO_EVENTS.LEAD_MAGNET_SUBMITTED,
         identifiers,
         {
@@ -140,10 +183,12 @@ export async function captureLead(
         },
         now
       );
+    };
 
     return {
       ok: true,
       leadRef: result.contactId ? signLeadRef(result.contactId, source.slug) : undefined,
+      marketingOpposed: opposed,
       followUp,
     };
   } catch (e) {

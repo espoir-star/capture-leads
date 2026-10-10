@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body style="margin:0;padding:0;background-color:#0A0A0A;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A0A0A;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+
+          <tr>
+            <td style="padding-bottom:28px;">
+              <span style="color:#FFFFFF;font-size:20px;font-weight:bold;">Althoce<span style="color:#1D9E75;">.</span></span>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#111311;border:1px solid #1E221E;border-radius:14px;padding:36px 32px;">
+              <p style="margin:0;color:#FFFFFF;font-size:22px;font-weight:bold;line-height:1.3;">
+                Salut {{ contact.PRENOM }}, ton guide est là ✅
+              </p>
+              <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">
+                Comme promis, voici ton accès au guide
+                <strong style="color:#FFFFFF;">12 cas d'usage concrets de Claude pour les experts-comptables</strong>.
+                Tout est dedans pour l'appliquer dès aujourd'hui.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0 8px;">
+                <tr>
+                  <td style="background-color:#1D9E75;border-radius:8px;">
+                    <a href="https://espoir-metareglage.notion.site/12-cas-d-usage-concrets-de-Claude-pour-les-experts-comptables-3aac7d01a0e881caabc6c8d9d5555dc2" target="_blank"
+                       style="display:inline-block;padding:15px 32px;color:#FFFFFF;font-size:16px;font-weight:bold;text-decoration:none;">
+                      Accéder au guide →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:20px 0 0;color:#A0A0A0;font-size:13px;line-height:1.6;">
+                Garde ce mail sous la main : le lien reste actif.
+              </p>
+              {% if params.CONFIRM_URL %}
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 0;">
+                <tr>
+                  <td style="border:1px solid #1D9E75;border-radius:8px;">
+                    <a href="{{ params.CONFIRM_URL }}" target="_blank" style="display:inline-block;padding:11px 22px;color:#1D9E75;font-size:14px;font-weight:bold;text-decoration:none;">
+                      Confirmer mon adresse email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:8px 0 0;color:#A0A0A0;font-size:12px;line-height:1.5;">
+                Un clic pour confirmer que cette adresse est bien la tienne.
+              </p>
+              {% endif %}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding-top:22px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                     style="background-color:#0F1512;border:1px solid rgba(29,158,117,0.35);border-radius:14px;">
+                <tr>
+                  <td style="padding:24px 28px;">
+                    <p style="margin:0;color:#FFFFFF;font-size:15px;line-height:1.6;">
+                      <strong>P.S.</strong> — Si tu veux qu'on regarde ensemble comment
+                      l'appliquer à ton cabinet, ou que je forme tes collaborateurs pour
+                      qu'ils soient autonomes dessus, je bloque 30 minutes quand tu veux.
+                    </p>
+                    <p style="margin:14px 0 0;">
+                      <a href="https://cal.com/althoce-conseil-4ncbuz/30min" target="_blank"
+                         style="color:#1D9E75;font-size:15px;font-weight:bold;text-decoration:none;">
+                        → Réserver 30 min dans mon agenda
+                      </a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding-top:30px;text-align:center;">
+              <p style="margin:0;color:#A0A0A0;font-size:12px;line-height:1.6;">
+                Althoce — Agence d'automatisation IA, Bordeaux<br />
+                Tu reçois cet email car tu as demandé ce guide sur le site Althoce.<br />
+                <a href="{{ params.UNSUBSCRIBE_URL }}" style="color:#A0A0A0;text-decoration:underline;">Ne plus recevoir nos conseils par email</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

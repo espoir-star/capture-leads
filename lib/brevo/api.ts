@@ -97,6 +97,16 @@ export async function brevoRequest<T = unknown>(
   throw lastError instanceof Error ? lastError : new Error("Erreur réseau Brevo");
 }
 
+/** Contact par identifiant Brevo, ou null s'il n'existe plus. */
+export async function getContactById(id: number): Promise<BrevoContact | null> {
+  const res = await brevoRequest<BrevoContact>(`/contacts/${id}?identifierType=contact_id`);
+  if (res.status === 404) return null;
+  if (!res.ok || !res.data) {
+    throw new Error(`Lecture contact Brevo impossible (${res.status} ${res.code ?? ""})`);
+  }
+  return res.data;
+}
+
 /** Contact par email, ou null s'il n'existe pas. */
 export async function getContactByEmail(email: string): Promise<BrevoContact | null> {
   const res = await brevoRequest<BrevoContact>(

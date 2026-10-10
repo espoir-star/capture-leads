@@ -25,6 +25,12 @@ export const BREVO_EVENTS = {
   WEBINAR_NO_SHOW: "webinar_no_show",
   WEBINAR_REPLAY_CLICKED: "webinar_replay_clicked",
   WEBINAR_CTA_CLICKED: "webinar_cta_clicked",
+  /* Moteur de séquences (historique durable dans la fiche contact) */
+  GUIDE_DELIVERED: "guide_delivered",
+  SEQUENCE_ENROLLED: "sequence_enrolled",
+  SEQUENCE_ENROLL_FAILED: "sequence_enroll_failed",
+  SEQUENCE_STEP_SENT: "sequence_step_sent",
+  SEQUENCE_STEP_SKIPPED: "sequence_step_skipped",
 } as const;
 
 export type BrevoEventName = (typeof BREVO_EVENTS)[keyof typeof BREVO_EVENTS];

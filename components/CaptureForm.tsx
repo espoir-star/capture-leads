@@ -29,6 +29,8 @@ type Field = "prenom" | "nom" | "email" | "tel" | "besoin" | "horizon";
 
 /** Clé sessionStorage du jeton signé, lu par la page merci (lead_magnet_downloaded) */
 export const LEAD_REF_KEY = "althoce_lead_ref:";
+/** Posée UNIQUEMENT quand le serveur confirme l'opposition enregistrée (page merci) */
+export const OPPOSITION_KEY = "althoce_marketing_opposed:";
 
 const FIELD =
   "w-full rounded-lg border bg-fond px-4 py-3.5 placeholder:text-secondaire focus:border-accent transition-colors";
@@ -141,12 +143,12 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         return;
       }
 
-      if (data?.leadRef) {
-        try {
-          sessionStorage.setItem(LEAD_REF_KEY + slug, data.leadRef);
-        } catch {
-          /* stockage indisponible : l'événement « guide ouvert » ne sera pas mesuré */
-        }
+      try {
+        if (data?.leadRef) sessionStorage.setItem(LEAD_REF_KEY + slug, data.leadRef);
+        if (data?.marketing === "opposed") sessionStorage.setItem(OPPOSITION_KEY + slug, "1");
+        else sessionStorage.removeItem(OPPOSITION_KEY + slug);
+      } catch {
+        /* stockage indisponible : mesure et message de confirmation non affichés */
       }
       identifyBrevoContact(email.toLowerCase());
       trackLead("guide", slug);
@@ -372,9 +374,9 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
       {/* Information métier et opposition au marketing, distinctes des cookies. */}
       <div className="space-y-1.5 text-xs leading-relaxed text-secondaire">
         <p>
-          Dans le cadre de votre activité professionnelle, Althoce pourra vous adresser
-          des conseils, actualités IA et invitations en lien avec votre métier.
-          Vous pouvez vous y opposer dès maintenant et vous désinscrire à tout moment.
+          Dans le cadre de votre activité professionnelle, Althoce pourra vous adresser des
+          conseils, actualités IA et invitations en lien avec votre métier. Vous pouvez vous y
+          opposer dès maintenant, puis vous désinscrire à tout moment : le guide reste envoyé.
         </p>
         <button
           type="button"
@@ -383,7 +385,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
           className="font-medium text-white underline underline-offset-2 hover:text-accent"
         >
           {marketingOpposition
-            ? "Opposition enregistrée — annuler"
+            ? "✓ Opposition demandée, enregistrée à l'envoi du formulaire — annuler"
             : "Ne pas recevoir ces communications"}
         </button>
       </div>

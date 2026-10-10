@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getRessource, getAllSlugs } from "@/lib/ressources";
 import GuideLink from "@/components/GuideLink";
+import OppositionNotice from "@/components/OppositionNotice";
 
 const CAL_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
 
@@ -58,6 +59,8 @@ export default async function PageMerci({ params }: Props) {
             </>
           )}
         </p>
+
+        <OppositionNotice slug={r.slug} />
 
         {/* Accès direct à la ressource */}
         <div className="mt-9 rounded-2xl border border-bordure bg-carte p-8">
