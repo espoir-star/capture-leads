@@ -1,22 +1,32 @@
 /**
  * Webhook Brevo (désactivé tant que BREVO_WEBHOOK_SECRET n'est pas défini : 404).
  *
- *   hard_bounce → EMAIL_STATUS = BOUNCED (exclu newsletter, leads chauds, automations)
- *   autres événements (click, opened…) → journalisés, aucun effet
+ * Point d'entrée UNIQUE des événements Brevo (webhooks marketing ET transactionnels).
+ *
+ *   hard_bounce        → EMAIL_STATUS = BOUNCED (exclu newsletter, leads chauds, automations)
+ *   unsubscribed, spam → opposition marketing
+ *   click              → journal n8n + score comportemental (lib/scoring) ;
+ *                        un même clic rejoué ne compte qu'une fois
+ *   autres (opened, delivered, softBounce…) → acceptés, aucun effet (0 point)
  *
  * Sécurité : Brevo ne signe pas ses webhooks ; il envoie le jeton configuré
  * (`auth: { type: "bearer", token }`) dans l'en-tête Authorization. Vérifié
  * en temps constant. Payload revalidé champ par champ, taille bornée.
  *
  * Reprises : Brevo ne retente QUE sur 429 ou absence de réponse (tout autre
- * 4xx/5xx abandonne l'événement). Une erreur temporaire répond donc 429 ;
- * le rejeu est sans danger (traitement idempotent).
+ * 4xx/5xx abandonne l'événement). Une erreur temporaire (Brevo, journal n8n
+ * injoignable) répond donc 429 ; le rejeu est sans danger (traitement
+ * idempotent, clés d'événement uniques). Un clic déjà journalisé dont
+ * l'écriture du score échoue est rattrapé par la passe horaire n8n.
  */
 
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getContactByEmail, updateContactAttributes, blocklistMarketingContact } from "@/lib/brevo/server";
 import { emailStatusAfterBounce, parseWebhookEvent } from "@/lib/brevo/webhook";
+import { applyBehaviorScores } from "@/lib/scoring/apply";
+import { clickCandidate, toLedgerEvent, type ClickCandidate, type LedgerEvent } from "@/lib/scoring/behavior";
+import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
 import { logLead, maskEmail } from "@/lib/lead/log";
 import { isValidEmailSyntax } from "@/lib/validation/email";
 
@@ -33,10 +43,16 @@ function authorized(req: NextRequest, secret: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-async function handle(raw: unknown): Promise<string> {
+async function handle(raw: unknown, clicks: ClickCandidate[]): Promise<string> {
   const evt = parseWebhookEvent(raw);
   if (!isValidEmailSyntax(evt.email)) return "ignored_invalid";
-  if (evt.kind === "unsubscribed") {
+  if (evt.kind === "click") {
+    const c = ledgerConfigured() ? clickCandidate(raw, new Date()) : null;
+    if (!c) return "ignored_click";
+    clicks.push(c);
+    return "click_scored";
+  }
+  if (evt.kind === "unsubscribed" || evt.kind === "spam") {
     const contact = await getContactByEmail(evt.email);
     if (!contact) return "unknown_contact";
     if (contact.attributes.MARKETING_STATUS === "OPPOSED" && contact.emailBlacklisted) return "unchanged";
@@ -49,9 +65,32 @@ async function handle(raw: unknown): Promise<string> {
   if (!contact) return "unknown_contact";
   const next = emailStatusAfterBounce(String(contact.attributes.EMAIL_STATUS ?? ""));
   if (!next) return "unchanged"; // rejeu : aucune écriture
-  await updateContactAttributes({ id: contact.id }, { EMAIL_STATUS: next });
+  if (!(await updateContactAttributes({ id: contact.id }, { EMAIL_STATUS: next }))) throw new Error("Écriture EMAIL_STATUS refusée par Brevo");
   logLead("succes", { motif: "webhook_hard_bounce", statut: next, valeur: maskEmail(evt.email) });
   return "bounced";
+}
+
+/** Clics → journal n8n (dédoublonné) → score. Lève une erreur si le journal est injoignable. */
+async function scoreClicks(clicks: ClickCandidate[]): Promise<void> {
+  const ids = new Map<string, number | null>();
+  const events: LedgerEvent[] = [];
+  for (const c of clicks) {
+    if (!ids.has(c.email)) ids.set(c.email, (await getContactByEmail(c.email))?.id ?? null);
+    const id = ids.get(c.email);
+    if (id) events.push(toLedgerEvent(c, id));
+  }
+  if (!events.length) return;
+  const r = await recordEvents(events);
+  if (!r.ok) {
+    if (r.reason === "not_configured") return;
+    throw new Error(`Journal n8n indisponible (${r.reason}${r.status ? ` ${r.status}` : ""})`);
+  }
+  try {
+    await applyBehaviorScores(r.rows);
+  } catch (e) {
+    // Événements déjà journalisés : la passe horaire n8n recalculera
+    console.error("Scoring : écriture différée :", e instanceof Error ? e.message : e);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -73,13 +112,13 @@ export async function POST(req: NextRequest) {
 
   const events = (Array.isArray(payload) ? payload : [payload]).slice(0, 500);
   const results: string[] = [];
-  for (const evt of events) {
-    try {
-      results.push(await handle(evt));
-    } catch (e) {
-      console.error("Webhook Brevo :", e instanceof Error ? e.message : e);
-      return NextResponse.json({ ok: false, retry: true }, { status: 429, headers: { "Retry-After": "600" } });
-    }
+  const clicks: ClickCandidate[] = [];
+  try {
+    for (const evt of events) results.push(await handle(evt, clicks));
+    if (clicks.length) await scoreClicks(clicks);
+  } catch (e) {
+    console.error("Webhook Brevo :", e instanceof Error ? e.message : e);
+    return NextResponse.json({ ok: false, retry: true }, { status: 429, headers: { "Retry-After": "600" } });
   }
   return NextResponse.json({ ok: true, results });
 }

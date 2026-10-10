@@ -91,8 +91,14 @@ Modèle sans secret : `.env.example`.
 | `EMAIL_STATUS` | texte | PENDING, VERIFIED, INVALID, DISPOSABLE, BOUNCED |
 | `PHONE_STATUS` | texte | VALID_FORMAT, SUSPECT, INVALID, VERIFIED |
 | `EMAIL_CONFIRM_TOKEN` | texte | jeton chiffré du lien « Confirmer mon adresse » |
+| `FORM_SCORE` | nombre | meilleur score formulaire (0 à 15) — scoring comportemental |
+| `BEHAVIOR_SCORE` | nombre | points comportementaux cumulés, ne baisse jamais |
+| `LAST_EMAIL_CLICK_AT` | date | dernier clic compté dans un email |
+| `LAST_ENGAGEMENT_AT` | date | dernier signal compté (clic, webinar, RDV) |
+| `SCORE_UPDATED_AT` | date | dernière hausse de `LEAD_SCORE` par le scoring |
+| `HOT_ALERT_SENT_AT` | date | alerte « lead chaud » envoyée (une seule fois) |
 
-Tous créés le 08/10/2026 ; le script ne crée que les attributs manquants, jamais de doublon.
+Créés le 08/10/2026, sauf les 6 attributs de scoring (à créer à la mise en service, docs/PHASE_MARKETING_N8N.md § 7) ; le script ne crée que les attributs manquants, jamais de doublon.
 
 ### Écriture à chaque soumission
 
@@ -111,7 +117,8 @@ Tous créés le 08/10/2026 ; le script ne crée que les attributs manquants, jam
 | EMAIL_STATUS | `PENDING` (VERIFIED et BOUNCED conservés) — jamais VERIFIED depuis le formulaire |
 | EMAIL_CONFIRM_TOKEN | écrit s'il est vide (lien stable) |
 | PHONE_STATUS | statut du numéro **réellement stocké dans SMS** ; vide si aucun SMS |
-| LEAD_SCORE | `max(existant, score formulaire)` |
+| FORM_SCORE | `max(existant, score formulaire)` |
+| LEAD_SCORE | `max(existant, min(100, FORM_SCORE + BEHAVIOR_SCORE))` — jamais à la baisse |
 | LIFECYCLE_STAGE | LEAD à la création, jamais rétrogradé |
 
 ---

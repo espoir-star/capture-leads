@@ -30,7 +30,7 @@ export const EXISTING_ATTRIBUTES = [
 
 export interface NewAttribute {
   name: string;
-  type: "text" | "float";
+  type: "text" | "float" | "date";
   description: string;
 }
 
@@ -47,6 +47,12 @@ export const NEW_ATTRIBUTES: NewAttribute[] = [
   { name: "PHONE_STATUS", type: "text", description: "VALID_FORMAT / SUSPECT / INVALID / VERIFIED (humain)" },
   { name: "MARKETING_STATUS", type: "text", description: "CONSENT / B2B_ELIGIBLE / OPPOSED / TO_REVIEW" },
   { name: "MARKETING_OPTOUT_TOKEN", type: "text", description: "Jeton chiffré pour désinscription marketing n8n" },
+  { name: "FORM_SCORE", type: "float", description: "Meilleur score formulaire (0 à 15)" },
+  { name: "BEHAVIOR_SCORE", type: "float", description: "Score comportemental cumulé (clics, webinars, RDV), ne diminue jamais" },
+  { name: "LAST_EMAIL_CLICK_AT", type: "date", description: "Dernier clic compté dans un email" },
+  { name: "LAST_ENGAGEMENT_AT", type: "date", description: "Dernier signal comportemental compté" },
+  { name: "SCORE_UPDATED_AT", type: "date", description: "Dernière hausse de LEAD_SCORE par le scoring" },
+  { name: "HOT_ALERT_SENT_AT", type: "date", description: "Alerte « lead chaud » envoyée (une seule fois)" },
   {
     name: "EMAIL_CONFIRM_TOKEN",
     type: "text",

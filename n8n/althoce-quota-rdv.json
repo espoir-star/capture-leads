@@ -1,0 +1,118 @@
+{
+  "name": "ALTHOCE | Marketing | Quota Brevo et RDV — v1",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ALTHOCE | Marketing | Quota Brevo et RDV — v1\nUne fois par heure, Vercel (/api/marketing/maintenance) :\n1. lit le **quota d'envoi Brevo** du jour (offre Free : 300) et alerte UNE fois par jour sous 60 restants ;\n2. détecte les **RDV confirmés** (ETAT_RDV / STATUT_APPEL, contacts modifiés depuis 3 h) → +25 au score, une seule fois par contact.\n\n**Credential** sur l'appel : Header Auth « Althoce · n8n → Vercel (Bearer) ».",
+        "height": 260,
+        "width": 720
+      },
+      "id": "646e9e73-300d-457e-ae96-a5baef4ce2d9",
+      "name": "Note a4a5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1,
+              "triggerAtMinute": 7
+            }
+          ]
+        }
+      },
+      "id": "ae56a504-f149-40b7-a798-9297c4c30791",
+      "name": "Toutes les heures (h:07)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfd1fa30-b956-4c7d-ae7a-46e69c54ef2a",
+              "name": "maintenanceUrl",
+              "value": "https://guide-gratuit-pi.vercel.app/api/marketing/maintenance",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6b379e95-5152-49a0-aad1-b75cfe779548",
+      "name": "Config — Tâches horaires",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config — Tâches horaires').first().json.maintenanceUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "06153849-f7db-416d-83c5-7e5b61f31e57",
+      "name": "Lancer les tâches (Vercel)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        240
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Toutes les heures (h:07)": {
+      "main": [
+        [
+          {
+            "node": "Config — Tâches horaires",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config — Tâches horaires": {
+      "main": [
+        [
+          {
+            "node": "Lancer les tâches (Vercel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Paris",
+    "errorWorkflow": "XDp4BEtctA5ogbDg"
+  }
+}

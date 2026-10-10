@@ -1,0 +1,271 @@
+{
+  "name": "ALTHOCE | Marketing | Recalcul des scores — v1",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ALTHOCE | Marketing | Recalcul des scores — v1\nFILET DE SÉCURITÉ du scoring : recalcule depuis le journal les contacts actifs récemment (3 dernières heures ; chaque nuit à 3 h : 8 derniers jours) et envoie leur historique COMPLET à Vercel (/api/marketing/score).\n\nRattrape tout ce que le temps réel aurait manqué (Brevo indisponible, écriture refusée, alerte non partie). Idempotent : un contact à jour ne provoque aucune écriture ; un score ne baisse jamais.\n\nDocs : althoce-ressources/docs/PHASE_MARKETING_N8N.md",
+        "height": 300,
+        "width": 820
+      },
+      "id": "b23a8a48-e8b4-469d-bd67-005a74d15cd8",
+      "name": "Note 12f7",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Credential\n**Recalculer les scores (Vercel)** : Header Auth « Althoce · n8n → Vercel (Bearer) » (Authorization = Bearer SEQUENCE_API_SECRET).",
+        "height": 160,
+        "width": 420,
+        "color": 5
+      },
+      "id": "382b22c4-a0db-49f0-95e5-863f55725185",
+      "name": "Note 8e7d",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1,
+              "triggerAtMinute": 17
+            }
+          ]
+        }
+      },
+      "id": "9f2446e3-e2c6-4546-9418-cdea1bf9209b",
+      "name": "Toutes les heures (h:17)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d123752c-5b2f-4aee-b3c8-7d545a83ae8c",
+              "name": "scoreUrl",
+              "value": "https://guide-gratuit-pi.vercel.app/api/marketing/score",
+              "type": "string"
+            },
+            {
+              "id": "16e66456-57f4-4a07-8f4c-3579d458bce4",
+              "name": "windowHours",
+              "value": "={{ $now.setZone('Europe/Paris').hour === 3 ? 192 : 3 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d786621c-1aa7-4766-8f49-affd575e74f5",
+      "name": "Config — Recalcul",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "createdAt",
+              "condition": "gte",
+              "keyValue": "={{ $now.minus({ hours: $('Config — Recalcul').first().json.windowHours }).toISO() }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "cdd61c2e-48a0-47f1-8b95-4a3055f1f8dc",
+      "name": "Événements récents",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Contacts ayant au moins un événement dans la fenêtre (sinon : rien à faire)\nconst ids = [...new Set($input.all().map((i) => Number(i.json.contact_id)).filter((v) => Number.isInteger(v) && v > 0))];\nreturn ids.map((contact_id) => ({ json: { contact_id } }));"
+      },
+      "id": "8a357a7b-84ee-45ae-9536-adbe5edfc55a",
+      "name": "Contacts actifs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contact_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contact_id }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "0b4d132b-9183-49f8-9144-8dd34876acef",
+      "name": "Historique complet",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lots de 500 lignes au plus pour /api/marketing/score ; l'historique d'un contact n'est jamais coupé.\nconst by = new Map();\nfor (const r of $input.all().map((i) => i.json).filter((r) => r && r.event_key)) {\n  if (!by.has(r.contact_id)) by.set(r.contact_id, []);\n  by.get(r.contact_id).push(({ event_key: r.event_key, contact_id: r.contact_id, category: r.category, points: r.points, occurred_at: r.occurred_at }));\n}\nconst out = [];\nlet batch = [];\nfor (const rows of by.values()) {\n  if (batch.length && batch.length + rows.length > 500) { out.push({ json: { rows: batch } }); batch = []; }\n  batch.push(...rows);\n}\nif (batch.length) out.push({ json: { rows: batch } });\nreturn out;"
+      },
+      "id": "959ef2be-ab7d-4754-b4d5-f5f11966343b",
+      "name": "Lots pour Vercel",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config — Recalcul').first().json.scoreUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ rows: $json.rows }) }}",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "9902e47b-4475-4775-98cb-26324affd7a6",
+      "name": "Recalculer les scores (Vercel)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Toutes les heures (h:17)": {
+      "main": [
+        [
+          {
+            "node": "Config — Recalcul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config — Recalcul": {
+      "main": [
+        [
+          {
+            "node": "Événements récents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Événements récents": {
+      "main": [
+        [
+          {
+            "node": "Contacts actifs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contacts actifs": {
+      "main": [
+        [
+          {
+            "node": "Historique complet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Historique complet": {
+      "main": [
+        [
+          {
+            "node": "Lots pour Vercel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lots pour Vercel": {
+      "main": [
+        [
+          {
+            "node": "Recalculer les scores (Vercel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Paris",
+    "errorWorkflow": "XDp4BEtctA5ogbDg"
+  }
+}

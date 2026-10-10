@@ -11,7 +11,8 @@
  *  - VERTICAL / SUBSECTOR : renseignés si vides (ou si VERTICAL = GENERAL)
  *  - UTM_* + SOURCE_CONTENT_URL : first touch, écrits UNIQUEMENT si aucun
  *    UTM n'existe déjà sur le contact (bloc indivisible)
- *  - LEAD_SCORE = max(existant, score formulaire) ; jamais à la baisse
+ *  - FORM_SCORE = max(existant, score formulaire) ;
+ *    LEAD_SCORE = max(existant, min(100, FORM_SCORE + BEHAVIOR_SCORE)) ; jamais à la baisse
  *  - LIFECYCLE_STAGE : jamais rétrogradé (lib/scoring)
  *  - EMAIL_STATUS : VERIFIED et BOUNCED sont conservés, sinon PENDING
  *    (VERIFIED n'est posé que par un clic réel : app/api/webhooks/brevo)
@@ -29,7 +30,8 @@ import { FIRST_TOUCH_ATTRIBUTES } from "@/config/brevoAttributes";
 import type { LeadMagnetConfig } from "@/config/leadMagnets";
 import { getSourceContent } from "@/config/sourceRegistry";
 import type { Besoin, EmailStatus, Horizon, PhoneStatus } from "@/config/taxonomy";
-import { formIntentScore, mergeScore, nextLifecycleStage } from "@/lib/scoring";
+import { SCORE_CAP } from "@/config/scoring";
+import { formIntentScore, mergeScore, nextLifecycleStage, toScore } from "@/lib/scoring";
 import type { Touch } from "@/lib/tracking/utm";
 import { checkPhone, type PhoneCheck } from "@/lib/data-quality/phone";
 import { marketingStatusForCapture, type MarketingStatus } from "@/lib/marketing/status";
@@ -143,7 +145,9 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
 
   /* Score et cycle de vie */
   const formScore = formIntentScore(data.besoin, data.horizon);
-  const leadScore = mergeScore(ex.LEAD_SCORE, formScore);
+  const bestForm = Math.max(toScore(ex.FORM_SCORE), formScore);
+  if (isEmptyValue(ex.FORM_SCORE) || bestForm !== toScore(ex.FORM_SCORE)) a.FORM_SCORE = bestForm;
+  const leadScore = mergeScore(ex.LEAD_SCORE, Math.min(SCORE_CAP, bestForm + toScore(ex.BEHAVIOR_SCORE)));
   a.LEAD_SCORE = leadScore;
   const lifecycleStage = nextLifecycleStage(
     isEmptyValue(ex.LIFECYCLE_STAGE) ? undefined : String(ex.LIFECYCLE_STAGE),

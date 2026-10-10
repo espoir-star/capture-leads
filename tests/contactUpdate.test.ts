@@ -51,6 +51,7 @@ test("scénario pilote : nouveau contact (test 65)", () => {
     UTM_CONTENT: "LI_EC_20261008_01",
     EMAIL_STATUS: "PENDING",
     PHONE_STATUS: "VALID_FORMAT",
+    FORM_SCORE: 12,
     LEAD_SCORE: 12,
     LIFECYCLE_STAGE: "LEAD",
     MARKETING_STATUS: "B2B_ELIGIBLE",
@@ -72,6 +73,11 @@ test("first touch conservé : aucun UTM écrasé (test 69)", () => {
 test("score existant conservé : max(30, 12) = 30 (test 70)", () => {
   const u = buildContactUpdate(contact({ LEAD_SCORE: 30, LIFECYCLE_STAGE: "MQL" }), data());
   assert.equal(u.attributes.LEAD_SCORE, 30);
+  // Comportement déjà acquis : max(FORM_SCORE 14, formulaire 12) + BEHAVIOR_SCORE 15 = 29 ; FORM_SCORE ne baisse jamais
+  const b = buildContactUpdate(contact({ LEAD_SCORE: 18, FORM_SCORE: 14, BEHAVIOR_SCORE: 15 }), data());
+  assert.equal(b.attributes.LEAD_SCORE, 29);
+  assert.equal(b.attributes.FORM_SCORE, undefined, "14 > 12 : FORM_SCORE inchangé, non réécrit");
+  assert.equal(b.lifecycleStage, "HOT_LEAD");
   assert.equal(u.formScore, 12);
   assert.equal(u.attributes.LIFECYCLE_STAGE, "HOT_LEAD"); // 30 >= 25 et email exploitable
 });

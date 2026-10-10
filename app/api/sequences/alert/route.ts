@@ -1,6 +1,6 @@
 /**
  * n8n → Vercel : alerte d'erreur d'un workflow Althoce (workflow n8n
- * « Marketing — Alertes séquences — v1 », déclenché par l'Error Trigger).
+ * « ALTHOCE | Marketing | Alertes n8n — v1 », déclenché par l'Error Trigger).
  *
  *   POST { workflow, executionId, node, message, url? }   Authorization: Bearer SEQUENCE_API_SECRET
  *

@@ -33,11 +33,14 @@ import {
   upsertContact,
 } from "@/lib/brevo/server";
 import { buildContactUpdate, withoutRejectedSms, type CaptureSource } from "@/lib/lead/contactUpdate";
-import { logLead, maskEmail, maskPhone } from "@/lib/lead/log";
+import { logLead, maskEmail, maskIp, maskPhone } from "@/lib/lead/log";
 import { createEmailConfirmToken } from "@/lib/security/emailConfirm";
 import { createMarketingOptoutToken } from "@/lib/marketing/token";
 import { deliverGuide, enrollInSequence } from "@/lib/sequences/run";
 import { activeGuideSequence, webinarSequence } from "@/lib/sequences/switch";
+import { applyBehaviorScores } from "@/lib/scoring/apply";
+import { makeEvent } from "@/lib/scoring/behavior";
+import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
 import { signLeadRef } from "@/lib/security/leadToken";
 import { cleanTouch, resolveAttribution } from "@/lib/tracking/utm";
 import type { LeadInput } from "@/lib/validation/leadSchema";
@@ -67,7 +70,7 @@ export async function captureLead(
   ctx: { ip: string; now?: Date }
 ): Promise<CaptureOutcome> {
   const now = ctx.now ?? new Date();
-  const log = { slug: input.slug, sessionId: input.sessionId, ip: ctx.ip };
+  const log = { slug: input.slug, sessionId: input.sessionId, ip: maskIp(ctx.ip) };
 
   const source = resolveCaptureSource(input.kind, input.slug);
   if (!source) return { ok: false, status: 404, message: "Ressource inconnue." };
@@ -172,6 +175,12 @@ export async function captureLead(
             ...(active?.qa && { timeScale: active.timeScale }),
           });
         }
+      }
+      if (isWebinar && result.contactId && ledgerConfigured()) {
+        // Scoring : inscription webinar (+8, une fois par webinar). Jamais bloquant pour la capture.
+        const r = await recordEvents([makeEvent("webinar_registered", result.contactId, source.slug, "capture", now)]);
+        if (r.ok) await applyBehaviorScores(r.rows, now).catch(() => undefined);
+        else logLead("erreur", { ...log, motif: "scoring_webinar", code: r.reason });
       }
       return sendBrevoEvent(
         isWebinar ? BREVO_EVENTS.WEBINAR_REGISTERED : BREVO_EVENTS.LEAD_MAGNET_SUBMITTED,

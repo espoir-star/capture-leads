@@ -5,8 +5,11 @@
  *   PUT  /v3/contacts/:id                      POST /v3/events
  *   POST /v3/smtp/email (en-tête idempotencyKey : 2e envoi refusé, comme Brevo)
  *   unicité de l'attribut SMS (duplicate_parameter), listes cumulées.
- * Faux n8n : POST /__n8n (webhook d'inscription, enregistre en-tête et corps).
- * Routes de test : GET /__state, POST /__reset, POST /__seed.
+ *   GET  /v3/account (crédits d'envoi du jour)  GET /v3/contacts (liste, modifiedSince ignoré)
+ * Faux n8n : POST /__n8n (webhook d'inscription, enregistre en-tête et corps),
+ *            POST /__n8n_events (journal des événements : clé unique, renvoie
+ *            l'historique complet des contacts concernés, comme le workflow réel).
+ * Routes de test : GET /__state, POST /__reset, POST /__seed, POST /__config.
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -33,9 +36,15 @@ export interface MockState {
   requests: string[];
   emails: MockEmail[];
   n8n: { authorization?: string; body: Record<string, unknown> }[];
+  /** Journal n8n (Data table) */
+  ledger: Record<string, unknown>[];
+  /** Crédits d'envoi restants (offre Free) */
+  credits: number;
+  /** Simule un n8n arrêté (503) */
+  ledgerDown: boolean;
 }
 
-const emptyState = (): MockState => ({ contacts: [], events: [], requests: [], emails: [], n8n: [] });
+const emptyState = (): MockState => ({ contacts: [], events: [], requests: [], emails: [], n8n: [], ledger: [], credits: 300, ledgerDown: false });
 
 export const MOCK_API_KEY = "mock-key-e2e";
 
@@ -94,10 +103,34 @@ export function startMockBrevo(port: number) {
       state.n8n.push({ authorization: req.headers.authorization, body });
       return send(res, 200, { ok: true });
     }
+    if (url.pathname === "/__config" && req.method === "POST") {
+      if (typeof body.credits === "number") state.credits = body.credits;
+      if (typeof body.ledgerDown === "boolean") state.ledgerDown = body.ledgerDown;
+      return send(res, 204);
+    }
+    if (url.pathname === "/__n8n_events" && req.method === "POST") {
+      if (state.ledgerDown) return send(res, 503, { message: "n8n arrêté" });
+      if (req.headers.authorization !== "Bearer e2e-n8n-token") return send(res, 403, {});
+      const events = (body.events as Record<string, unknown>[]) ?? [];
+      let inserted = 0;
+      for (const e of events) {
+        if (state.ledger.some((r) => r.event_key === e.event_key)) continue;
+        state.ledger.push({ id: state.ledger.length + 1, ...e, createdAt: new Date().toISOString() });
+        inserted++;
+      }
+      const ids = new Set(events.map((e) => e.contact_id));
+      return send(res, 200, { ok: true, inserted, rows: state.ledger.filter((r) => ids.has(r.contact_id)) });
+    }
 
     state.requests.push(`${req.method} ${url.pathname}`);
     if (req.headers["api-key"] !== MOCK_API_KEY) return send(res, 401, { code: "unauthorized", message: "Key not found" });
 
+    if (url.pathname === "/v3/account" && req.method === "GET") {
+      return send(res, 200, { plan: [{ type: "free", credits: state.credits, creditsType: "sendLimit" }] });
+    }
+    if (url.pathname === "/v3/contacts" && req.method === "GET") {
+      return send(res, 200, { contacts: state.contacts, count: state.contacts.length });
+    }
     const m = url.pathname.match(/^\/v3\/contacts\/([^/]+)$/);
     if (m && req.method === "GET") {
       const c = find(m[1], url.searchParams.get("identifierType"));

@@ -1,0 +1,339 @@
+{
+  "name": "ALTHOCE | Marketing | Journal des événements — v1",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ALTHOCE | Marketing | Journal des événements — v1\nJournal DURABLE des signaux de scoring (clics, webinars, RDV) dans la Data table « althoce_marketing_events ».\n\n**Chaîne** : Brevo → Vercel (/api/webhooks/brevo : classe le clic, applique le barème, calcule une clé unique) → ce webhook → insertion si la clé est nouvelle → réponse = historique complet des contacts → Vercel met à jour LEAD_SCORE.\n\n**Zéro double comptage** : une clé déjà connue n'est pas réinsérée ; et le calcul ignore de toute façon les doublons de clé.\n**Aucune donnée personnelle** : ID contact Brevo + clé opaque (HMAC).\n**n8n arrêté ?** Vercel répond 429 à Brevo, qui rejoue plus tard : aucun événement perdu.\n\nColonnes : event_key (string), contact_id (number), category (string), points (number), occurred_at (date), source (string), ref (string).\nDocs : althoce-ressources/docs/PHASE_MARKETING_N8N.md",
+        "height": 400,
+        "width": 900
+      },
+      "id": "c08af088-34f0-4d91-92d9-7b22002b50da",
+      "name": "Note 7e6e",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Credential\n**Recevoir les événements (Vercel)** : Header Auth « Althoce · Vercel → n8n (Bearer) » (Authorization = Bearer N8N_WEBHOOK_TOKEN, même valeur que dans Vercel).",
+        "height": 160,
+        "width": 420,
+        "color": 5
+      },
+      "id": "7c531c59-5836-4067-ba2f-a89fdf3572ef",
+      "name": "Note 0549",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        900,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "althoce-marketing-events",
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "id": "f6f20588-c99a-4bc8-a7de-178f65b99687",
+      "name": "Recevoir les événements (Vercel)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "aab85a19-c4aa-4d07-b222-61fad2021c47"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lot envoyé par Vercel (lib/scoring/ledger.ts) : aucune donnée personnelle\n// (ID contact Brevo, catégorie, points, date, clé opaque). Le barème vit dans Vercel.\nconst KEY = /^(clk|wreg|watt|rdv)\\.[A-Za-z0-9_-]{32}$/;\nconst CATS = ['content_click', 'guide_click', 'offer_click', 'webinar_registered', 'webinar_attended', 'meeting_booked'];\nconst SOURCES = ['brevo_transactional', 'brevo_marketing', 'capture', 'webinar', 'crm'];\nconst body = $input.first().json.body ?? {};\nconst events = Array.isArray(body.events) ? body.events : [];\n// Lot refusé → réponse 400 (branche « Lot valide ? »), rien n'est écrit\nif (events.length === 0 || events.length > 100) return [{ json: { __invalid: 'Lot invalide : 1 à 100 événements attendus' } }];\nconst seen = new Set();\nconst out = [];\nfor (const e of events) {\n  const ok = e && typeof e.event_key === 'string' && KEY.test(e.event_key) &&\n    Number.isInteger(e.contact_id) && e.contact_id > 0 &&\n    CATS.includes(e.category) && Number.isInteger(e.points) && e.points >= 0 && e.points <= 25 &&\n    typeof e.occurred_at === 'string' && !Number.isNaN(Date.parse(e.occurred_at)) &&\n    SOURCES.includes(e.source) && typeof e.ref === 'string' && e.ref.length <= 80;\n  if (!ok) return [{ json: { __invalid: 'Événement invalide (clé, contact, catégorie, points, date, source ou ref)' } }];\n  if (seen.has(e.event_key)) continue; // doublon dans le même lot\n  seen.add(e.event_key);\n  out.push({ json: { event_key: e.event_key, contact_id: e.contact_id, category: e.category, points: e.points,\n    occurred_at: new Date(e.occurred_at).toISOString(), source: e.source, ref: e.ref } });\n}\nreturn out;"
+      },
+      "id": "ad8290fb-f8d0-48f1-a15b-2af351e33072",
+      "name": "Valider les événements",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "03fe5cca-c88f-46b7-91bd-3511f4e09d51",
+              "leftValue": "={{ $json.__invalid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e2fac759-beee-4b22-8e2f-e478abab4e82",
+      "name": "Lot valide ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, reason: $json.__invalid }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c459c847-5c6e-4efa-addf-7eb3692ece53",
+      "name": "Refuser le lot (400)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_key",
+              "keyValue": "={{ $json.event_key }}"
+            }
+          ]
+        }
+      },
+      "id": "769ae9a2-229f-4200-924c-1b20bc7384bd",
+      "name": "Nouvel événement ?",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "eb7c949b-d98f-45b6-8f23-27d409c5ba82",
+      "name": "Journaliser l'événement",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Contacts du lot. Ordre d'exécution v1 : la branche du dessus (journalisation)\n// est terminée avant celle-ci, l'historique relu inclut donc les nouveaux événements.\nconst ids = [...new Set($('Valider les événements').all().map((i) => i.json.contact_id))];\nreturn ids.map((contact_id) => ({ json: { contact_id } }));"
+      },
+      "id": "1c6251ec-a7b1-4ffa-8ff0-d10e7cf21c7d",
+      "name": "Contacts du lot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contact_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contact_id }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "4de44bed-6abf-48c3-a73b-70b1f1bb48f6",
+      "name": "Lire l'historique du contact",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        400
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Historique complet des contacts → Vercel recalcule le score (lib/scoring/behavior.ts).\nlet inserted = 0;\ntry { inserted = $(\"Journaliser l'événement\").all().filter((i) => i.json.event_key).length; } catch (e) { inserted = 0; }\nconst rows = $input.all().map((i) => i.json).filter((r) => r && r.event_key).map((r) => ({ event_key: r.event_key, contact_id: r.contact_id, category: r.category, points: r.points, occurred_at: r.occurred_at }));\nreturn [{ json: { ok: true, inserted, rows } }];"
+      },
+      "id": "b9bcb140-19ee-4050-ac6b-8504df76bf54",
+      "name": "Préparer la réponse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "8a166057-d326-4105-a38c-8fadd09058b1",
+      "name": "Répondre à Vercel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1360,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Recevoir les événements (Vercel)": {
+      "main": [
+        [
+          {
+            "node": "Valider les événements",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valider les événements": {
+      "main": [
+        [
+          {
+            "node": "Lot valide ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lot valide ?": {
+      "main": [
+        [
+          {
+            "node": "Nouvel événement ?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Contacts du lot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refuser le lot (400)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nouvel événement ?": {
+      "main": [
+        [
+          {
+            "node": "Journaliser l'événement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contacts du lot": {
+      "main": [
+        [
+          {
+            "node": "Lire l'historique du contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire l'historique du contact": {
+      "main": [
+        [
+          {
+            "node": "Préparer la réponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer la réponse": {
+      "main": [
+        [
+          {
+            "node": "Répondre à Vercel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Paris",
+    "errorWorkflow": "XDp4BEtctA5ogbDg"
+  }
+}
