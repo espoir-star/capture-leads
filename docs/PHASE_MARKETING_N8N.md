@@ -96,8 +96,8 @@ Workflows créés par API (inactifs, aucun secret ; sources générées par `n8n
 | `ALTHOCE \| Marketing \| Alertes n8n — v1` | `XDp4BEtctA5ogbDg` | Error Workflow de tous les workflows ci-dessous → `/api/sequences/alert` → email à `espoir@contact.althoce.com` |
 | `ALTHOCE \| Webinar \| Présences vers Brevo — v1` | `77IigBEDaaGro2Xa` | modèle manuel : présences / absences → `/api/sequences/event` (+15 au score) |
 | `ALTHOCE \| Marketing \| Journal des événements — v1` | `XFDILN56cJw3XPuF` | webhook `althoce-marketing-events` : journal du scoring (Data table), voir § 7 |
-| `ALTHOCE \| Marketing \| Recalcul des scores — v1` | `ZGbvCLVrJItTXqSS` | toutes les heures (h:17) : filet de sécurité du scoring → `/api/marketing/score` |
-| `ALTHOCE \| Marketing \| Quota Brevo et RDV — v1` | `TN4d97jsaiCxvgVt` | toutes les heures (h:07) : quota d'envoi + RDV confirmés → `/api/marketing/maintenance` |
+| `ALTHOCE \| Marketing \| Recalcul des scores — v1` | `ZGbvCLVrJItTXqSS` | toutes les heures (h:17) : filet de sécurité du scoring → `/api/marketing/score` ; suppression des doublons du journal ; la nuit, conservation 400 jours |
+| `ALTHOCE \| Marketing \| Quota Brevo et RDV — v1` | `TN4d97jsaiCxvgVt` | toutes les heures (h:07) → `/api/marketing/maintenance` : quota d'envoi, RDV confirmés, livraisons de guide en attente, clics transactionnels manqués |
 
 Data table `althoce_marketing_events` (`7IVWbyzYpzdvHA4W`, projet Personal) : `event_key` (texte), `contact_id` (nombre), `category` (texte), `points` (nombre), `occurred_at` (date), `source` (texte), `ref` (texte).
 
@@ -236,7 +236,7 @@ Une seule fois par contact (`HOT_ALERT_SENT_AT` + clé d'idempotence Brevo), seu
 ### Mise en service (avec votre validation)
 
 1. Credentials n8n et variables Vercel (§ 3), dont `N8N_EVENTS_WEBHOOK_URL`.
-2. `npm run brevo:attributes` (à blanc) puis `-- --apply` : création des 6 attributs.
+2. `npm run brevo:attributes` (à blanc) puis `-- --apply` : création des 8 attributs (6 du scoring, 2 de la livraison durable).
 3. Déploiement de la branche.
 4. Activer « Journal des événements », « Recalcul des scores », « Quota Brevo et RDV ».
 5. `npm run brevo:webhooks -- --url https://guide-gratuit-pi.vercel.app/api/webhooks/brevo` (à blanc) puis `--apply` : complète les deux webhooks existants (#2241079 marketing, #2241080 transactionnel) avec tous les événements, sans en créer de nouveaux.
@@ -260,7 +260,7 @@ Une seule fois par contact (`HOT_ALERT_SENT_AT` + clé d'idempotence Brevo), seu
 
 - Credentials n8n (2 Header Auth) et variables Vercel Production (§ 3) : à faire par vous, secrets hors chat.
 - Fusion de la PR, puis mode QA du pilote (§ 4) → test réel avec des contacts QA, puis bascule.
-- Scoring (§ 7) : création des 6 attributs Brevo, activation des 3 workflows, mise à jour des 2 webhooks Brevo, test QA réel.
+- Scoring (§ 7) : création des 8 attributs Brevo, activation des 3 workflows, mise à jour des 2 webhooks Brevo, test QA réel. Ordre complet : `docs/MISE_EN_PRODUCTION.md`.
 - À valider : « RDV confirmé » = `ETAT_RDV` Prévu / `STATUT_APPEL` RDV planifié ou RDV booke ; pages d'offre althoce.com à ajouter à `OFFER_URL_PREFIXES` (aujourd'hui : prise de RDV cal.com seulement).
 - Segments Brevo 7, 8, 9 : remplacer `OPT_IN = Vrai` par `MARKETING_STATUS est égal à CONSENT, B2B_ELIGIBLE` (même conditions sinon), vérifier les effectifs, puis `MARKETING_SEGMENTS_REVIEWED=true`.
 - Backfill du statut marketing des contacts historiques (à blanc puis `--apply`) : décision juridique sur les 1 772 contacts sans statut (`TO_REVIEW` par défaut).
