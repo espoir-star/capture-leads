@@ -8,6 +8,10 @@
  * 2. RDV confirmés : contacts modifiés depuis 3 h dont ETAT_RDV / STATUT_APPEL
  *    indique un RDV (config/scoring.ts) → événement « meeting_booked » (+25,
  *    une seule fois par contact) dans le journal, puis score.
+ * 3. Livraisons de guide restées en attente (after() interrompu, Brevo
+ *    indisponible) : reprises sans doublon (lib/sequences/delivery.ts).
+ * 4. Clics transactionnels d'hier et d'aujourd'hui relus dans le journal Brevo :
+ *    rattrape les webhooks abandonnés par Brevo, sans double comptage (clé unique).
  */
 
 import { createHash } from "node:crypto";
@@ -17,6 +21,8 @@ import { isIdempotencyDuplicate } from "@/lib/brevo/transactional";
 import { BREVO_DAILY_LIMIT, QUOTA_ALERT_REMAINING } from "@/config/scoring";
 import { REPLY_TO, SENDERS } from "@/config/senders";
 import { applyBehaviorScores } from "@/lib/scoring/apply";
+import { retryPendingDeliveries } from "@/lib/sequences/delivery";
+import { reconcileTransactionalClicks } from "@/lib/scoring/clicks";
 import { hasConfirmedMeeting, makeEvent } from "@/lib/scoring/behavior";
 import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
 import { bearerMatches } from "@/lib/security/bearer";
@@ -87,8 +93,10 @@ export async function POST(req: NextRequest) {
   const now = new Date();
   try {
     const quota = await checkQuota(now);
+    const deliveries = await retryPendingDeliveries(now);
     const meetings = ledgerConfigured() ? await syncMeetings(now) : "journal_non_configure";
-    return NextResponse.json({ ok: true, quota, meetings });
+    const clicks = ledgerConfigured() ? await reconcileTransactionalClicks(now) : "journal_non_configure";
+    return NextResponse.json({ ok: true, quota, deliveries, meetings, clicks });
   } catch (e) {
     console.error("Maintenance marketing :", e instanceof Error ? e.message : e);
     return NextResponse.json({ ok: false }, { status: 502 });

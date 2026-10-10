@@ -20,6 +20,7 @@ import type { AttributeValue } from "@/lib/brevo/api";
 import { isEmptyValue } from "@/lib/brevo/api";
 import {
   BEHAVIOR_POINTS,
+  BOT_CLICK_SECONDS,
   CLICK_CATEGORIES,
   GUIDE_URL_PATTERNS,
   HOT_LEAD_THRESHOLD,
@@ -95,6 +96,17 @@ export interface ClickCandidate {
   occurred_at: string;
   source: LedgerSource;
   ref: string;
+  /** email transactionnel : identifiant Brevo (heure d'envoi retrouvée au journal) */
+  messageId?: string;
+  /** heure d'envoi si connue (campagnes : ts_sent) */
+  sentAt?: string;
+}
+
+/** Clic trop proche de l'envoi pour être humain (BOT_CLICK_SECONDS). Heure d'envoi inconnue → compté. */
+export function isLikelyBotClick(c: Pick<ClickCandidate, "occurred_at" | "sentAt">): boolean {
+  if (!c.sentAt) return false;
+  const delta = Date.parse(c.occurred_at) - Date.parse(c.sentAt);
+  return Number.isFinite(delta) && delta >= 0 && delta < BOT_CLICK_SECONDS * 1000;
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
@@ -144,12 +156,16 @@ export function clickCandidate(raw: unknown, now: Date): ClickCandidate | null {
 
   const campId = str(o.camp_id);
   if (campId) {
-    return { email, category, keyParts: ["m", campId, email], occurred_at, source: "brevo_marketing", ref: `campagne:${campId}` };
+    const sent = Number(o.ts_sent);
+    return {
+      email, category, keyParts: ["m", campId, email], occurred_at, source: "brevo_marketing", ref: `campagne:${campId}`,
+      ...(Number.isFinite(sent) && sent > 0 && { sentAt: new Date(sent * 1000).toISOString() }),
+    };
   }
   const messageId = str(o["message-id"]) || str(o.messageId);
   if (messageId) {
     const tpl = str(o.template_id) || str(o.templateId);
-    return { email, category, keyParts: ["t", messageId], occurred_at, source: "brevo_transactional", ref: tpl ? `modele:${tpl}` : "transactionnel" };
+    return { email, category, keyParts: ["t", messageId], occurred_at, source: "brevo_transactional", ref: tpl ? `modele:${tpl}` : "transactionnel", messageId };
   }
   return null;
 }

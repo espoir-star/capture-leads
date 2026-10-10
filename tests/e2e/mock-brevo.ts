@@ -60,6 +60,8 @@ export interface MockState {
   journalDown: boolean;
   /** Comme le vrai Brevo : refuse une date de journal future (heure de Paris, horloge réelle) */
   journalStrictDates: boolean;
+  /** Journal des événements Brevo (GET /smtp/statistics/events), alimenté par /__stats */
+  statsEvents: Record<string, unknown>[];
   /** Faux Cloudflare Turnstile : ok | down | duplicate | invalid | internal */
   turnstile: string;
   /** Délai avant qu'un envoi apparaisse dans le journal */
@@ -68,7 +70,7 @@ export interface MockState {
 
 const emptyState = (): MockState => ({
   contacts: [], events: [], requests: [], emails: [], n8n: [], ledger: [], credits: 300, ledgerDown: false,
-  idemTtlMs: 30 * 60_000, clockOffsetMs: 0, dropResponses: 0, sendFailStatus: 0, journalDown: false, journalStrictDates: false, journalDelayMs: 0, turnstile: "ok",
+  idemTtlMs: 30 * 60_000, clockOffsetMs: 0, dropResponses: 0, sendFailStatus: 0, journalDown: false, journalStrictDates: false, journalDelayMs: 0, turnstile: "ok", statsEvents: [],
 });
 
 export const MOCK_API_KEY = "mock-key-e2e";
@@ -143,6 +145,10 @@ export function startMockBrevo(port: number) {
       if (typeof body.journalDown === "boolean") state.journalDown = body.journalDown;
       if (typeof body.journalStrictDates === "boolean") state.journalStrictDates = body.journalStrictDates;
       if (typeof body.turnstile === "string") state.turnstile = body.turnstile;
+      return send(res, 204);
+    }
+    if (url.pathname === "/__stats" && req.method === "POST") {
+      state.statsEvents = (body.events as Record<string, unknown>[]) ?? [];
       return send(res, 204);
     }
     if (url.pathname === "/__turnstile" && req.method === "POST") {
@@ -229,6 +235,10 @@ export function startMockBrevo(port: number) {
       if (drop) return void req.socket.destroy(); // email accepté, réponse perdue
       return send(res, 201, { messageId: email.messageId });
     }
+    if (url.pathname === "/v3/smtp/statistics/events" && req.method === "GET") {
+      const event = url.searchParams.get("event");
+      return send(res, 200, { events: state.statsEvents.filter((e) => !event || e.event === event) });
+    }
     if (url.pathname === "/v3/smtp/emails" && req.method === "GET") {
       if (state.journalDown) return send(res, 503, { code: "unavailable" });
       if (state.journalStrictDates) {
@@ -240,10 +250,12 @@ export function startMockBrevo(port: number) {
       }
       const email = url.searchParams.get("email");
       const tpl = url.searchParams.get("templateId");
+      const mid = url.searchParams.get("messageId");
       const visible = state.emails.filter(
         (e) =>
           (!email || e.to[0]?.email === email) &&
           (!tpl || String(e.templateId) === tpl) &&
+          (!mid || e.messageId === mid) &&
           (e.acceptedAt ?? 0) <= clock() - state.journalDelayMs
       );
       return send(res, 200, {

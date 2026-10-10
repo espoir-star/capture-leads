@@ -24,9 +24,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getContactByEmail, updateContactAttributes, blocklistMarketingContact } from "@/lib/brevo/server";
 import { emailStatusAfterBounce, parseWebhookEvent } from "@/lib/brevo/webhook";
-import { applyBehaviorScores } from "@/lib/scoring/apply";
-import { clickCandidate, toLedgerEvent, type ClickCandidate, type LedgerEvent } from "@/lib/scoring/behavior";
-import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
+import { clickCandidate, type ClickCandidate } from "@/lib/scoring/behavior";
+import { scoreClickCandidates } from "@/lib/scoring/clicks";
+import { ledgerConfigured } from "@/lib/scoring/ledger";
 import { logLead, maskEmail } from "@/lib/lead/log";
 import { isValidEmailSyntax } from "@/lib/validation/email";
 import { bearerMatches } from "@/lib/security/bearer";
@@ -65,29 +65,6 @@ async function handle(raw: unknown, clicks: ClickCandidate[]): Promise<string> {
   return "bounced";
 }
 
-/** Clics → journal n8n (dédoublonné) → score. Lève une erreur si le journal est injoignable. */
-async function scoreClicks(clicks: ClickCandidate[]): Promise<void> {
-  const ids = new Map<string, number | null>();
-  const events: LedgerEvent[] = [];
-  for (const c of clicks) {
-    if (!ids.has(c.email)) ids.set(c.email, (await getContactByEmail(c.email))?.id ?? null);
-    const id = ids.get(c.email);
-    if (id) events.push(toLedgerEvent(c, id));
-  }
-  if (!events.length) return;
-  const r = await recordEvents(events);
-  if (!r.ok) {
-    if (r.reason === "not_configured") return;
-    throw new Error(`Journal n8n indisponible (${r.reason}${r.status ? ` ${r.status}` : ""})`);
-  }
-  try {
-    await applyBehaviorScores(r.rows);
-  } catch (e) {
-    // Événements déjà journalisés : la passe horaire n8n recalculera
-    console.error("Scoring : écriture différée :", e instanceof Error ? e.message : e);
-  }
-}
-
 export async function POST(req: NextRequest) {
   const secret = process.env.BREVO_WEBHOOK_SECRET?.trim();
   if (!secret) return new NextResponse(null, { status: 404 });
@@ -111,7 +88,7 @@ export async function POST(req: NextRequest) {
   const clicks: ClickCandidate[] = [];
   try {
     for (const evt of events) results.push(await handle(evt, clicks));
-    if (clicks.length) await scoreClicks(clicks);
+    if (clicks.length) await scoreClickCandidates(clicks);
   } catch (e) {
     console.error("Webhook Brevo :", e instanceof Error ? e.message : e);
     return NextResponse.json({ ok: false, retry: true }, { status: 429, headers: { "Retry-After": "600" } });

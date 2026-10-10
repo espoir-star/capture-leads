@@ -7,6 +7,7 @@ import {
   clickCandidate,
   EVENT_KEY_RE,
   hasConfirmedMeeting,
+  isLikelyBotClick,
   makeEvent,
   planScoreUpdate,
   toLedgerEvent,
@@ -216,4 +217,25 @@ test("journal n8n : non configuré, lots, reprises sur 5xx, refus définitif, r�
 
   const denied = await recordEvents([ev], env, (async () => new Response("", { status: 403 })) as unknown as typeof fetch);
   assert.deepEqual(denied, { ok: false, reason: "rejected", status: 403 });
+});
+
+test("robots : clic < 15 s après l'envoi ignoré ; heure d'envoi inconnue → compté ; horloges incohérentes → compté", () => {
+  const sent = "2026-10-10T19:13:26.349Z";
+  assert.equal(isLikelyBotClick({ sentAt: sent, occurred_at: "2026-10-10T19:13:40.874Z" }), true, "14 s : cas réel relevé");
+  assert.equal(isLikelyBotClick({ sentAt: sent, occurred_at: "2026-10-10T19:14:00.000Z" }), false, "34 s");
+  assert.equal(isLikelyBotClick({ occurred_at: "2026-10-10T19:13:40.874Z" }), false);
+  assert.equal(isLikelyBotClick({ sentAt: sent, occurred_at: "2026-10-10T19:10:00.000Z" }), false);
+  const camp = clickCandidate({ event: "click", email: "a@b.fr", camp_id: 3, URL: "https://www.linkedin.com/x", ts_sent: 1791633600, ts_event: 1791633605 }, NOW)!;
+  assert.equal(isLikelyBotClick(camp), true, "campagne : ts_sent lu dans le webhook");
+});
+
+test("seuil HOT exact : 24 → pas d'alerte ; 25 → HOT_LEAD et alerte", () => {
+  const base = { FORM_SCORE: 15, BEHAVIOR_SCORE: 9, LEAD_SCORE: 24, LIFECYCLE_STAGE: "LEAD", EMAIL_STATUS: "PENDING" };
+  const at24 = planScoreUpdate(base, { behavior: 9 }, NOW);
+  assert.equal(at24.score, 24);
+  assert.equal(at24.hotAlert, false);
+  const at25 = planScoreUpdate(base, { behavior: 10 }, NOW);
+  assert.equal(at25.score, 25);
+  assert.equal(at25.hotAlert, true);
+  assert.equal(at25.attributes.LIFECYCLE_STAGE, "HOT_LEAD");
 });

@@ -11,8 +11,8 @@
         "height": 220,
         "width": 700
       },
-      "id": "4aada1cf-7ce4-46f3-bbd0-513c757a8f59",
-      "name": "Note da8b",
+      "id": "e76969d5-9ef1-4653-a67e-297582638a7d",
+      "name": "Note 692d",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -22,7 +22,7 @@
     },
     {
       "parameters": {},
-      "id": "9c06e543-3abb-4721-a573-5b879c6b97a0",
+      "id": "c484c5d9-0349-4cd0-b135-bf52593286be",
       "name": "Lancer après le webinar",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -36,13 +36,13 @@
         "assignments": {
           "assignments": [
             {
-              "id": "435bc217-76ea-4873-9ea6-81a11b5e898d",
+              "id": "e2d6fde8-ada5-4bc5-a7f1-5d56315f7223",
               "name": "webinarSlug",
               "value": "slug-du-webinar",
               "type": "string"
             },
             {
-              "id": "23e8e955-d8ff-4e56-9636-ca9acd41c343",
+              "id": "c4e30dd3-4b4b-42bc-80f0-f3dc6e315535",
               "name": "eventUrl",
               "value": "https://guide-gratuit-pi.vercel.app/api/sequences/event",
               "type": "string"
@@ -51,7 +51,7 @@
         },
         "options": {}
       },
-      "id": "b62e2811-54e6-4348-a7aa-c14f8f6fb77d",
+      "id": "00fa8e64-6ef6-4715-bb4d-98c61d50cf91",
       "name": "Config — Webinar",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -64,7 +64,7 @@
       "parameters": {
         "jsCode": "// À ADAPTER à la plateforme (Zoom, Livestorm, Teams…) : un item par inscrit,\n// { email, attended: true|false }. Laisser vide tant qu'aucun webinar réel n'a eu lieu.\nconst cfg = $('Config — Webinar').first().json;\nconst participants = []; // ← brancher ici l'export ou l'API de la plateforme\nreturn participants.map((p) => ({ json: {\n  email: String(p.email).trim().toLowerCase(),\n  event: p.attended ? 'webinar_attended' : 'webinar_no_show',\n  properties: { webinar: cfg.webinarSlug },\n} }));"
       },
-      "id": "f0aba917-cc47-44a7-bdae-e0481d996660",
+      "id": "84d144ea-639d-41a7-8956-d3f5db8838dd",
       "name": "Lister les présences (à adapter)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -92,7 +92,7 @@
           "timeout": 20000
         }
       },
-      "id": "cac6663c-6bab-4ae6-8edd-333715dbe500",
+      "id": "ab383bc8-f781-4632-b6e7-2bc4e404b4c7",
       "name": "Enregistrer l'événement Brevo (Vercel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,

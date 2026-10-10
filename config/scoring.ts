@@ -65,6 +65,13 @@ export const MEETING_CONFIRMED: Readonly<Record<string, readonly string[]>> = {
   LIFECYCLE_STAGE: ["MEETING_BOOKED"],
 };
 
+/**
+ * Clic moins de N secondes après l'envoi : robot (antivirus de messagerie,
+ * Microsoft Safe Links… qui testent tous les liens à la réception) → non compté.
+ * Relevé réel du 10/10/2026 : un clic 14 s après l'envoi d'un guide.
+ */
+export const BOT_CLICK_SECONDS = 15;
+
 /** Statut d'appel qui bloque l'alerte « lead chaud » (le score reste calculé) */
 export const NO_CALL_STATUSES: readonly string[] = ["Ne plus appeler"];
 

@@ -77,8 +77,11 @@ export async function deliverGuide(opts: {
   slug: string;
   emailStatus: unknown;
   now: Date;
+  /** Date de la demande (reprise d'une livraison en attente) : même clé d'envoi que l'envoi immédiat */
+  requestedAt?: Date;
 }): Promise<SendResult> {
   const { seq, contactId, email, slug, now } = opts;
+  const requested = opts.requestedAt ?? now;
   const id = templateId(seq.delivery);
   if (id === null) return { status: "error", httpStatus: 0, code: "template_missing" };
   const confirm = confirmUrl(email, opts.emailStatus);
@@ -87,8 +90,8 @@ export async function deliverGuide(opts: {
     templateId: id,
     params: { ...baseParams(email, slug), ...(confirm && { CONFIRM_URL: confirm }) },
     tags: [`seq:${seq.id}`, `seq:${seq.id}:delivery`, `guide:${slug}`],
-    sendKey: deliverySendKey(seq.id, contactId, now),
-    since: new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`),
+    sendKey: deliverySendKey(seq.id, contactId, requested),
+    since: new Date(`${requested.toISOString().slice(0, 10)}T00:00:00Z`),
     now,
     oneClickUnsubscribeUrl: unsubscribeLinks(email)?.oneClick,
   });

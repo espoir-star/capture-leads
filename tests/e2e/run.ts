@@ -369,6 +369,13 @@ async function main() {
     const s2 = await state();
     assert.equal(s2.emails.length, 1, "même jour : pas de 2e email");
     assert.equal(s2.n8n.length, 1, "déjà dans la liste : pas de 2e séquence");
+    // Tâche de livraison durable : écrite avec le contact, soldée après l'envoi ; la reprise horaire n'a rien à faire
+    const c = s2.contacts.find((x) => x.email === "claire.martin.e2e@gmail.com")!;
+    assert.equal(c.attributes.GUIDE_DELIVERY_STATUS, "SENT");
+    assert.match(String(c.attributes.GUIDE_DELIVERY_REF), /^guide-12-cas-ec-v1\|12-cas-usage-experts-comptables\|/);
+    const m = await post("/api/marketing/maintenance", {}, { Authorization: `Bearer ${SEQUENCE_SECRET}` });
+    assert.equal(m.body.deliveries.sent, 0);
+    assert.equal((await state()).emails.length, 1);
   });
 
   await scenario("S2 · opposant sur un guide encore en automation Brevo : hors liste, guide livré en transactionnel", async () => {
@@ -708,6 +715,42 @@ async function main() {
     s = await state();
     assert.equal(s.emails.length, 0);
     await configure({ turnstile: "ok" });
+  });
+
+  await scenario("SC7 · clic de robot (< 15 s après l'envoi) non compté ; clic humain compté", async () => {
+    await seed({ email: "robot@cabinet.fr", attributes: { LEAD_SCORE: 2 } });
+    const sent = Math.floor(Date.now() / 1000) - 3600;
+    const r = await hook([
+      { event: "click", email: "robot@cabinet.fr", camp_id: 51, URL: "https://cal.com/althoce-conseil-4ncbuz/30min", ts_sent: sent, ts_event: sent + 4 },
+      { event: "click", email: "robot@cabinet.fr", camp_id: 52, URL: "https://www.linkedin.com/posts/x", ts_sent: sent, ts_event: sent + 600 },
+    ]);
+    assert.equal(r.status, 200);
+    const s = await state();
+    assert.equal(s.ledger.length, 1, "seul le clic humain est journalisé");
+    assert.equal(s.contacts[0].attributes.BEHAVIOR_SCORE, 3);
+  });
+
+  await scenario("SC8 · webhook abandonné par Brevo : rattrapé par la tâche horaire (journal des clics), puis rejeu sans double comptage", async () => {
+    await seed({ email: "perdu@cabinet.fr", attributes: { LEAD_SCORE: 5 } });
+    const sentAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const clickAt = new Date(Date.now() - 3_600_000).toISOString();
+    await fetch(`${MOCK}/__stats`, { method: "POST", body: JSON.stringify({ events: [
+      { event: "requests", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: sentAt, templateId: 36 },
+      { event: "clicks", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: clickAt, templateId: 36, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+      { event: "clicks", email: "espoir@contact.althoce.com", messageId: "<m-interne@relay>", date: clickAt, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    ] }) });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const m = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(m.status, 200, JSON.stringify(m.body));
+    assert.equal(m.body.clicks.inserted, 1, "clic rattrapé ; email interne ignoré");
+    let c = (await contactOf("perdu@cabinet.fr"))!;
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
+    // Brevo finit par livrer le webhook : même clé, aucun double comptage
+    await hook(click("perdu@cabinet.fr", "<m-perdu@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min"));
+    await post("/api/marketing/maintenance", {}, auth);
+    c = (await contactOf("perdu@cabinet.fr"))!;
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
+    assert.equal((await state()).ledger.length, 1);
   });
 
   await scenario("Brevo en panne : message clair, réessai possible", async () => {
