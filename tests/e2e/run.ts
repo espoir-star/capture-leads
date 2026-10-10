@@ -410,6 +410,18 @@ async function main() {
     assert.equal(c.emailBlacklisted, true);
   });
 
+  await scenario("S5 · alerte n8n : secret exigé, email envoyé à la boîte de réponse, une seule fois par exécution", async () => {
+    const alert = { workflow: "Marketing — Séquences (moteur) — v1", executionId: "123", node: "Exécuter l'étape", message: "HTTP 502" };
+    assert.equal((await post("/api/sequences/alert", alert)).status, 401);
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    assert.equal((await post("/api/sequences/alert", alert, auth)).status, 200);
+    assert.equal((await post("/api/sequences/alert", alert, auth)).status, 200, "même exécution : pas de 2e email");
+    const s = await state();
+    assert.equal(s.emails.length, 1);
+    assert.equal(s.emails[0].to[0].email, "espoir@contact.althoce.com");
+    assert.ok(s.emails[0].tags.includes("alerte-sequences"));
+  });
+
   await scenario("54 · confirmation dédiée → VERIFIED ; 2e clic sans effet ; jeton falsifié refusé", async () => {
     await post("/api/lead", lead());
     const c = (await contactOf("claire.martin.e2e@gmail.com"))!;

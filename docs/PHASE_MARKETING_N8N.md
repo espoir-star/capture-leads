@@ -64,15 +64,26 @@ n8n « Althoce · Séquences (moteur) » : attend la date → POST /api/sequence
 
 Garde-fou de build : en Production, `ALTHOCE_SEQUENCE_GUIDES` non vide sans les trois variables n8n → build refusé.
 
-### Mise en place n8n (instance existante, rien d'existant modifié)
+### Mise en place n8n (instance existante `n8n.srv1242605.hstgr.cloud`, rien d'existant modifié)
 
-1. Credentials (n8n → Credentials → Header Auth), valeurs saisies par vous dans n8n :
-   - `Althoce · Vercel → n8n (Bearer)` : Name `Authorization`, Value `Bearer <N8N_WEBHOOK_TOKEN>`
-   - `Althoce · n8n → Vercel (Bearer)` : Name `Authorization`, Value `Bearer <SEQUENCE_API_SECRET>`
-2. Importer `n8n/althoce-sequences.json` (Workflows → Import from file), associer les deux credentials.
-3. L'URL du nœud « Exécuter l'étape (Vercel) » pointe vers la Production. La Preview étant protégée par l'authentification Vercel, le test réel se fait **en Production en mode QA** (§ 4), sans secret de contournement.
-4. Activer le workflow, copier l'URL **Production** du webhook → `N8N_SEQUENCE_WEBHOOK_URL` (Vercel).
-5. Paramètres du workflow → Error workflow : votre workflow d'alerte existant (une étape bloquée lève « Séquence Althoce bloquée »).
+Workflows créés par API (inactifs, aucun secret ; sources dans `n8n/`, conventions de `règle du jeu - automatisation n8n.md`) :
+
+| Workflow | Rôle |
+| --- | --- |
+| `Marketing — Séquences guides et webinars (moteur) — v1` (`PLyOhSt5zreUoBKW`) | webhook d'inscription → attente → `/api/sequences/step` → boucle ; Error Workflow = alertes |
+| `Marketing — Alertes séquences — v1` (`XDp4BEtctA5ogbDg`) | Error Trigger → `/api/sequences/alert` → email à `espoir@contact.althoce.com` (la clé Brevo reste sur Vercel) |
+| `Webinar — Présences vers Brevo — v1` (`77IigBEDaaGro2Xa`) | modèle manuel : présences / absences → `/api/sequences/event` |
+
+Boucle validée dans n8n le 10/10/2026 avec un faux point d'entrée Vercel : exécution réussie, 2 attentes, 2 appels, décisions « attendre » puis « terminé » (workflows de test supprimés ensuite).
+
+**À faire par vous (secrets : jamais dans le chat, jamais dans Git)** :
+1. Générer deux jetons dans votre terminal : `openssl rand -hex 32` (deux fois).
+2. n8n → Credentials → New → Header Auth :
+   - `Althoce · Vercel → n8n (Bearer)` : Name `Authorization`, Value `Bearer <jeton 1>`
+   - `Althoce · n8n → Vercel (Bearer)` : Name `Authorization`, Value `Bearer <jeton 2>`
+3. Rattacher : « Recevoir l'inscription (Vercel) » → credential 1 ; « Exécuter l'étape (Vercel) », « Envoyer l'alerte (Vercel) », « Enregistrer l'événement Brevo (Vercel) » → credential 2.
+4. Vercel (Production, au moment du test QA) : `N8N_WEBHOOK_TOKEN` = jeton 1, `SEQUENCE_API_SECRET` = jeton 2, `N8N_SEQUENCE_WEBHOOK_URL` = `https://n8n.srv1242605.hstgr.cloud/webhook/althoce-sequences`. Copier aussi les deux jetons dans `althoce-ressources/.env` (non commité) pour les tests locaux.
+5. Activer « Marketing — Séquences… » et « Marketing — Alertes séquences » seulement au test QA (§ 4).
 
 ## 4. Pilote : `12-cas-usage-experts-comptables`
 

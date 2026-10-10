@@ -1,34 +1,81 @@
 {
-  "name": "Althoce · Webinar · Présences → Brevo (modèle)",
+  "name": "Webinar — Présences vers Brevo — v1",
+  "settings": {
+    "executionOrder": "v1"
+  },
   "nodes": [
     {
+      "parameters": {
+        "content": "## Webinar — Présences vers Brevo — v1\nAprès un webinar : présences / absences → événements Brevo (webinar_attended / webinar_no_show) via Vercel (/api/sequences/event), pour le scoring et le suivi commercial. Les rappels et le replay sont envoyés par le moteur de séquences.\n\n**Avant usage** : renseigner le slug dans « Config — Webinar », brancher la source des présences, rattacher « Althoce · n8n → Vercel (Bearer) ».",
+        "height": 220,
+        "width": 700
+      },
+      "id": "0b40b6d4-96b1-44d1-a353-9c2b0ea0b45a",
+      "name": "Note cdc4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -60
+      ]
+    },
+    {
       "parameters": {},
-      "id": "bc8d362c-b82e-4bb0-975b-6bc1bbfc5469",
+      "id": "e320639f-d0c2-4662-9b6d-7116d850da54",
       "name": "Lancer après le webinar",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
         0,
-        300
+        240
       ]
     },
     {
       "parameters": {
-        "jsCode": "// À ADAPTER à la plateforme (Zoom, Livestorm, Teams…) : un item par inscrit.\n// Exemple attendu : [{ email, attended: true|false }]. Brancher ici l'export CSV\n// ou l'API de la plateforme ; laisser vide tant qu'aucun webinar réel n'a eu lieu.\nconst webinar = 'slug-du-webinar'; // = clé dans config/webinars.ts\nconst participants = []; // ← remplir\nreturn participants.map((p) => ({\n  json: { email: String(p.email).trim().toLowerCase(), event: p.attended ? 'webinar_attended' : 'webinar_no_show', properties: { webinar } },\n}));"
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1dd4a114-cca0-4d7f-88de-540374804c14",
+              "name": "webinarSlug",
+              "value": "slug-du-webinar",
+              "type": "string"
+            },
+            {
+              "id": "4a1286d1-f072-4619-907c-4656f069ef7e",
+              "name": "eventUrl",
+              "value": "https://guide-gratuit-pi.vercel.app/api/sequences/event",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
       },
-      "id": "0ba1c914-8379-495d-84cb-03399af85121",
-      "name": "Présences (à adapter)",
+      "id": "39b13e15-a34a-4fcd-92c0-bff34fb99922",
+      "name": "Config — Webinar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// À ADAPTER à la plateforme (Zoom, Livestorm, Teams…) : un item par inscrit,\n// { email, attended: true|false }. Laisser vide tant qu'aucun webinar réel n'a eu lieu.\nconst cfg = $('Config — Webinar').first().json;\nconst participants = []; // ← brancher ici l'export ou l'API de la plateforme\nreturn participants.map((p) => ({ json: {\n  email: String(p.email).trim().toLowerCase(),\n  event: p.attended ? 'webinar_attended' : 'webinar_no_show',\n  properties: { webinar: cfg.webinarSlug },\n} }));"
+      },
+      "id": "4fec5d93-b908-46e1-8c59-b7a8ec621ab4",
+      "name": "Lister les présences (à adapter)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
-        300
+        440,
+        240
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://guide-gratuit-pi.vercel.app/api/sequences/event",
+        "url": "={{ $('Config — Webinar').first().json.eventUrl }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -44,20 +91,14 @@
           "timeout": 20000
         }
       },
-      "id": "afafc7c7-57e7-484b-a201-44a5784a469e",
-      "name": "Événement Brevo (Vercel)",
+      "id": "8d1fac1b-b897-4da5-bba4-13f2d6901235",
+      "name": "Enregistrer l'événement Brevo (Vercel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        440,
-        300
+        660,
+        240
       ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "",
-          "name": "Althoce · n8n → Vercel (Bearer)"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
@@ -68,32 +109,34 @@
       "main": [
         [
           {
-            "node": "Présences (à adapter)",
+            "node": "Config — Webinar",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Présences (à adapter)": {
+    "Config — Webinar": {
       "main": [
         [
           {
-            "node": "Événement Brevo (Vercel)",
+            "node": "Lister les présences (à adapter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lister les présences (à adapter)": {
+      "main": [
+        [
+          {
+            "node": "Enregistrer l'événement Brevo (Vercel)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     }
-  },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [],
-  "pinData": {},
-  "meta": {
-    "templateCredsSetupCompleted": false
   }
 }

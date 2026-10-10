@@ -1,0 +1,96 @@
+{
+  "name": "Marketing — Alertes séquences — v1",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Marketing — Alertes séquences — v1\nError Workflow des séquences Althoce : toute erreur du moteur envoie un email à espoir@contact.althoce.com via Vercel (/api/sequences/alert → Brevo). La clé Brevo reste sur Vercel.\n\n**Credential à rattacher** sur « Envoyer l'alerte (Vercel) » : Header Auth « Althoce · n8n → Vercel (Bearer) ».",
+        "height": 220,
+        "width": 620
+      },
+      "id": "82855670-bb82-4c9a-a608-3cc48247d937",
+      "name": "Note ec9c",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -60
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fb7dfcaf-d220-40b9-8289-1b70823e18ef",
+      "name": "Capter l'erreur",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Données de l'Error Trigger → message d'alerte (aucune donnée personnelle de prospect).\nconst e = $json.execution ?? {};\nreturn [{ json: {\n  workflow: $json.workflow?.name ?? 'inconnu',\n  executionId: e.id ?? '',\n  node: e.lastNodeExecuted ?? '',\n  message: e.error?.message ?? 'erreur inconnue',\n  url: e.url ?? '',\n} }];"
+      },
+      "id": "979fb38f-a1ec-4c66-ae99-667698d361e9",
+      "name": "Préparer l'alerte",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://guide-gratuit-pi.vercel.app/api/sequences/alert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "6327f4ef-68f4-465b-bbce-271f335504bb",
+      "name": "Envoyer l'alerte (Vercel)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        240
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Capter l'erreur": {
+      "main": [
+        [
+          {
+            "node": "Préparer l'alerte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer l'alerte": {
+      "main": [
+        [
+          {
+            "node": "Envoyer l'alerte (Vercel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
