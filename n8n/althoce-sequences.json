@@ -7,8 +7,8 @@
         "height": 340,
         "width": 760
       },
-      "id": "77f18f42-8c74-4730-80bf-69d56d999272",
-      "name": "Note 1a4d",
+      "id": "fa29f516-93c4-4bb5-a391-24cc84c72367",
+      "name": "Note b1ac",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -23,8 +23,8 @@
         "width": 520,
         "color": 5
       },
-      "id": "70af9db0-ba8d-4f08-86ad-d78e9159d3a1",
-      "name": "Note ae87",
+      "id": "4b1bcb29-05db-478c-b548-8adf35570857",
+      "name": "Note d055",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -40,7 +40,7 @@
         "responseMode": "onReceived",
         "options": {}
       },
-      "id": "e5fb8cdb-7be9-48fc-8ad5-e05e75819c98",
+      "id": "3c8bef8b-ca5e-4eff-bca7-988b9622d8cf",
       "name": "Recevoir l'inscription (Vercel)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
@@ -48,26 +48,32 @@
         0,
         300
       ],
-      "webhookId": "8421c7b8-c9ae-483e-831d-29739af59636"
+      "webhookId": "8f339f1d-6844-4b01-986c-9a33f0548e0e",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "jAWCiiyeBvBuTS00",
+          "name": "Althoce · Vercel → n8n (Bearer)"
+        }
+      }
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "41f44c14-175a-4cba-866c-4cb5993338d5",
+              "id": "05e28914-7066-44de-99e3-3df87e03a29a",
               "name": "stepUrl",
               "value": "https://guide-gratuit-pi.vercel.app/api/sequences/step",
               "type": "string"
             },
             {
-              "id": "c9d7f45f-825d-4767-8f73-a18c96d3d867",
+              "id": "dc7c7581-1ee8-4f03-a1a0-a6b311d484b7",
               "name": "maxAttempts",
               "value": 48,
               "type": "number"
             },
             {
-              "id": "075b829a-9a8b-4a90-98bc-5b7b22c18495",
+              "id": "9903930b-5089-4f22-a5be-573e7c9711dc",
               "name": "retryDelayMinutes",
               "value": 30,
               "type": "number"
@@ -77,7 +83,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "8a9d70f8-ad64-410c-a792-6c7f1375c406",
+      "id": "354af455-706c-470b-997a-863312aa68e9",
       "name": "Config — Paramètres des séquences",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -90,7 +96,7 @@
       "parameters": {
         "jsCode": "// Payload envoyé par Vercel (lib/sequences/n8n.ts) : aucune donnée personnelle.\nconst out = [];\nfor (const item of $input.all()) {\n  const b = item.json.body ?? {};\n  const ok =\n    typeof b.enrollmentId === 'string' && b.enrollmentId.startsWith('e1.') && b.enrollmentId.length <= 600 &&\n    typeof b.stepId === 'string' && b.stepId.length > 0 && b.stepId.length <= 60 &&\n    !Number.isNaN(Date.parse(b.at));\n  if (!ok) throw new Error('Inscription invalide : enrollmentId, stepId ou at manquant');\n  out.push({ json: { enrollmentId: b.enrollmentId, stepId: b.stepId, at: b.at, attempts: 0 } });\n}\nreturn out;"
       },
-      "id": "3fdef0a3-23c4-4f50-ba0c-462fb620b3e2",
+      "id": "b0ec7bff-bf84-45e6-834f-73ed536a9660",
       "name": "Valider l'inscription",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -104,7 +110,7 @@
         "resume": "specificTime",
         "dateTime": "={{ $json.at }}"
       },
-      "id": "7eda357d-5ca3-45ab-af6d-eaaa38b8ca40",
+      "id": "dcfc9994-2d72-4a88-99d4-dff946f74d88",
       "name": "Attendre l'étape",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
@@ -112,7 +118,7 @@
         660,
         300
       ],
-      "webhookId": "a7c9b084-3aff-4bdf-a7ff-691ec5ffe5af"
+      "webhookId": "af15eb32-1e62-43d2-80f0-22706f82d329"
     },
     {
       "parameters": {
@@ -133,7 +139,7 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
-      "id": "e733da33-8d20-46eb-8ab0-bc4f1b951c33",
+      "id": "070d087a-a907-4cb3-b8e8-a94b9b99c3f7",
       "name": "Exécuter l'étape (Vercel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -141,13 +147,19 @@
         880,
         300
       ],
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Fvh73Wb5raBHpxBa",
+          "name": "Althoce · n8n → Vercel (Bearer)"
+        }
+      }
     },
     {
       "parameters": {
         "jsCode": "// Réponse de /api/sequences/step (lib/sequences/run.ts) : Vercel décide, n8n ne fait qu'attendre.\nconst cfg = $('Config — Paramètres des séquences').first().json;\nconst r = $json;\nconst body = r && typeof r.body === 'object' && r.body !== null ? r.body : {};\nconst code = typeof r.statusCode === 'number' ? r.statusCode : 0; // 0 = réseau / timeout\nlet prev = {};\ntry { prev = $(\"Attendre l'étape\").last().json; } catch (e) { prev = {}; }\nconst enrollmentId = body.enrollmentId ?? prev.enrollmentId;\nconst stepId = body.requestedStepId ?? prev.stepId;\nconst attempts = Number(prev.attempts ?? 0);\n\nif (code === 200 && body.action === 'wait' && body.stepId && body.at) {\n  return [{ json: { route: 'wait', enrollmentId, stepId: body.stepId, at: body.at, attempts: 0 } }];\n}\nif (code === 200 && body.action === 'done') {\n  return [{ json: { route: 'done', enrollmentId, stepId, reason: body.reason ?? 'done' } }];\n}\n// Vercel ou Brevo indisponible : nouvel essai plus tard (sans risque : idempotence Brevo)\nconst retryable = code === 0 || code === 429 || code >= 500;\nif (retryable && attempts < cfg.maxAttempts) {\n  const at = new Date(Date.now() + cfg.retryDelayMinutes * 60 * 1000).toISOString();\n  return [{ json: { route: 'wait', enrollmentId, stepId, at, attempts: attempts + 1 } }];\n}\nreturn [{ json: { route: 'error', enrollmentId, stepId, statusCode: code, reason: body.reason ?? body.action ?? 'unknown' } }];"
       },
-      "id": "50dfa36d-2658-44a2-add0-b284b5f3b8fb",
+      "id": "6d62ea7d-90ee-463c-b094-de2d6741f172",
       "name": "Décider la suite",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -167,7 +179,7 @@
           },
           "conditions": [
             {
-              "id": "07901d84-fc5d-4dbe-8395-0c4b217be1bc",
+              "id": "7344535f-5a66-4527-a942-c63144cf9d9b",
               "leftValue": "={{ $json.route }}",
               "rightValue": "wait",
               "operator": {
@@ -180,7 +192,7 @@
         },
         "options": {}
       },
-      "id": "9b8d4c66-471b-40ab-8b2f-2375a4ae1146",
+      "id": "0e0cd991-f5c1-4087-a311-353adf12240c",
       "name": "Étape suivante ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -200,7 +212,7 @@
           },
           "conditions": [
             {
-              "id": "e1a1830b-729d-4483-a7f0-f85a75f1b937",
+              "id": "bfd383f4-c1c5-4c33-8165-c46f61081bdb",
               "leftValue": "={{ $json.route }}",
               "rightValue": "error",
               "operator": {
@@ -213,7 +225,7 @@
         },
         "options": {}
       },
-      "id": "ba8036d3-5b10-40fc-9d92-bfdf04d4b307",
+      "id": "8e086c9b-9cb9-40ca-876a-de9e73fd1d34",
       "name": "Erreur définitive ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -226,7 +238,7 @@
       "parameters": {
         "errorMessage": "={{ 'Séquence Althoce bloquée (étape ' + $json.stepId + ', HTTP ' + $json.statusCode + ', ' + $json.reason + ')' }}"
       },
-      "id": "0e20c167-2fb6-46dc-9c3a-22b99632bd75",
+      "id": "4f134ad6-f50b-4735-968a-e1fdc04daae4",
       "name": "Signaler la séquence bloquée",
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
@@ -237,7 +249,7 @@
     },
     {
       "parameters": {},
-      "id": "9ad58a64-dbca-4750-b897-968586d5278e",
+      "id": "8870fb4c-3cb0-4a40-a4e7-04bad550c0a4",
       "name": "Terminer la séquence",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
