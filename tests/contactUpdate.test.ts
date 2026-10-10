@@ -41,7 +41,6 @@ test("scénario pilote : nouveau contact (test 65)", () => {
     SMS: "+33645871239",
     RESSOURCE: "12-cas-usage-experts-comptables",
     SOURCE_INSCRIPTION: "page-capture",
-    DATE_OPTIN: "2026-10-08T09:00:00.000Z",
     VERTICAL: "FINANCE",
     SUBSECTOR: "EXPERTISE_COMPTABLE",
     BESOIN_PRIORITAIRE: "DEPLOYER_AGENT_IA",

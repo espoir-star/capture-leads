@@ -6,7 +6,8 @@
  * Règles :
  *  - identité (PRENOM, NOM, SMS) et intention (BESOIN, HORIZON) : dernière saisie
  *  - RESSOURCE : dernière ressource demandée (l'historique est dans les listes)
- *  - SOURCE_INSCRIPTION, DATE_OPTIN : renseignés seulement s'ils sont vides
+ *  - SOURCE_INSCRIPTION : renseigné si vide. DATE_OPTIN historique conservé,
+ *    jamais créé en absence de consentement explicite.
  *  - VERTICAL / SUBSECTOR : renseignés si vides (ou si VERTICAL = GENERAL)
  *  - UTM_* + SOURCE_CONTENT_URL : first touch, écrits UNIQUEMENT si aucun
  *    UTM n'existe déjà sur le contact (bloc indivisible)

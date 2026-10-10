@@ -132,7 +132,7 @@ async function main() {
       PRENOM: "Claire",
       NOM: "Martin",
       SOURCE_INSCRIPTION: "page-capture",
-      OPT_IN: false,
+      MARKETING_STATUS: "B2B_ELIGIBLE",
     };
     for (const [k, v] of Object.entries(expected)) assert.equal(a[k], v, k);
     assert.match(String(a.EMAIL_CONFIRM_TOKEN), /^v1\./, "lien de confirmation prêt pour l'email de bienvenue");
@@ -270,21 +270,62 @@ async function main() {
     assert.equal(codes[6], 429);
   });
 
-  await scenario("D · newsletter cochée : OPT_IN = true (sans lien avec les cookies)", async () => {
-    const r = await post("/api/lead", lead({ optIn: true }));
+  await scenario("D · nouveau prospect métier informé : B2B éligible et sans OPT_IN artificiel", async () => {
+    const r = await post("/api/lead", lead());
     assert.equal(r.status, 200);
-    assert.equal((await contactOf("claire.martin.e2e@gmail.com"))!.attributes.OPT_IN, true);
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.equal(c.attributes.MARKETING_STATUS, "B2B_ELIGIBLE");
+    assert.equal(c.emailBlacklisted, false);
+    assert.equal("OPT_IN" in c.attributes, false);
   });
 
-  await scenario("E · newsletter non cochée : OPT_IN = false, guide délivré quand même", async () => {
-    const r = await post("/api/lead", lead({ optIn: false }));
+  await scenario("E · opposition dès la capture : guide accessible, mais campagnes bloquées", async () => {
+    const r = await post("/api/lead", lead({ marketingOpposition: true }));
     assert.equal(r.status, 200);
-    assert.ok(r.body.leadRef, "accès au guide");
-    assert.equal((await contactOf("claire.martin.e2e@gmail.com"))!.attributes.OPT_IN, false);
-    // un OPT_IN = true existant n'est pas retiré par une case non cochée
+    assert.ok(r.body.leadRef, "accès au guide indépendamment de l'opposition");
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal(c.emailBlacklisted, true);
+
+    // Une nouvelle soumission ne peut pas annuler l'opposition.
+    const again = await post("/api/lead", lead({ marketingOpposition: false }));
+    assert.equal(again.status, 200);
+    const after = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    assert.equal(after.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal(after.emailBlacklisted, true);
+  });
+
+  await scenario("E2 · ancien consentement préservé, ancien refus non converti", async () => {
     await seed({ email: "abonne@cabinet.fr", attributes: { OPT_IN: true } });
-    await post("/api/lead", lead({ email: "abonne@cabinet.fr", tel: "06 45 87 12 38", optIn: false }));
-    assert.equal((await contactOf("abonne@cabinet.fr"))!.attributes.OPT_IN, true);
+    await post("/api/lead", lead({ email: "abonne@cabinet.fr", tel: "06 45 87 12 38" }));
+    const subscribed = (await contactOf("abonne@cabinet.fr"))!;
+    assert.equal(subscribed.attributes.OPT_IN, true);
+    assert.equal(subscribed.attributes.MARKETING_STATUS, "CONSENT");
+
+    await seed({ email: "refus@cabinet.fr", attributes: { OPT_IN: false } });
+    await post("/api/lead", lead({ email: "refus@cabinet.fr", tel: "06 45 87 12 37" }));
+    const refused = (await contactOf("refus@cabinet.fr"))!;
+    assert.equal(refused.attributes.MARKETING_STATUS, "TO_REVIEW");
+    assert.equal(refused.attributes.OPT_IN, false);
+  });
+
+  await scenario("E3 · lien de désinscription : POST confirmé, idem au 2e clic, pas de re-opt-in", async () => {
+    await post("/api/lead", lead());
+    const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
+    const token = String(c.attributes.MARKETING_OPTOUT_TOKEN);
+    assert.match(token, /^m1\./);
+    const landing = await fetch(`${APP}/desinscription?t=${encodeURIComponent(token)}`);
+    assert.equal(landing.status, 200, "GET est uniquement consultatif");
+    assert.equal((await contactOf(c.email))!.emailBlacklisted, false);
+
+    const first = await post("/api/marketing/unsubscribe", { t: token });
+    assert.equal(first.status, 200);
+    assert.equal((await contactOf(c.email))!.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal((await contactOf(c.email))!.emailBlacklisted, true);
+    const writes = (await state()).requests.filter((x) => x === `PUT /v3/contacts/${c.id}`).length;
+    assert.equal((await post("/api/marketing/unsubscribe", { t: token })).status, 200);
+    assert.equal((await state()).requests.filter((x) => x === `PUT /v3/contacts/${c.id}`).length, writes);
+    assert.equal((await post("/api/marketing/unsubscribe", { t: "m1.bad" })).status, 400);
   });
 
   await scenario("54 · confirmation dédiée → VERIFIED ; 2e clic sans effet ; jeton falsifié refusé", async () => {
@@ -292,15 +333,15 @@ async function main() {
     const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
     assert.equal(c.attributes.EMAIL_STATUS, "PENDING");
     const t = String(c.attributes.EMAIL_CONFIRM_TOKEN);
-    const first = await post("/api/email/confirm", { t, optIn: true });
+    const first = await post("/api/email/confirm", { t });
     assert.equal(first.status, 200);
     assert.equal(first.body.status, "verified");
-    const second = await post("/api/email/confirm", { t, optIn: true });
+    const second = await post("/api/email/confirm", { t });
     assert.equal(second.body.status, "already_verified");
     await sleep(300);
     const s = await state();
     assert.equal(s.contacts[0].attributes.EMAIL_STATUS, "VERIFIED");
-    assert.equal(s.contacts[0].attributes.OPT_IN, true, "case newsletter de la page de confirmation");
+    assert.equal("OPT_IN" in s.contacts[0].attributes, false, "confirmer l'email ne crée pas de consentement");
     assert.equal(s.events.filter((e) => e.event_name === "email_confirmed").length, 1, "un seul événement");
     const forged = await post("/api/email/confirm", { t: t.slice(0, -3) + "abc" });
     assert.equal(forged.status, 400);
@@ -312,6 +353,17 @@ async function main() {
     const r = await post("/api/webhooks/brevo", { event: "click", email: "lecteur@cabinet.fr", URL: "https://althoce.com/blog" }, auth);
     assert.deepEqual(r.body.results, ["ignored_click"]);
     assert.equal((await contactOf("lecteur@cabinet.fr"))!.attributes.EMAIL_STATUS, "PENDING");
+  });
+
+  await scenario("54b · webhook Brevo unsubscribe → opposition marketing", async () => {
+    await seed({ email: "stop@cabinet.fr", attributes: { MARKETING_STATUS: "CONSENT" } });
+    const auth = { Authorization: `Bearer ${WEBHOOK_SECRET}` };
+    const evt = { event: "unsubscribe", email: "stop@cabinet.fr" };
+    assert.equal((await post("/api/webhooks/brevo", evt)).status, 401);
+    assert.deepEqual((await post("/api/webhooks/brevo", evt, auth)).body.results, ["marketing_opposed"]);
+    assert.deepEqual((await post("/api/webhooks/brevo", evt, auth)).body.results, ["unchanged"]);
+    assert.equal((await contactOf("stop@cabinet.fr"))!.emailBlacklisted, true);
+    assert.equal((await contactOf("stop@cabinet.fr"))!.attributes.MARKETING_STATUS, "OPPOSED");
   });
 
   await scenario("54 · hard bounce → BOUNCED ; reçu deux fois → une seule écriture ; secret exigé", async () => {

@@ -86,6 +86,7 @@ export function startMockBrevo(port: number) {
       const c = find(m[1], url.searchParams.get("identifierType"));
       if (!c) return send(res, 404, { code: "document_not_found" });
       merge(c, body.attributes as Record<string, unknown>);
+      if (typeof body.emailBlacklisted === "boolean") c.emailBlacklisted = body.emailBlacklisted;
       return send(res, 204);
     }
     if (url.pathname === "/v3/contacts" && req.method === "POST") {
@@ -99,11 +100,13 @@ export function startMockBrevo(port: number) {
       if (existing) {
         if (!body.updateEnabled) return send(res, 400, { code: "duplicate_parameter", message: "Contact already exist" });
         merge(existing, attrs);
+        if (typeof body.emailBlacklisted === "boolean") existing.emailBlacklisted = body.emailBlacklisted;
         existing.listIds = [...new Set([...existing.listIds, ...listIds])];
         return send(res, 204);
       }
       const c: MockContact = { id: nextId++, email, emailBlacklisted: false, listIds: [...listIds], attributes: {} };
       merge(c, attrs);
+      if (typeof body.emailBlacklisted === "boolean") c.emailBlacklisted = body.emailBlacklisted;
       state.contacts.push(c);
       return send(res, 201, { id: c.id });
     }

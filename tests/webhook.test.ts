@@ -58,6 +58,12 @@ test("parsing défensif : formats campagne / transactionnel, payloads absurdes",
   assert.equal(parseWebhookEvent({ event: { $ne: 1 }, email: 42 }).kind, "other");
 });
 
+test("webhook unsubscribe est reconnu sans confirmer une adresse", () => {
+  const evt = parseWebhookEvent({ event: "unsubscribe", email: "Jean@Cabinet.FR" });
+  assert.equal(evt.kind, "unsubscribed");
+  assert.equal(evt.email, "jean@cabinet.fr");
+});
+
 test("jeton de confirmation : chiffré, sans email lisible, infalsifiable", () => {
   const t = createEmailConfirmToken("jean.dupont@cabinet.fr")!;
   assert.match(t, /^v1\.[\w-]+$/);

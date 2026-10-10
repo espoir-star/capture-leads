@@ -1,9 +1,8 @@
 /**
- * Confirmation d'adresse email : POST { t, optIn? } depuis la page
+ * Confirmation d'adresse email : POST { t } depuis la page
  * /confirmer-email (clic sur le bouton, pas simple ouverture du lien).
  *
  *   EMAIL_STATUS → VERIFIED (sauf BOUNCED / DISPOSABLE) + événement email_confirmed
- *   optIn = true → OPT_IN = true (case newsletter de la page, jamais l'inverse)
  *
  * Idempotent : une 2e confirmation ne réécrit rien et ne renvoie pas d'événement.
  */
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (isRateLimited("confirm", clientIp(req.headers), EVENT_LIMITS)) {
     return json({ message: "Trop de tentatives. Réessayez dans une minute." }, 429);
   }
-  let body: { t?: unknown; optIn?: unknown };
+  let body: { t?: unknown };
   try {
     const text = await req.text();
     if (text.length > 2000) return json({ message: "Requête invalide." }, 413);
@@ -41,18 +40,16 @@ export async function POST(req: NextRequest) {
     if (!contact) return json({ message: "Ce lien de confirmation n’est plus valide." }, 404);
 
     const nextStatus = emailStatusAfterConfirmation(String(contact.attributes.EMAIL_STATUS ?? ""));
-    const wantsOptIn = body.optIn === true && contact.attributes.OPT_IN !== true;
     const attributes: Record<string, string | boolean> = {};
     if (nextStatus) attributes.EMAIL_STATUS = nextStatus;
-    if (wantsOptIn) attributes.OPT_IN = true;
 
     if (Object.keys(attributes).length) {
       await updateContactAttributes({ id: contact.id }, attributes);
-      if (nextStatus) await sendBrevoEvent(BREVO_EVENTS.EMAIL_CONFIRMED, { contact_id: contact.id }, { opt_in: wantsOptIn });
-      logLead("succes", { motif: "email_confirme", statut: nextStatus ?? "inchange", opt_in: wantsOptIn, valeur: maskEmail(email) });
+      if (nextStatus) await sendBrevoEvent(BREVO_EVENTS.EMAIL_CONFIRMED, { contact_id: contact.id }, { marketing_status: String(contact.attributes.MARKETING_STATUS ?? "TO_REVIEW") });
+      logLead("succes", { motif: "email_confirme", statut: nextStatus ?? "inchange", valeur: maskEmail(email) });
     }
     const status = contact.attributes.EMAIL_STATUS === "VERIFIED" ? "already_verified" : nextStatus ? "verified" : "not_applicable";
-    return json({ ok: true, status, optIn: wantsOptIn || contact.attributes.OPT_IN === true });
+    return json({ ok: true, status });
   } catch (e) {
     logLead("erreur", { motif: "email_confirm_brevo", code: String(e).slice(0, 120), valeur: maskEmail(email) });
     return json({ message: "Confirmation impossible pour le moment. Réessayez dans un instant." }, 502);
