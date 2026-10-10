@@ -23,6 +23,7 @@ import {
 import { buildContactUpdate, withoutRejectedSms, type CaptureSource } from "@/lib/lead/contactUpdate";
 import { logLead, maskEmail, maskPhone } from "@/lib/lead/log";
 import { createEmailConfirmToken } from "@/lib/security/emailConfirm";
+import { createMarketingOptoutToken } from "@/lib/marketing/token";
 import { signLeadRef } from "@/lib/security/leadToken";
 import { cleanTouch, resolveAttribution } from "@/lib/tracking/utm";
 import type { LeadInput } from "@/lib/validation/leadSchema";
@@ -87,15 +88,18 @@ export async function captureLead(
       nom: input.nom,
       besoin: input.besoin,
       horizon: input.horizon,
-      optIn: input.optIn,
+      marketingOpposition: input.marketingOpposition,
+      marketingOptoutToken: createMarketingOptoutToken(email.email),
       confirmToken: createEmailConfirmToken(email.email),
       phone,
       attribution,
       source,
       now,
     });
-    const result = await upsertContact(email.email, update.attributes, [source.brevoListId], existing, (attrs) =>
-      withoutRejectedSms(attrs, existing)
+    const result = await upsertContact(
+      email.email, update.attributes, [source.brevoListId], existing,
+      (attrs) => withoutRejectedSms(attrs, existing),
+      input.marketingOpposition
     );
 
     logLead("succes", {
@@ -105,7 +109,7 @@ export async function captureLead(
       tel: result.phoneRejected ? "non_stocke" : update.phoneStatus,
       tel_brevo: result.phoneRejected,
       first_touch: update.firstTouchWritten,
-      opt_in: input.optIn,
+      marketing_status: update.marketingStatus,
       utm_source: attribution.utm_source,
       utm_content: attribution.utm_content,
     });
@@ -126,7 +130,7 @@ export async function captureLead(
           form_score: update.formScore,
           lead_score: update.leadScore,
           is_new_contact: update.isNew,
-          opt_in: input.optIn,
+          marketing_status: update.marketingStatus,
           phone_status: result.phoneRejected ? undefined : update.phoneStatus,
           utm_source: touch.utm_source,
           utm_medium: touch.utm_medium,

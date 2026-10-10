@@ -36,6 +36,7 @@ export interface SegmentRef {
 }
 
 const EMAIL_OK = "EMAIL_STATUS ≠ INVALID ET ≠ DISPOSABLE ET ≠ BOUNCED";
+const MARKETING_OK = "(MARKETING_STATUS = CONSENT OU MARKETING_STATUS = B2B_ELIGIBLE) ET MARKETING_STATUS ≠ OPPOSED";
 
 export const SEGMENTS = {
   financeAll: { name: "FINANCE — ALL", id: null, conditions: "VERTICAL = FINANCE" },
@@ -59,17 +60,17 @@ export const SEGMENTS = {
   newsletterFinance: {
     name: "NEWSLETTER — FINANCE",
     id: null,
-    conditions: `VERTICAL = FINANCE ET OPT_IN = Oui (true) ET ${EMAIL_OK} (désabonnés/blocklistés exclus d'office par Brevo)`,
+    conditions: `VERTICAL = FINANCE ET ${MARKETING_OK} ET ${EMAIL_OK} (blocklistés exclus d'office par Brevo)`,
   },
   newsletterEc: {
     name: "NEWSLETTER — EXPERTISE COMPTABLE",
     id: null,
-    conditions: `VERTICAL = FINANCE ET SUBSECTOR = EXPERTISE_COMPTABLE ET OPT_IN = Oui (true) ET ${EMAIL_OK}`,
+    conditions: `VERTICAL = FINANCE ET SUBSECTOR = EXPERTISE_COMPTABLE ET ${MARKETING_OK} ET ${EMAIL_OK}`,
   },
   newsletterDaf: {
     name: "NEWSLETTER — DAF",
     id: null,
-    conditions: `VERTICAL = FINANCE ET SUBSECTOR = DAF_FINANCE ET OPT_IN = Oui (true) ET ${EMAIL_OK}`,
+    conditions: `VERTICAL = FINANCE ET SUBSECTOR = DAF_FINANCE ET ${MARKETING_OK} ET ${EMAIL_OK}`,
   },
 } satisfies Record<string, SegmentRef>;
 
@@ -82,7 +83,7 @@ export interface Audience {
 }
 
 /**
- * Audiences newsletter : OPT_IN = true est obligatoire (consentement explicite).
+ * Newsletter : consentement ancien OU B2B éligible, jamais un opposant.
  * EMAIL_STATUS n'est jamais utilisé comme substitut de consentement.
  */
 export const AUDIENCES: Record<string, Audience> = {

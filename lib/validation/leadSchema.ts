@@ -33,8 +33,8 @@ export const leadSchema = z.object({
   pays: z.enum(PHONE_COUNTRY_CODES),
   besoin: z.enum(BESOIN_CODES),
   horizon: z.enum(HORIZON_CODES),
-  /** Case newsletter : contrôle uniquement OPT_IN (jamais les cookies) */
-  optIn: z.boolean().optional().default(false),
+  /** Opposition explicite aux emails marketing, indépendante des cookies. */
+  marketingOpposition: z.boolean().optional().default(false),
   website: z.string().max(200).optional().default(""), // honeypot
   turnstileToken: z.string().max(2048).optional(),
   firstTouch: z.unknown().optional(),

@@ -43,12 +43,13 @@ export async function upsertContact(
   }) => {
     void _status;
     return { ...rest, ...(SMS ? { TEL_DOUBLON: SMS } : {}) };
-  }
+  },
+  explicitMarketingOpposition = false
 ): Promise<UpsertResult> {
   const write = (attrs: Record<string, AttributeValue>) =>
     brevoRequest<{ id?: number }>("/contacts", {
       method: "POST",
-      body: { email, attributes: attrs, listIds, updateEnabled: true },
+      body: { email, attributes: attrs, listIds, updateEnabled: true, ...(explicitMarketingOpposition && { emailBlacklisted: true }) },
       retries: 1,
     });
 
@@ -72,6 +73,19 @@ export async function upsertContact(
     contactId = (await getContactByEmail(email).catch(() => null))?.id;
   }
   return { contactId, phoneRejected };
+}
+
+/** Oppose un contact aux campagnes marketing, sans bloquer les emails transactionnels. */
+export async function blocklistMarketingContact(identifier: { email: string } | { id: number }): Promise<void> {
+  const path = "email" in identifier
+    ? `/contacts/${encodeURIComponent(identifier.email)}?identifierType=email_id`
+    : `/contacts/${identifier.id}?identifierType=contact_id`;
+  const res = await brevoRequest(path, {
+    method: "PUT",
+    body: { attributes: { MARKETING_STATUS: "OPPOSED" }, emailBlacklisted: true },
+    retries: 2,
+  });
+  if (!res.ok) throw new BrevoWriteError(res.status, res.code);
 }
 
 /** Met à jour quelques attributs d'un contact existant (webhooks, statuts). */

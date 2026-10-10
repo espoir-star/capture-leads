@@ -45,6 +45,8 @@ export const NEW_ATTRIBUTES: NewAttribute[] = [
   { name: "LEAD_SCORE", type: "float", description: "Score d'intention, ne diminue jamais automatiquement" },
   { name: "EMAIL_STATUS", type: "text", description: "PENDING / VERIFIED / INVALID / DISPOSABLE / BOUNCED" },
   { name: "PHONE_STATUS", type: "text", description: "VALID_FORMAT / SUSPECT / INVALID / VERIFIED (humain)" },
+  { name: "MARKETING_STATUS", type: "text", description: "CONSENT / B2B_ELIGIBLE / OPPOSED / TO_REVIEW" },
+  { name: "MARKETING_OPTOUT_TOKEN", type: "text", description: "Jeton chiffré pour désinscription marketing n8n" },
   {
     name: "EMAIL_CONFIRM_TOKEN",
     type: "text",

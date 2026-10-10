@@ -103,6 +103,11 @@ async function main() {
 
   /* ── Garde-fous ── */
   const errors: string[] = [];
+  // Les segments actuels doivent être validés manuellement après la migration
+  // de OPT_IN vers MARKETING_STATUS avant toute création de campagne.
+  if (process.env.MARKETING_SEGMENTS_REVIEWED !== "true") {
+    errors.push("Segments marketing non validés : reconfigurer Brevo puis MARKETING_SEGMENTS_REVIEWED=true");
+  }
   if (!getApiKey()) errors.push("BREVO_API_KEY absente");
   if (meta.status !== "ready") errors.push(`status doit être "ready" (actuel : ${meta.status})`);
   if (meta.brevoCampaignId) errors.push(`déjà créée (brevoCampaignId ${meta.brevoCampaignId})`);

@@ -15,7 +15,7 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { getContactByEmail, updateContactAttributes } from "@/lib/brevo/server";
+import { getContactByEmail, updateContactAttributes, blocklistMarketingContact } from "@/lib/brevo/server";
 import { emailStatusAfterBounce, parseWebhookEvent } from "@/lib/brevo/webhook";
 import { logLead, maskEmail } from "@/lib/lead/log";
 import { isValidEmailSyntax } from "@/lib/validation/email";
@@ -36,6 +36,13 @@ function authorized(req: NextRequest, secret: string): boolean {
 async function handle(raw: unknown): Promise<string> {
   const evt = parseWebhookEvent(raw);
   if (!isValidEmailSyntax(evt.email)) return "ignored_invalid";
+  if (evt.kind === "unsubscribed") {
+    const contact = await getContactByEmail(evt.email);
+    if (!contact) return "unknown_contact";
+    if (contact.attributes.MARKETING_STATUS === "OPPOSED" && contact.emailBlacklisted) return "unchanged";
+    await blocklistMarketingContact({ id: contact.id });
+    return "marketing_opposed";
+  }
   if (evt.kind !== "hard_bounce") return `ignored_${evt.kind}`;
 
   const contact = await getContactByEmail(evt.email);
