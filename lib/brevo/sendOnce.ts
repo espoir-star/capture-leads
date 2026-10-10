@@ -46,8 +46,6 @@ export function idempotencyUuid(sendKey: string): string {
 
 export const sendKeyTag = (sendKey: string) => `k:${sendKey}`;
 
-/** Date AAAA-MM-JJ à l'heure de Paris (fuseau du compte Brevo : le journal refuse une date future) */
-const parisDay = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date(ms));
 const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 interface LogEmail {
@@ -58,23 +56,25 @@ interface LogEmail {
 
 /**
  * Cherche dans le journal Brevo un email déjà envoyé avec cette clé.
- * Fenêtre : de `since` - 1 jour à aujourd'hui (heure de Paris), bornée à 30 jours ;
- * Brevo refuse une date future (400) : on retente alors en dates UTC.
+ * 1. Sans dates : fenêtre par défaut de Brevo (envois récents). Constat réel du
+ *    11/10/2026 : Brevo valide les dates en UTC mais date le journal à l'heure de
+ *    Paris ; sans dates, aucune ambiguïté autour de minuit.
+ * 2. Si l'envoi a pu avoir lieu il y a plus de 2 jours : dates UTC (jamais
+ *    « dans le futur » pour Brevo), bornées à 30 jours.
  * Lève une erreur si le journal est injoignable (l'appelant n'envoie pas).
  */
 export async function findSentEmail(q: { email: string; templateId: number; sendKey: string; since: Date; now: Date }): Promise<LogEmail | null> {
-  const end = q.now.getTime();
-  const start = Math.max(q.since.getTime() - DAY, end - 29 * DAY);
-  const query = (fmt: (ms: number) => string) =>
-    brevoRequest<{ transactionalEmails?: LogEmail[] }>(
-      `/smtp/emails?${new URLSearchParams({ email: q.email, templateId: String(q.templateId), startDate: fmt(start), endDate: fmt(end), limit: "500", sort: "desc" })}`,
-      { method: "GET", retries: 2 }
-    );
-  let res = await query(parisDay);
-  if (res.status === 400) res = await query(utcDay);
-  if (!res.ok) throw new Error(`Journal Brevo indisponible (${res.status})`);
   const tag = sendKeyTag(q.sendKey);
-  return (res.data?.transactionalEmails ?? []).find((e) => Array.isArray(e.tags) && e.tags.includes(tag)) ?? null;
+  const query = async (extra: Record<string, string>) => {
+    const params = new URLSearchParams({ email: q.email, templateId: String(q.templateId), limit: "500", sort: "desc", ...extra });
+    const res = await brevoRequest<{ transactionalEmails?: LogEmail[] }>(`/smtp/emails?${params}`, { method: "GET", retries: 2 });
+    if (!res.ok) throw new Error(`Journal Brevo indisponible (${res.status})`);
+    return (res.data?.transactionalEmails ?? []).find((e) => Array.isArray(e.tags) && e.tags.includes(tag)) ?? null;
+  };
+  const recent = await query({});
+  if (recent || q.now.getTime() - q.since.getTime() <= 2 * DAY) return recent;
+  const start = Math.max(q.since.getTime() - DAY, q.now.getTime() - 29 * DAY);
+  return query({ startDate: utcDay(start), endDate: utcDay(q.now.getTime()) });
 }
 
 export interface SendOnceInput extends Omit<TransactionalEmail, "idempotencyKey"> {
