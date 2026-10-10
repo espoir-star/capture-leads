@@ -12,6 +12,7 @@ import { BREVO_EVENTS, getContactByEmail, sendBrevoEvent, updateContactAttribute
 import { logLead, maskEmail } from "@/lib/lead/log";
 import { emailStatusAfterConfirmation, readEmailConfirmToken } from "@/lib/security/emailConfirm";
 import { clientIp, EVENT_LIMITS, isRateLimited } from "@/lib/security/rateLimit";
+import { readBodyLimited } from "@/lib/security/body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,8 +26,9 @@ export async function POST(req: NextRequest) {
   }
   let body: { t?: unknown };
   try {
-    const text = await req.text();
-    if (text.length > 2000) return json({ message: "Requête invalide." }, 413);
+    const read = await readBodyLimited(req, 2000);
+    if (!read.ok) return json({ message: "Requête invalide." }, 413);
+    const text = read.text;
     body = JSON.parse(text);
   } catch {
     return json({ message: "Requête invalide." }, 400);

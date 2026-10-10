@@ -258,6 +258,19 @@ ACTIFS = r"""// Contacts ayant au moins un événement dans la fenêtre (sinon :
 const ids = [...new Set($input.all().map((i) => Number(i.json.contact_id)).filter((v) => Number.isInteger(v) && v > 0))];
 return ids.map((contact_id) => ({ json: { contact_id } }));"""
 
+DOUBLONS = r"""// Doublons du journal (insertions simultanées : la Data table n'a pas de contrainte d'unicité).
+// On garde la ligne la plus ancienne (plus petit id) de chaque clé ; les autres sont supprimées.
+const first = new Map();
+const extra = [];
+for (const r of $input.all().map((i) => i.json).filter((r) => r && r.event_key && r.id !== undefined)) {
+  const k = r.event_key;
+  if (!first.has(k)) { first.set(k, r.id); continue; }
+  const keep = Math.min(first.get(k), r.id);
+  extra.push(Math.max(first.get(k), r.id));
+  first.set(k, keep);
+}
+return extra.map((id) => ({ json: { id } }));"""
+
 LOTS = r"""// Lots de 500 lignes au plus pour /api/marketing/score ; l'historique d'un contact n'est jamais coupé.
 const by = new Map();
 for (const r of $input.all().map((i) => i.json).filter((r) => r && r.event_key)) {
@@ -316,14 +329,17 @@ def recalcul(name, table_id, score_url, trigger=None, with_auth=True):
     trig = trigger or schedule("Toutes les heures (h:17)", 17, [0, 300])
     cfg = {"parameters": {"assignments": {"assignments": [
               {"id": U(), "name": "scoreUrl", "value": score_url, "type": "string"},
-              {"id": U(), "name": "windowHours", "value": "={{ $now.setZone('Europe/Paris').hour === 3 ? 192 : 3 }}", "type": "number"}]},
+              {"id": U(), "name": "windowHours", "value": "={{ $now.setZone('Europe/Paris').hour === 3 ? 192 : 3 }}", "type": "number"},
+              {"id": U(), "name": "retentionDays", "value": 400, "type": "number"}]},
             "options": {}},
            "id": U(), "name": "Config — Recalcul", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [220, 300]}
     nodes = [
         sticky(f"## {name}\nFILET DE SÉCURITÉ du scoring : recalcule depuis le journal les contacts actifs récemment "
                "(3 dernières heures ; chaque nuit à 3 h : 8 derniers jours) et envoie leur historique COMPLET à Vercel (/api/marketing/score).\n\n"
                "Rattrape tout ce que le temps réel aurait manqué (Brevo indisponible, écriture refusée, alerte non partie). "
-               "Idempotent : un contact à jour ne provoque aucune écriture ; un score ne baisse jamais.\n\n"
+               "Idempotent : un contact à jour ne provoque aucune écriture ; un score ne baisse jamais.\n"
+               "Entretien : doublons du journal supprimés à chaque passe (la plus ancienne ligne de chaque clé est gardée) ; "
+               "la nuit, lignes de plus de 400 jours supprimées (BEHAVIOR_SCORE ne baisse pas pour autant).\n\n"
                "Docs : althoce-ressources/docs/PHASE_MARKETING_N8N.md", [-40, -120], 820, 300),
         sticky(f"### Credential\n**Recalculer les scores (Vercel)** : Header Auth « {CRED_OUT} » (Authorization = Bearer SEQUENCE_API_SECRET).", [800, -120], 420, 160, 5),
         trig, cfg,
@@ -333,16 +349,28 @@ def recalcul(name, table_id, score_url, trigger=None, with_auth=True):
         {"parameters": {"jsCode": ACTIFS}, "id": U(), "name": "Contacts actifs", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [660, 300]},
         dt("Historique complet", "get", table_id, [880, 300],
            {"matchType": "allConditions", "filters": {"conditions": [{"keyName": "contact_id", "condition": "eq", "keyValue": "={{ $json.contact_id }}"}]}, "returnAll": True}),
+        {"parameters": {"jsCode": DOUBLONS}, "id": U(), "name": "Doublons du journal", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1100, 120]},
+        dt("Supprimer les doublons", "deleteRows", table_id, [1320, 120],
+           {"matchType": "allConditions", "filters": {"conditions": [{"keyName": "id", "condition": "eq", "keyValue": "={{ $json.id }}"}]}, "options": {}}),
         {"parameters": {"jsCode": LOTS}, "id": U(), "name": "Lots pour Vercel", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1100, 300]},
         http_vercel("Recalculer les scores (Vercel)", "={{ $('Config — Recalcul').first().json.scoreUrl }}", "={{ JSON.stringify({ rows: $json.rows }) }}", [1320, 300], with_auth),
+        {"parameters": {"conditions": {"options": {"caseSensitive": True, "leftValue": "", "typeValidation": "loose", "version": 2},
+             "conditions": [{"id": U(), "leftValue": "={{ $('Config — Recalcul').first().json.windowHours }}", "rightValue": 100, "operator": {"type": "number", "operation": "gt"}}],
+             "combinator": "and"}, "options": {}},
+         "id": U(), "name": "Passe de nuit ?", "type": "n8n-nodes-base.if", "typeVersion": 2.2, "position": [440, 520]},
+        dt("Conservation 400 jours", "deleteRows", table_id, [660, 520],
+           {"matchType": "allConditions", "filters": {"conditions": [{"keyName": "occurred_at", "condition": "lt",
+             "keyValue": "={{ $now.minus({ days: $('Config — Recalcul').first().json.retentionDays }).toISO() }}"}]}, "options": {}}),
     ]
     tn = trig["name"]
     connections = {
         tn: {"main": [[c("Config — Recalcul")]]},
-        "Config — Recalcul": {"main": [[c("Événements récents")]]},
+        "Config — Recalcul": {"main": [[c("Événements récents"), c("Passe de nuit ?")]]},
+        "Passe de nuit ?": {"main": [[c("Conservation 400 jours")], []]},
         "Événements récents": {"main": [[c("Contacts actifs")]]},
         "Contacts actifs": {"main": [[c("Historique complet")]]},
-        "Historique complet": {"main": [[c("Lots pour Vercel")]]},
+        "Historique complet": {"main": [[c("Doublons du journal"), c("Lots pour Vercel")]]},
+        "Doublons du journal": {"main": [[c("Supprimer les doublons")]]},
         "Lots pour Vercel": {"main": [[c("Recalculer les scores (Vercel)")]]},
     }
     return {"name": name, "nodes": nodes, "connections": connections, "settings": {"executionOrder": "v1", "timezone": "Europe/Paris"}}

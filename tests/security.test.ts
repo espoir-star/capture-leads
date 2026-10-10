@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { signLeadRef, verifyLeadRef } from "@/lib/security/leadToken";
 import { verifyTurnstile } from "@/lib/security/turnstile";
-import { __resetRateLimits, isRateLimited, LEAD_LIMITS } from "@/lib/security/rateLimit";
+import { __resetRateLimits, isRateLimited, LEAD_LIMITS, DEGRADED_IP_LIMITS, DEGRADED_GLOBAL_LIMITS } from "@/lib/security/rateLimit";
 
 process.env.SIGNING_SECRET = "secret-de-test";
 
@@ -23,7 +23,7 @@ test("leadRef : signé, infalsifiable, expirant", () => {
 const fakeFetch = (payload: unknown, ok = true) =>
   (async () => ({ ok, status: ok ? 200 : 500, json: async () => payload })) as unknown as typeof fetch;
 
-test("Turnstile : désactivé sans secret, refus sans jeton, fail-open si Cloudflare tombe", async () => {
+test("Turnstile : désactivé sans secret, refus sans jeton / invalide / expiré / réutilisé, mode dégradé si Cloudflare tombe", async () => {
   delete process.env.TURNSTILE_SECRET_KEY;
   assert.deepEqual(await verifyTurnstile(undefined), { ok: true, skipped: "not_configured" });
 
@@ -36,11 +36,28 @@ test("Turnstile : désactivé sans secret, refus sans jeton, fail-open si Cloudf
     fakeFetch({ success: false, "error-codes": ["invalid-input-response"] })
   );
   assert.equal(rejected.ok, false);
+  // jeton expiré ou déjà utilisé : Cloudflare renvoie timeout-or-duplicate → refus (pas de mode dégradé)
+  const reused = await verifyTurnstile("token-reutilise-123", "1.2.3.4", fakeFetch({ success: false, "error-codes": ["timeout-or-duplicate"] }));
+  assert.deepEqual(reused, { ok: false, reason: "rejected", codes: ["timeout-or-duplicate"] });
+  assert.equal((await verifyTurnstile("x".repeat(3000), "1.2.3.4", fakeFetch({ success: true }))).ok, false, "jeton démesuré");
+  assert.deepEqual(await verifyTurnstile("token-123456", "1.2.3.4", fakeFetch({}, false)), { ok: true, skipped: "unreachable" }, "Cloudflare 5xx");
+  assert.deepEqual(
+    await verifyTurnstile("token-123456", "1.2.3.4", fakeFetch({ success: false, "error-codes": ["internal-error"] })),
+    { ok: true, skipped: "unreachable" },
+    "erreur interne Cloudflare"
+  );
   const down = await verifyTurnstile("token-123456", "1.2.3.4", (async () => {
     throw new Error("réseau");
   }) as unknown as typeof fetch);
   assert.deepEqual(down, { ok: true, skipped: "unreachable" });
   delete process.env.TURNSTILE_SECRET_KEY;
+});
+
+test("mode dégradé : 2 soumissions / 10 min par IP et 20 / heure par instance", () => {
+  __resetRateLimits();
+  assert.deepEqual([1, 2, 3].map(() => isRateLimited("lead_degraded", "7.7.7.7", DEGRADED_IP_LIMITS)), [false, false, true]);
+  const global = Array.from({ length: 21 }, () => isRateLimited("lead_degraded", "instance", DEGRADED_GLOBAL_LIMITS));
+  assert.equal(global.filter(Boolean).length, 1, "la 21e est refusée");
 });
 
 test("rate limiting : 6/min par IP, IP distinctes indépendantes", () => {

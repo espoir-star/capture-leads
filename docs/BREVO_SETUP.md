@@ -97,8 +97,10 @@ Modèle sans secret : `.env.example`.
 | `LAST_ENGAGEMENT_AT` | date | dernier signal compté (clic, webinar, RDV) |
 | `SCORE_UPDATED_AT` | date | dernière hausse de `LEAD_SCORE` par le scoring |
 | `HOT_ALERT_SENT_AT` | date | alerte « lead chaud » envoyée (une seule fois) |
+| `GUIDE_DELIVERY_STATUS` | texte | livraison du guide par le moteur : PENDING, SENT, FAILED, EXPIRED |
+| `GUIDE_DELIVERY_REF` | texte | livraison en cours : séquence\|guide\|date (reprise automatique) |
 
-Créés le 08/10/2026, sauf les 6 attributs de scoring (à créer à la mise en service, docs/PHASE_MARKETING_N8N.md § 7) ; le script ne crée que les attributs manquants, jamais de doublon.
+Créés le 08/10/2026, sauf les 8 derniers (scoring et livraison durable, à créer à la mise en service : docs/MISE_EN_PRODUCTION.md étape 2) ; le script ne crée que les attributs manquants, jamais de doublon.
 
 ### Écriture à chaque soumission
 

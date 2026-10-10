@@ -7,8 +7,8 @@
         "height": 260,
         "width": 720
       },
-      "id": "646e9e73-300d-457e-ae96-a5baef4ce2d9",
-      "name": "Note a4a5",
+      "id": "45de4674-ffad-402e-b740-b9dd6277b5a9",
+      "name": "Note 271f",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -28,7 +28,7 @@
           ]
         }
       },
-      "id": "ae56a504-f149-40b7-a798-9297c4c30791",
+      "id": "22645eea-5ce1-4ab3-932f-ba3074ea38f0",
       "name": "Toutes les heures (h:07)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -42,7 +42,7 @@
         "assignments": {
           "assignments": [
             {
-              "id": "cfd1fa30-b956-4c7d-ae7a-46e69c54ef2a",
+              "id": "2c0a237c-4503-4ce5-9e1e-31f9d2773cea",
               "name": "maintenanceUrl",
               "value": "https://guide-gratuit-pi.vercel.app/api/marketing/maintenance",
               "type": "string"
@@ -51,7 +51,7 @@
         },
         "options": {}
       },
-      "id": "6b379e95-5152-49a0-aad1-b75cfe779548",
+      "id": "f7194177-00a0-4f61-a812-5136cd745df4",
       "name": "Config — Tâches horaires",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -73,7 +73,7 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
-      "id": "06153849-f7db-416d-83c5-7e5b61f31e57",
+      "id": "93430a96-22d2-44bc-a0bf-38ab267e21f1",
       "name": "Lancer les tâches (Vercel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,

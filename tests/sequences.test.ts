@@ -99,10 +99,11 @@ test("inscription signée : infalsifiable, sans email, clés d'idempotence sans 
   const forged = Buffer.from(JSON.stringify({ s: pilot.id, c: 7, t: 0 })).toString("base64url");
   assert.equal(enrollment.verifyEnrollment(`e1.${forged}.${sig}`), null);
   assert.equal(enrollment.verifyEnrollment(`e1.${body}.AAAA`), null);
-  const k = enrollment.stepIdempotencyKey(id, "relance-j2");
-  assert.equal(k, enrollment.stepIdempotencyKey(id, "relance-j2"), "stable");
-  assert.match(k, /^seq\.[\w-]{22}\.relance-j2$/);
-  assert.match(enrollment.deliveryIdempotencyKey(pilot.id, 42, T0), /^dlv\.[\w-]{22}\.2026-10-12$/);
+  const k = enrollment.stepSendKey(pilot.id, 42, "relance-j2");
+  assert.equal(k, enrollment.stepSendKey(pilot.id, 42, "relance-j2"), "stable");
+  assert.match(k, /^[0-9a-f]{32}$/, "empreinte sans donnée personnelle");
+  assert.notEqual(k, enrollment.stepSendKey(pilot.id, 43, "relance-j2"));
+  assert.notEqual(enrollment.deliverySendKey(pilot.id, 42, T0), enrollment.deliverySendKey(pilot.id, 42, new Date(T0.getTime() + 24 * H)), "une livraison par jour");
 });
 
 test("planification : J+2, étapes dépassées sautées, filtre transactionnel", () => {

@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runStep } from "@/lib/sequences/run";
 import { bearerMatches } from "@/lib/security/bearer";
+import { readBodyLimited } from "@/lib/security/body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,8 +31,9 @@ export async function POST(req: NextRequest) {
   }
   let body: { enrollmentId?: unknown; stepId?: unknown };
   try {
-    const text = await req.text();
-    if (text.length > 2000) return json({ action: "invalid", reason: "size" }, 413);
+    const read = await readBodyLimited(req, 2000);
+    if (!read.ok) return json({ action: "invalid", reason: "size" }, 413);
+    const text = read.text;
     body = JSON.parse(text);
   } catch {
     return json({ action: "invalid", reason: "json" }, 400);

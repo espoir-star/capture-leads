@@ -53,6 +53,8 @@ export const NEW_ATTRIBUTES: NewAttribute[] = [
   { name: "LAST_ENGAGEMENT_AT", type: "date", description: "Dernier signal comportemental compté" },
   { name: "SCORE_UPDATED_AT", type: "date", description: "Dernière hausse de LEAD_SCORE par le scoring" },
   { name: "HOT_ALERT_SENT_AT", type: "date", description: "Alerte « lead chaud » envoyée (une seule fois)" },
+  { name: "GUIDE_DELIVERY_STATUS", type: "text", description: "Livraison du guide par le moteur : PENDING / SENT / FAILED / EXPIRED" },
+  { name: "GUIDE_DELIVERY_REF", type: "text", description: "Livraison en cours : séquence|guide|date (reprise automatique)" },
   {
     name: "EMAIL_CONFIRM_TOKEN",
     type: "text",

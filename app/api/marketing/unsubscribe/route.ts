@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { blocklistMarketingContact, getContactByEmail } from "@/lib/brevo/server";
 import { readMarketingOptoutToken } from "@/lib/marketing/token";
 import { clientIp, EVENT_LIMITS, isRateLimited } from "@/lib/security/rateLimit";
+import { readBodyLimited } from "@/lib/security/body";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,9 @@ export async function POST(req: NextRequest) {
   if (isRateLimited("marketing_unsubscribe", clientIp(req.headers), EVENT_LIMITS)) {
     return NextResponse.json({ message: "Veuillez réessayer dans un instant." }, { status: 429 });
   }
-  const raw = await req.text();
-  if (raw.length > 1600) return NextResponse.json({ message: "Requête invalide." }, { status: 413 });
+  const read = await readBodyLimited(req, 1600);
+  if (!read.ok) return NextResponse.json({ message: "Requête invalide." }, { status: 413 });
+  const raw = read.text;
 
   let token: unknown = req.nextUrl.searchParams.get("t");
   if (!token) {

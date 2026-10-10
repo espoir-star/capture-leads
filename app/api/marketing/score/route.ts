@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { applyBehaviorScores, ScoreWriteError } from "@/lib/scoring/apply";
 import type { LedgerRow } from "@/lib/scoring/behavior";
 import { bearerMatches } from "@/lib/security/bearer";
+import { readBodyLimited } from "@/lib/security/body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,8 +28,9 @@ export async function POST(req: NextRequest) {
   }
   let rows: LedgerRow[];
   try {
-    const text = await req.text();
-    if (text.length > 600_000) return NextResponse.json({ ok: false }, { status: 413 });
+    const read = await readBodyLimited(req, 600_000);
+    if (!read.ok) return NextResponse.json({ ok: false }, { status: 413 });
+    const text = read.text;
     const body = JSON.parse(text) as { rows?: unknown };
     if (!Array.isArray(body.rows) || body.rows.length > MAX_ROWS) return NextResponse.json({ ok: false }, { status: 400 });
     rows = body.rows as LedgerRow[];

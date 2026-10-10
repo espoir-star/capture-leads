@@ -36,6 +36,7 @@ import { buildContactUpdate, withoutRejectedSms, type CaptureSource } from "@/li
 import { logLead, maskEmail, maskIp, maskPhone } from "@/lib/lead/log";
 import { createEmailConfirmToken } from "@/lib/security/emailConfirm";
 import { createMarketingOptoutToken } from "@/lib/marketing/token";
+import { markDelivery, pendingDeliveryAttributes } from "@/lib/sequences/delivery";
 import { deliverGuide, enrollInSequence } from "@/lib/sequences/run";
 import { activeGuideSequence, webinarSequence } from "@/lib/sequences/switch";
 import { applyBehaviorScores } from "@/lib/scoring/apply";
@@ -67,7 +68,7 @@ export function resolveCaptureSource(kind: LeadInput["kind"], slug: string): Cap
 
 export async function captureLead(
   input: LeadInput,
-  ctx: { ip: string; now?: Date }
+  ctx: { ip: string; now?: Date; /** Turnstile non vérifié (Cloudflare injoignable) : aucun email automatique */ degraded?: boolean }
 ): Promise<CaptureOutcome> {
   const now = ctx.now ?? new Date();
   const log = { slug: input.slug, sessionId: input.sessionId, ip: maskIp(ctx.ip) };
@@ -122,8 +123,12 @@ export async function captureLead(
     const opposed = update.marketingStatus === "OPPOSED";
     const legacyOpposed = !!lm && !sequence && opposed;
     const wasInList = existing?.listIds?.includes(source.brevoListId) ?? false;
-    // Mode QA : l'automation historique reste active → pas d'ajout à la liste pour l'adresse QA
-    const skipList = legacyOpposed || !!active?.qa;
+    // Mode QA : l'automation historique reste active → pas d'ajout à la liste pour l'adresse QA.
+    // Mode dégradé (Turnstile non vérifié) : pas de liste non plus, sinon l'automation Brevo enverrait un email.
+    const skipList = legacyOpposed || !!active?.qa || !!ctx.degraded;
+    // Livraison par le moteur : tâche durable écrite AVEC le contact, avant la réponse (lib/sequences/delivery.ts)
+    const deliverySequence = sequence ?? (legacyOpposed ? getSequence("guide-generique-v1") : undefined);
+    if (deliverySequence && !ctx.degraded) Object.assign(update.attributes, pendingDeliveryAttributes(deliverySequence.id, source.slug, now));
 
     const result = await upsertContact(
       email.email, update.attributes, skipList ? [] : [source.brevoListId], existing,
@@ -146,9 +151,11 @@ export async function captureLead(
     // Interaction de CETTE visite (la provenance initiale reste dans les attributs)
     const touch = currentTouch?.utm_source ? currentTouch : attribution;
     const identifiers = result.contactId ? { contact_id: result.contactId } : { email_id: email.email };
-    const deliverySequence = sequence ?? (legacyOpposed ? getSequence("guide-generique-v1") : undefined);
     const followUp = async () => {
-      if (deliverySequence && result.contactId) {
+      if (ctx.degraded) {
+        // Le guide reste affiché sur la page merci ; l'email peut être renvoyé à la main après contrôle
+        logLead("succes", { ...log, motif: "turnstile_degrade", statut: "sans_email", valeur: maskEmail(email.email) });
+      } else if (deliverySequence && result.contactId) {
         const delivery = await deliverGuide({
           seq: deliverySequence,
           contactId: result.contactId,
@@ -157,6 +164,7 @@ export async function captureLead(
           emailStatus: update.emailStatus,
           now,
         });
+        await markDelivery(result.contactId, delivery);
         logLead(delivery.status === "error" ? "erreur" : "succes", {
           ...log,
           motif: "livraison_guide",
@@ -176,7 +184,7 @@ export async function captureLead(
           });
         }
       }
-      if (isWebinar && result.contactId && ledgerConfigured()) {
+      if (isWebinar && result.contactId && !ctx.degraded && ledgerConfigured()) {
         // Scoring : inscription webinar (+8, une fois par webinar). Jamais bloquant pour la capture.
         const r = await recordEvents([makeEvent("webinar_registered", result.contactId, source.slug, "capture", now)]);
         if (r.ok) await applyBehaviorScores(r.rows, now).catch(() => undefined);
@@ -201,6 +209,7 @@ export async function captureLead(
           utm_campaign: touch.utm_campaign,
           utm_content: touch.utm_content,
           landing_page: touch.landing_page ?? `/${isWebinar ? "w" : "r"}/${source.slug}`,
+          ...(ctx.degraded && { turnstile: "unverified" }),
         },
         now
       );
