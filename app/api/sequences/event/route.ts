@@ -18,6 +18,7 @@ import { makeEvent } from "@/lib/scoring/behavior";
 import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
 import { bearerMatches } from "@/lib/security/bearer";
 import { isValidEmailSyntax, normalizeEmail } from "@/lib/validation/email";
+import { readBodyLimited } from "@/lib/security/body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,8 +40,9 @@ export async function POST(req: NextRequest) {
   }
   let body: { email?: unknown; event?: unknown; properties?: unknown };
   try {
-    const text = await req.text();
-    if (text.length > 4000) return NextResponse.json({ ok: false }, { status: 413 });
+    const read = await readBodyLimited(req, 4000);
+    if (!read.ok) return NextResponse.json({ ok: false }, { status: 413 });
+    const text = read.text;
     body = JSON.parse(text);
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });

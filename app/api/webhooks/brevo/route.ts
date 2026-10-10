@@ -10,8 +10,9 @@
  *   autres (opened, delivered, softBounce…) → acceptés, aucun effet (0 point)
  *
  * Sécurité : Brevo ne signe pas ses webhooks ; il envoie le jeton configuré
- * (`auth: { type: "bearer", token }`) dans l'en-tête Authorization. Vérifié
- * en temps constant. Payload revalidé champ par champ, taille bornée.
+ * (`auth: { type: "bearer", token }`) dans l'en-tête Authorization (jamais
+ * dans l'URL : elle finit dans les journaux d'accès). Vérifié en temps
+ * constant. Payload revalidé champ par champ, taille bornée avant lecture.
  *
  * Reprises : Brevo ne retente QUE sur 429 ou absence de réponse (tout autre
  * 4xx/5xx abandonne l'événement). Une erreur temporaire (Brevo, journal n8n
@@ -20,7 +21,6 @@
  * l'écriture du score échoue est rattrapé par la passe horaire n8n.
  */
 
-import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getContactByEmail, updateContactAttributes, blocklistMarketingContact } from "@/lib/brevo/server";
 import { emailStatusAfterBounce, parseWebhookEvent } from "@/lib/brevo/webhook";
@@ -29,19 +29,14 @@ import { clickCandidate, toLedgerEvent, type ClickCandidate, type LedgerEvent } 
 import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
 import { logLead, maskEmail } from "@/lib/lead/log";
 import { isValidEmailSyntax } from "@/lib/validation/email";
+import { bearerMatches } from "@/lib/security/bearer";
+import { readBodyLimited } from "@/lib/security/body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_BODY_BYTES = 512_000;
 
-function authorized(req: NextRequest, secret: string): boolean {
-  const header = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-  const given = header || req.nextUrl.searchParams.get("token") || "";
-  const a = Buffer.from(given);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
 
 async function handle(raw: unknown, clicks: ClickCandidate[]): Promise<string> {
   const evt = parseWebhookEvent(raw);
@@ -96,15 +91,16 @@ async function scoreClicks(clicks: ClickCandidate[]): Promise<void> {
 export async function POST(req: NextRequest) {
   const secret = process.env.BREVO_WEBHOOK_SECRET?.trim();
   if (!secret) return new NextResponse(null, { status: 404 });
-  if (!authorized(req, secret)) {
+  if (!bearerMatches(req.headers.get("authorization"), secret)) {
     logLead("rejet", { motif: "webhook_non_autorise" });
     return new NextResponse(null, { status: 401 });
   }
 
   let payload: unknown;
   try {
-    const text = await req.text();
-    if (text.length > MAX_BODY_BYTES) return NextResponse.json({ ok: false }, { status: 413 });
+    const read = await readBodyLimited(req, MAX_BODY_BYTES);
+    if (!read.ok) return NextResponse.json({ ok: false }, { status: 413 });
+    const text = read.text;
     payload = JSON.parse(text);
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });

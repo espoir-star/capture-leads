@@ -10,6 +10,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { request } from "node:http";
 import assert from "node:assert/strict";
 import { MOCK_API_KEY, startMockBrevo, type MockContact, type MockState } from "./mock-brevo";
 
@@ -65,7 +66,7 @@ const reset = () => fetch(`${MOCK}/__reset`, { method: "POST" });
 const seed = (c: Partial<MockContact>) =>
   fetch(`${MOCK}/__seed`, { method: "POST", body: JSON.stringify(c) });
 const contactOf = async (email: string) => (await state()).contacts.find((c) => c.email === email);
-const configure = (c: { credits?: number; ledgerDown?: boolean }) =>
+const configure = (c: { credits?: number; ledgerDown?: boolean; idemTtlMs?: number; clockOffsetMs?: number }) =>
   fetch(`${MOCK}/__config`, { method: "POST", body: JSON.stringify(c) });
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -77,8 +78,9 @@ async function scenario(name: string, fn: () => Promise<void>) {
     results.push({ name, ok: true });
     console.log(`  ✓ ${name}`);
   } catch (e) {
-    results.push({ name, ok: false, error: e instanceof Error ? e.message : String(e) });
-    console.log(`  ✗ ${name}\n      ${e instanceof Error ? e.message.split("\n").join("\n      ") : e}`);
+    const cause = e instanceof Error && e.cause ? ` (cause : ${String((e.cause as Error).message ?? e.cause)})` : "";
+    results.push({ name, ok: false, error: (e instanceof Error ? e.message : String(e)) + cause });
+    console.log(`  ✗ ${name}\n      ${results.at(-1)!.error!.split("\n").join("\n      ")}`);
   }
 }
 
@@ -607,6 +609,72 @@ async function main() {
     assert.equal(c.attributes.LEAD_SCORE, 23);
   });
 
+  /* ── Sécurité des échanges (Brevo → Vercel, n8n → Vercel) ──────────── */
+  const ROUTES: { path: string; secret: string; valid: () => unknown; expect: number }[] = [
+    { path: "/api/webhooks/brevo", secret: WEBHOOK_SECRET, valid: () => ({ event: "opened", email: "sec@cabinet.fr" }), expect: 200 },
+    { path: "/api/sequences/step", secret: SEQUENCE_SECRET, valid: () => ({ enrollmentId: "e1.inconnu.inconnu", stepId: "relance-j2" }), expect: 400 },
+    { path: "/api/sequences/event", secret: SEQUENCE_SECRET, valid: () => ({ email: "sec@cabinet.fr", event: "webinar_no_show", properties: { webinar: "test" } }), expect: 200 },
+    { path: "/api/sequences/alert", secret: SEQUENCE_SECRET, valid: () => ({ workflow: "test", executionId: `sec-${Date.now()}`, node: "n", message: "m" }), expect: 200 },
+    { path: "/api/marketing/score", secret: SEQUENCE_SECRET, valid: () => ({ rows: [] }), expect: 200 },
+    { path: "/api/marketing/maintenance", secret: SEQUENCE_SECRET, valid: () => ({}), expect: 200 },
+  ];
+
+  await scenario("SEC1 · matrice : sans jeton / jeton faux → 401 sans aucun traitement ; GET → 405 ; JSON cassé → 400 ; trop gros → 413 ; valide → OK", async () => {
+    await seed({ email: "sec@cabinet.fr", attributes: { LEAD_SCORE: 1 } });
+    for (const r of ROUTES) {
+      const before = (await state()).requests.length;
+      assert.equal((await post(r.path, r.valid())).status, 401, `${r.path} sans jeton`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: "Bearer faux" })).status, 401, `${r.path} jeton faux`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: `Bearer ${r.secret}x` })).status, 401, `${r.path} jeton presque juste`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: r.secret })).status, 401, `${r.path} sans « Bearer »`);
+      assert.equal((await state()).requests.length, before, `${r.path} : aucun appel Brevo avant authentification`);
+      const auth = { Authorization: `Bearer ${r.secret}` };
+      assert.equal((await fetch(`${APP}${r.path}`, { method: "GET", headers: auth })).status, 405, `${r.path} GET`);
+      assert.equal((await fetch(`${APP}${r.path}`, { method: "PUT", headers: auth })).status, 405, `${r.path} PUT`);
+      if (r.path !== "/api/marketing/maintenance") {
+        const broken = await post(r.path, "{pas du json", auth);
+        assert.equal(broken.status, 400, `${r.path} JSON cassé`);
+        const big = await fetch(`${APP}${r.path}`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ x: "a".repeat(700_000) }) });
+        assert.equal(big.status, 413, `${r.path} corps trop volumineux`);
+      }
+      const ok = await post(r.path, r.valid(), auth);
+      assert.equal(ok.status, r.expect, `${r.path} requête valide : ${JSON.stringify(ok.body)}`);
+    }
+    // Corps envoyé en flux (chunked, sans Content-Length) sur une connexion dédiée : coupé à la limite
+    const streamedStatus = await new Promise<number>((resolve, reject) => {
+      const r = request(`${APP}/api/webhooks/brevo`, { method: "POST", agent: false, headers: { Authorization: `Bearer ${WEBHOOK_SECRET}`, "Content-Type": "application/json" } }, (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+        r.destroy();
+      });
+      r.on("error", (e) => (r.destroyed ? undefined : reject(e)));
+      for (let i = 0; i < 40; i++) r.write("x".repeat(20_000));
+      r.end();
+    });
+    assert.equal(streamedStatus, 413, "flux de 800 Ko sans Content-Length → 413");
+    // Jeton dans l'URL : plus accepté (il finirait dans les journaux d'accès)
+    assert.equal((await post(`/api/webhooks/brevo?token=${WEBHOOK_SECRET}`, { event: "opened", email: "sec@cabinet.fr" })).status, 401);
+  });
+
+  await scenario("SEC2 · étape n8n : 5 appels simultanés, rejeu 30 min et 2 h plus tard → un seul email", async () => {
+    process.env.SIGNING_SECRET = "e2e";
+    const { signEnrollment } = await import("@/lib/sequences/enrollment");
+    const id = await (await seed({ email: "concurrence@cabinet.fr", attributes: { VERTICAL: "FINANCE", MARKETING_STATUS: "B2B_ELIGIBLE", EMAIL_STATUS: "PENDING" }, listIds: [10] })).json().then((x: { id: number }) => x.id);
+    const enr = signEnrollment({ s: "guide-12-cas-ec-v1", c: id, t: Date.now() - 48 * 3_600_000, r: "12-cas-usage-experts-comptables" })!;
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const outs = await Promise.all(Array.from({ length: 5 }, () => post("/api/sequences/step", { enrollmentId: enr, stepId: "relance-j2" }, auth)));
+    assert.ok(outs.every((o) => o.status === 200 || o.status === 502), JSON.stringify(outs.map((o) => o.status)));
+    await configure({ idemTtlMs: 15 * 60_000 });
+    for (const offset of [30 * 60_000, 2 * 3_600_000]) {
+      await fetch(`${MOCK}/__config`, { method: "POST", body: JSON.stringify({ clockOffsetMs: offset }) });
+      const again = await post("/api/sequences/step", { enrollmentId: enr, stepId: "relance-j2" }, auth);
+      assert.equal(again.status, 200, JSON.stringify(again.body));
+    }
+    const s = await state();
+    assert.equal(s.emails.filter((e) => e.to[0]?.email === "concurrence@cabinet.fr").length, 1, "une seule relance");
+    assert.ok(s.events.some((e) => e.event_name === "email_send_attempt" && e.event_properties?.message_id), "messageId historisé");
+  });
+
   await scenario("Brevo en panne : message clair, réessai possible", async () => {
     mock.close();
     await sleep(200);
@@ -616,6 +684,10 @@ async function main() {
   });
 
   app.kill();
+  const journal = logs.join("");
+  const leaked = [WEBHOOK_SECRET, SEQUENCE_SECRET, "e2e-n8n-token", MOCK_API_KEY].filter((x) => journal.includes(x));
+  results.push({ name: "SEC3 · aucun secret dans les journaux du serveur", ok: leaked.length === 0, error: leaked.length ? "secret trouvé dans les logs" : undefined });
+  console.log(`  ${leaked.length ? "✗" : "✓"} SEC3 · aucun secret dans les journaux du serveur`);
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} scénarios OK\n`);
   if (failed.length) {

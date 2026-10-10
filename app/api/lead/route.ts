@@ -4,6 +4,7 @@ import { logLead } from "@/lib/lead/log";
 import { clientIp, isRateLimited, LEAD_LIMITS } from "@/lib/security/rateLimit";
 import { verifyTurnstile } from "@/lib/security/turnstile";
 import { FIELD_MESSAGES, firstInvalidField, leadSchema } from "@/lib/validation/leadSchema";
+import { readBodyLimited } from "@/lib/security/body";
 
 // DNS (vérification MX) et crypto : runtime Node.js obligatoire
 export const runtime = "nodejs";
@@ -26,8 +27,9 @@ export async function POST(req: NextRequest) {
 
   let raw: unknown;
   try {
-    const text = await req.text();
-    if (text.length > MAX_BODY_BYTES) return json({ message: "Requête invalide." }, 413);
+    const read = await readBodyLimited(req, MAX_BODY_BYTES);
+    if (!read.ok) return json({ message: "Requête invalide." }, 413);
+    const text = read.text;
     raw = JSON.parse(text);
   } catch {
     return json({ message: "Requête invalide." }, 400);

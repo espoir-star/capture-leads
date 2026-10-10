@@ -10,6 +10,7 @@ import { getLeadMagnet } from "@/config/leadMagnets";
 import { BREVO_EVENTS, CLIENT_EVENTS, sendBrevoEvent } from "@/lib/brevo/server";
 import { verifyLeadRef } from "@/lib/security/leadToken";
 import { clientIp, EVENT_LIMITS, isRateLimited } from "@/lib/security/rateLimit";
+import { readBodyLimited } from "@/lib/security/body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,8 +23,9 @@ export async function POST(req: NextRequest) {
   let body: { name?: unknown; leadRef?: unknown };
   try {
     // sendBeacon envoie du text/plain : on lit le texte brut
-    const text = await req.text();
-    if (text.length > 2000) return noContent();
+    const read = await readBodyLimited(req, 2000);
+    if (!read.ok) return noContent();
+    const text = read.text;
     body = JSON.parse(text);
   } catch {
     return noContent();
