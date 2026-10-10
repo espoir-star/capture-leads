@@ -13,7 +13,7 @@ function data(over: Partial<CaptureData> = {}): CaptureData {
     nom: "Martin",
     besoin: "DEPLOYER_AGENT_IA",
     horizon: "MOINS_3_MOIS",
-    optIn: false,
+    marketingOpposition: false,
     phone: checkPhone("06 45 87 12 39", "FR"),
     attribution: {
       utm_source: "linkedin",
@@ -54,7 +54,7 @@ test("scénario pilote : nouveau contact (test 65)", () => {
     PHONE_STATUS: "VALID_FORMAT",
     LEAD_SCORE: 12,
     LIFECYCLE_STAGE: "LEAD",
-    OPT_IN: false,
+    MARKETING_STATUS: "B2B_ELIGIBLE",
   });
 });
 
@@ -180,17 +180,32 @@ test("règle complète PHONE_STATUS : valide / douteux selon le SMS écrit", () 
 test("B · email techniquement valide, aucune interaction → PENDING, jamais VERIFIED", () => {
   assert.equal(buildContactUpdate(null, data()).attributes.EMAIL_STATUS, "PENDING");
   assert.equal(buildContactUpdate(contact({}), data()).attributes.EMAIL_STATUS, "PENDING");
-  assert.equal(buildContactUpdate(contact({ EMAIL_STATUS: "PENDING" }), data()).attributes.EMAIL_STATUS, undefined);
+  assert.equal(buildContactUpdate(contact({ EMAIL_STATUS: "PENDING" }), data()).attributes.EMAIL_STATUS, und/* ── Préférences marketing B2B ─────────────────────────────────────── */
+
+test("nouveau lead métier informé sans opposition → B2B_ELIGIBLE", () => {
+  const u = buildContactUpdate(null, data());
+  assert.equal(u.attributes.MARKETING_STATUS, "B2B_ELIGIBLE");
+  assert.equal("OPT_IN" in u.attributes, false);
 });
 
-/* ── OPT_IN : uniquement la case newsletter ────────────────────────── */
+test("opposition explicite → OPPOSED, même avec ancien consentement", () => {
+  const u = buildContactUpdate(contact({ OPT_IN: true }), data({ marketingOpposition: true }));
+  assert.equal(u.attributes.MARKETING_STATUS, "OPPOSED");
+});
 
-test("OPT_IN : case cochée → true ; non cochée → false ; un true existant n'est jamais rétrogradé", () => {
-  assert.equal(buildContactUpdate(null, data({ optIn: true })).attributes.OPT_IN, true);
-  assert.equal(buildContactUpdate(null, data({ optIn: false })).attributes.OPT_IN, false);
-  assert.equal(buildContactUpdate(contact({}), data({ optIn: false })).attributes.OPT_IN, false);
-  assert.equal("OPT_IN" in buildContactUpdate(contact({ OPT_IN: true }), data({ optIn: false })).attributes, false);
-  assert.equal(buildContactUpdate(contact({ OPT_IN: false }), data({ optIn: true })).attributes.OPT_IN, true);
+test("contact déjà désabonné ne peut être réinscrit par une nouvelle capture", () => {
+  const u = buildContactUpdate(contact({ MARKETING_STATUS: "OPPOSED" }), data());
+  assert.equal(u.marketingStatus, "OPPOSED");
+  const blocked = { ...contact({}), emailBlacklisted: true };
+  assert.equal(buildContactUpdate(blocked, data()).marketingStatus, "OPPOSED");
+});
+
+test("ancien OPT_IN false reste TO_REVIEW, true devient CONSENT", () => {
+  assert.equal(buildContactUpdate(contact({ OPT_IN: false }), data()).marketingStatus, "TO_REVIEW");
+  assert.equal(buildContactUpdate(contact({ OPT_IN: true }), data()).marketingStatus, "CONSENT");
+});
+
+, true);
 });
 
 test("jeton de confirmation écrit une seule fois (lien stable)", () => {
