@@ -4,11 +4,14 @@
  * (séquence, contact, date d'inscription, date d'événement) : aucun état à
  * stocker côté Vercel, et n8n ne peut ni le fabriquer ni le modifier.
  *
- * Il sert aussi de base aux clés d'idempotence Brevo (`stepIdempotencyKey`) :
- * une étape d'une inscription n'est envoyée qu'une fois, même si n8n rejoue.
+ * Les clés d'envoi (`stepSendKey`) dépendent du contact, de la séquence et de
+ * l'étape, PAS de l'inscription : deux inscriptions simultanées du même
+ * contact (double soumission) partagent la même clé → un seul email
+ * (lib/brevo/sendOnce.ts).
  */
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { sendKeyOf } from "@/lib/brevo/sendOnce";
 import { deriveKey } from "@/lib/security/secret";
 
 export interface Enrollment {
@@ -60,14 +63,12 @@ export function verifyEnrollment(id: unknown): Enrollment | null {
   }
 }
 
-/** Empreinte courte, sans donnée personnelle (Brevo l'expose dans les en-têtes de l'email) */
-const digest = (s: string) => createHash("sha256").update(s).digest("base64url").slice(0, 22);
-
-export function stepIdempotencyKey(enrollmentId: string, stepId: string): string {
-  return `seq.${digest(enrollmentId)}.${stepId}`;
+/** Étape : une seule fois par contact, séquence et étape, quel que soit le nombre d'inscriptions */
+export function stepSendKey(sequenceId: string, contactId: number, stepId: string): string {
+  return sendKeyOf("step", sequenceId, contactId, stepId);
 }
 
 /** Livraison : une seule par contact, séquence et jour (double soumission, rechargement) */
-export function deliveryIdempotencyKey(sequenceId: string, contactId: number, now: Date): string {
-  return `dlv.${digest(`${sequenceId}:${contactId}`)}.${now.toISOString().slice(0, 10)}`;
+export function deliverySendKey(sequenceId: string, contactId: number, now: Date): string {
+  return sendKeyOf("delivery", sequenceId, contactId, now.toISOString().slice(0, 10));
 }

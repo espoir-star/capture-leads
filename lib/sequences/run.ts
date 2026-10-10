@@ -5,25 +5,22 @@
  *   enrollInSequence  inscription : identifiant signé → webhook n8n (capture)
  *   runStep           exécution d'une étape à la demande de n8n (/api/sequences/step)
  *
- * Idempotence durable : chaque envoi porte une clé Brevo (`idempotencyKey`)
- * dérivée de l'inscription et de l'étape ; un rejeu n8n, une reprise réseau
- * ou une double inscription ne produisent jamais un second email.
- * Historique : événements Brevo sur la fiche du contact (guide_delivered,
- * sequence_enrolled, sequence_step_sent / _skipped, sequence_enroll_failed).
+ * Envoi unique (lib/brevo/sendOnce.ts) : clé par contact × séquence × étape,
+ * vérification du journal Brevo avant tout envoi (reprises tardives) et
+ * idempotencyKey (appels simultanés). Un rejeu n8n, une reprise réseau, une
+ * réponse perdue ou une double inscription ne produisent jamais un second email.
+ * Historique : événements Brevo sur la fiche du contact (email_send_attempt
+ * avec statut et messageId, guide_delivered, sequence_enrolled,
+ * sequence_step_sent / _skipped, sequence_enroll_failed).
  */
 
 import { templateId } from "@/config/emailTemplates";
 import { getSequence, type SequenceConfig } from "@/config/sequences";
 import { getContactById } from "@/lib/brevo/api";
 import { BREVO_EVENTS, sendBrevoEvent } from "@/lib/brevo/events";
-import { sendTransactionalEmail, type SendResult } from "@/lib/brevo/transactional";
-import {
-  deliveryIdempotencyKey,
-  signEnrollment,
-  stepIdempotencyKey,
-  verifyEnrollment,
-  type Enrollment,
-} from "@/lib/sequences/enrollment";
+import { sendOnce, type SendOutcome } from "@/lib/brevo/sendOnce";
+import type { SendResult } from "@/lib/brevo/transactional";
+import { deliverySendKey, signEnrollment, stepSendKey, verifyEnrollment, type Enrollment } from "@/lib/sequences/enrollment";
 import { confirmUrl, CTA_URL, resourceParams, unsubscribeLinks } from "@/lib/sequences/links";
 import { notifyN8n } from "@/lib/sequences/n8n";
 import { decideStep, nextStep, stepAt } from "@/lib/sequences/plan";
@@ -37,6 +34,30 @@ export class SequenceSendError extends Error {
     super(`Envoi Brevo refusé (${httpStatus} ${code ?? ""})`);
   }
 }
+
+/** Historique durable de chaque tentative, sur la fiche Brevo du contact */
+async function recordAttempt(contactId: number, out: SendOutcome, props: Record<string, string>, now: Date) {
+  await sendBrevoEvent(
+    BREVO_EVENTS.EMAIL_SEND_ATTEMPT,
+    { contact_id: contactId },
+    {
+      ...props,
+      send_key: out.sendKey,
+      status: out.status,
+      ...(out.status === "SENT" && { via: out.via, message_id: out.messageId }),
+      ...(out.status === "FAILED" && { http_status: out.httpStatus, code: out.code, permanent: out.permanent }),
+      ...(out.status === "UNKNOWN" && { reason: out.reason }),
+    },
+    now
+  );
+}
+
+const asSendResult = (out: SendOutcome): SendResult =>
+  out.status === "SENT"
+    ? out.via === "sent"
+      ? { status: "sent", messageId: out.messageId }
+      : { status: "duplicate" }
+    : { status: "error", httpStatus: out.status === "FAILED" ? out.httpStatus : 0, code: out.status === "FAILED" ? out.code : out.reason };
 
 function baseParams(email: string, slug: string | undefined): Record<string, string> {
   const links = unsubscribeLinks(email);
@@ -61,14 +82,18 @@ export async function deliverGuide(opts: {
   const id = templateId(seq.delivery);
   if (id === null) return { status: "error", httpStatus: 0, code: "template_missing" };
   const confirm = confirmUrl(email, opts.emailStatus);
-  const result = await sendTransactionalEmail({
+  const out = await sendOnce({
     to: { email },
     templateId: id,
     params: { ...baseParams(email, slug), ...(confirm && { CONFIRM_URL: confirm }) },
     tags: [`seq:${seq.id}`, `seq:${seq.id}:delivery`, `guide:${slug}`],
-    idempotencyKey: deliveryIdempotencyKey(seq.id, contactId, now),
+    sendKey: deliverySendKey(seq.id, contactId, now),
+    since: new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`),
+    now,
     oneClickUnsubscribeUrl: unsubscribeLinks(email)?.oneClick,
   });
+  const result = asSendResult(out);
+  await recordAttempt(contactId, out, { sequence_id: seq.id, step: "delivery" }, now);
   await sendBrevoEvent(
     BREVO_EVENTS.GUIDE_DELIVERED,
     { contact_id: contactId },
@@ -168,18 +193,32 @@ export async function runStep(enrollmentId: unknown, stepId: unknown, now = new 
       if (id === null) return { action: "done", reason: "template_missing" };
       const email = contact!.email;
       const links = unsubscribeLinks(email);
-      const result = await sendTransactionalEmail({
+      const out = await sendOnce({
         to: { email },
         templateId: id,
         params: baseParams(email, enr.r),
         tags: [`seq:${seq.id}`, `seq:${seq.id}:${step.id}`, ...(enr.r ? [`guide:${enr.r}`] : [])],
-        idempotencyKey: stepIdempotencyKey(enrollmentId, step.id),
+        sendKey: stepSendKey(seq.id, enr.c, step.id),
+        since: new Date(at - 6 * HOUR),
+        now,
         oneClickUnsubscribeUrl: links?.oneClick,
       });
-      if (result.status === "error") throw new SequenceSendError(result.httpStatus, result.code);
-      sent = result.status === "sent";
-      if (sent) {
-        await sendBrevoEvent(BREVO_EVENTS.SEQUENCE_STEP_SENT, { contact_id: enr.c }, { sequence_id: seq.id, step: step.id }, now);
+      await recordAttempt(enr.c, out, { sequence_id: seq.id, step: step.id }, now);
+      // Issue incertaine ou refus temporaire : n8n réessaie plus tard (le journal est revérifié d'abord)
+      if (out.status === "UNKNOWN") throw new SequenceSendError(0, out.reason);
+      if (out.status === "FAILED" && !out.permanent) throw new SequenceSendError(out.httpStatus, out.code);
+      if (out.status === "FAILED") {
+        skipReason = "send_failed";
+      } else {
+        sent = out.via === "sent";
+        if (sent) {
+          await sendBrevoEvent(
+            BREVO_EVENTS.SEQUENCE_STEP_SENT,
+            { contact_id: enr.c },
+            { sequence_id: seq.id, step: step.id, ...(out.messageId && { message_id: out.messageId }) },
+            now
+          );
+        }
       }
     }
   }
