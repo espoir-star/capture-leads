@@ -10,6 +10,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { request } from "node:http";
 import assert from "node:assert/strict";
 import { MOCK_API_KEY, startMockBrevo, type MockContact, type MockState } from "./mock-brevo";
 
@@ -65,6 +66,9 @@ const reset = () => fetch(`${MOCK}/__reset`, { method: "POST" });
 const seed = (c: Partial<MockContact>) =>
   fetch(`${MOCK}/__seed`, { method: "POST", body: JSON.stringify(c) });
 const contactOf = async (email: string) => (await state()).contacts.find((c) => c.email === email);
+const configure = (c: { credits?: number; ledgerDown?: boolean; idemTtlMs?: number; clockOffsetMs?: number; turnstile?: string }) =>
+  fetch(`${MOCK}/__config`, { method: "POST", body: JSON.stringify(c) });
+const today = () => new Date().toISOString().slice(0, 10);
 
 const results: { name: string; ok: boolean; error?: string }[] = [];
 async function scenario(name: string, fn: () => Promise<void>) {
@@ -74,8 +78,9 @@ async function scenario(name: string, fn: () => Promise<void>) {
     results.push({ name, ok: true });
     console.log(`  ✓ ${name}`);
   } catch (e) {
-    results.push({ name, ok: false, error: e instanceof Error ? e.message : String(e) });
-    console.log(`  ✗ ${name}\n      ${e instanceof Error ? e.message.split("\n").join("\n      ") : e}`);
+    const cause = e instanceof Error && e.cause ? ` (cause : ${String((e.cause as Error).message ?? e.cause)})` : "";
+    results.push({ name, ok: false, error: (e instanceof Error ? e.message : String(e)) + cause });
+    console.log(`  ✗ ${name}\n      ${results.at(-1)!.error!.split("\n").join("\n      ")}`);
   }
 }
 
@@ -87,12 +92,14 @@ async function main() {
       BREVO_API_KEY: MOCK_API_KEY,
       BREVO_API_BASE_URL: `${MOCK}/v3`,
       TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+      TURNSTILE_VERIFY_URL: `${MOCK}/__turnstile`, // faux Cloudflare : e2e sans dépendance réseau
       BREVO_WEBHOOK_SECRET: WEBHOOK_SECRET,
       SIGNING_SECRET: "e2e",
       // Moteur de séquences : seul le guide pilote a basculé
       ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables",
       N8N_SEQUENCE_WEBHOOK_URL: `${MOCK}/__n8n`,
       N8N_WEBHOOK_TOKEN: "e2e-n8n-token",
+      N8N_EVENTS_WEBHOOK_URL: `${MOCK}/__n8n_events`,
       SEQUENCE_API_SECRET: SEQUENCE_SECRET,
       SITE_URL: APP,
     },
@@ -362,6 +369,13 @@ async function main() {
     const s2 = await state();
     assert.equal(s2.emails.length, 1, "même jour : pas de 2e email");
     assert.equal(s2.n8n.length, 1, "déjà dans la liste : pas de 2e séquence");
+    // Tâche de livraison durable : écrite avec le contact, soldée après l'envoi ; la reprise horaire n'a rien à faire
+    const c = s2.contacts.find((x) => x.email === "claire.martin.e2e@gmail.com")!;
+    assert.equal(c.attributes.GUIDE_DELIVERY_STATUS, "SENT");
+    assert.match(String(c.attributes.GUIDE_DELIVERY_REF), /^guide-12-cas-ec-v1\|12-cas-usage-experts-comptables\|/);
+    const m = await post("/api/marketing/maintenance", {}, { Authorization: `Bearer ${SEQUENCE_SECRET}` });
+    assert.equal(m.body.deliveries.sent, 0);
+    assert.equal((await state()).emails.length, 1);
   });
 
   await scenario("S2 · opposant sur un guide encore en automation Brevo : hors liste, guide livré en transactionnel", async () => {
@@ -473,6 +487,272 @@ async function main() {
     assert.equal(s.contacts[0].attributes.LEAD_SCORE, 12, "score jamais modifié");
   });
 
+  /* ── Scoring comportemental (journal n8n simulé) ───────────────────── */
+  const hook = (evt: unknown) => post("/api/webhooks/brevo", evt, { Authorization: `Bearer ${WEBHOOK_SECRET}` });
+  const click = (email: string, messageId: string, link: string) => ({
+    event: "click", email, "message-id": messageId, link, ts_event: Math.floor(Date.now() / 1000), tags: ["sequence"], template_id: 35,
+  });
+  const hotAlerts = (s: MockState) => s.emails.filter((e) => e.tags?.includes("alerte-lead-chaud"));
+
+  await scenario("SC1 · clic RDV (transactionnel) → +10 ; rejeu → rien ; clic guide → +5, lead chaud, alerte UNE fois", async () => {
+    await seed({ email: "chaud@cabinet.fr", attributes: { LEAD_SCORE: 12, LIFECYCLE_STAGE: "LEAD", EMAIL_STATUS: "PENDING", PRENOM: "Léa", ENTREPRISE: "Cabinet <Test>" } });
+    const offer = click("chaud@cabinet.fr", "<m1@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min");
+    const r1 = await hook(offer);
+    assert.equal(r1.status, 200, JSON.stringify(r1.body));
+    assert.deepEqual(r1.body.results, ["click_scored"]);
+    let c = (await contactOf("chaud@cabinet.fr"))!;
+    assert.equal(c.attributes.FORM_SCORE, 12, "score formulaire historique figé");
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
+    assert.equal(c.attributes.LEAD_SCORE, 22);
+    assert.equal(c.attributes.LAST_EMAIL_CLICK_AT, today());
+
+    await hook(offer); // Brevo rejoue
+    await hook([offer, { ...offer, link: "https://cal.com/althoce-conseil-4ncbuz/30min?x=1" }]); // 2e clic RDV, même email
+    let s = await state();
+    assert.equal(s.ledger.length, 1, "un seul événement journalisé");
+    assert.equal(s.contacts[0].attributes.LEAD_SCORE, 22, "aucun double comptage");
+
+    await hook(click("chaud@cabinet.fr", "<m1@relay>", "https://espoir-metareglage.notion.site/12-cas"));
+    c = (await contactOf("chaud@cabinet.fr"))!;
+    assert.equal(c.attributes.LEAD_SCORE, 27);
+    assert.equal(c.attributes.LIFECYCLE_STAGE, "HOT_LEAD");
+    assert.equal(c.attributes.HOT_ALERT_SENT_AT, today());
+    s = await state();
+    assert.equal(hotAlerts(s).length, 1);
+    assert.equal(hotAlerts(s)[0].to[0].email, "espoir@contact.althoce.com");
+    const html = String((hotAlerts(s)[0] as unknown as { htmlContent: string }).htmlContent);
+    assert.match(html, /Cabinet &lt;Test&gt;/, "valeurs échappées");
+    assert.match(html, /formulaire 12 \+ comportement 15/);
+
+    await hook({ event: "click", email: "chaud@cabinet.fr", camp_id: 41, URL: "https://www.linkedin.com/posts/x", ts_event: 1 });
+    s = await state();
+    assert.equal(s.contacts[0].attributes.LEAD_SCORE, 30, "clic newsletter +3");
+    assert.equal(hotAlerts(s).length, 1, "pas de 2e alerte");
+  });
+
+  await scenario("SC2 · n8n arrêté → 429 (Brevo rejoue), rien écrit ; au rejeu → compté une fois", async () => {
+    await seed({ email: "panne@cabinet.fr", attributes: { LEAD_SCORE: 4 } });
+    await configure({ ledgerDown: true });
+    const evt = click("panne@cabinet.fr", "<m2@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min");
+    const r = await hook(evt);
+    assert.equal(r.status, 429);
+    assert.equal((await contactOf("panne@cabinet.fr"))!.attributes.LEAD_SCORE, 4);
+    await configure({ ledgerDown: false });
+    assert.equal((await hook(evt)).status, 200);
+    assert.equal((await hook(evt)).status, 200);
+    const c = (await contactOf("panne@cabinet.fr"))!;
+    assert.equal(c.attributes.LEAD_SCORE, 14);
+    assert.equal((await state()).ledger.length, 1);
+  });
+
+  await scenario("SC3 · liens jamais comptés (désinscription, confirmation, mailto) ; spam → opposition ; email interne ignoré", async () => {
+    await seed({ email: "neutre@cabinet.fr", attributes: { LEAD_SCORE: 3, MARKETING_STATUS: "B2B_ELIGIBLE" } });
+    const r = await hook([
+      click("neutre@cabinet.fr", "<m3@relay>", `${APP}/desinscription?t=abc`),
+      click("neutre@cabinet.fr", "<m3@relay>", `${APP}/confirmer-email?t=abc`),
+      click("neutre@cabinet.fr", "<m3@relay>", "mailto:espoir@contact.althoce.com"),
+      { ...click("neutre@cabinet.fr", "<m4@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min"), tags: ["alerte-lead-chaud"] },
+      { event: "spam", email: "neutre@cabinet.fr" },
+    ]);
+    assert.deepEqual(r.body.results, ["ignored_click", "ignored_click", "ignored_click", "ignored_click", "marketing_opposed"]);
+    const c = (await contactOf("neutre@cabinet.fr"))!;
+    assert.equal(c.attributes.LEAD_SCORE, 3);
+    assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");
+    assert.equal((await state()).ledger.length, 0);
+  });
+
+  await scenario("SC4 · passe horaire /api/marketing/score : secret exigé, idempotente, ne baisse jamais", async () => {
+    await seed({ email: "manuel@cabinet.fr", attributes: { LEAD_SCORE: 40, BEHAVIOR_SCORE: 20, FORM_SCORE: 10, LIFECYCLE_STAGE: "CONTACTED" } });
+    const id = (await contactOf("manuel@cabinet.fr"))!.id;
+    const rows = [
+      { event_key: `clk.${"a".repeat(32)}`, contact_id: id, category: "guide_click", points: 5, occurred_at: "2026-10-01T10:00:00Z" },
+      { event_key: `clk.${"a".repeat(32)}`, contact_id: id, category: "guide_click", points: 5, occurred_at: "2026-10-01T10:00:00Z" },
+      { event_key: `clk.${"b".repeat(32)}`, contact_id: id, category: "content_click", points: 3, occurred_at: "2026-10-02T10:00:00Z" },
+    ];
+    assert.equal((await post("/api/marketing/score", { rows })).status, 401);
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const r = await post("/api/marketing/score", { rows }, auth);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const c = (await contactOf("manuel@cabinet.fr"))!;
+    assert.equal(c.attributes.LEAD_SCORE, 40, "score manuel conservé");
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 20, "comportement jamais réduit (8 < 20)");
+    assert.equal(c.attributes.LIFECYCLE_STAGE, "CONTACTED", "étape commerciale intouchée");
+    assert.equal(c.attributes.LAST_EMAIL_CLICK_AT, "2026-10-02");
+    const puts = (await state()).requests.filter((q) => q.startsWith("PUT")).length;
+    await post("/api/marketing/score", { rows }, auth);
+    assert.equal((await state()).requests.filter((q) => q.startsWith("PUT")).length, puts, "2e passe : aucune écriture");
+    assert.equal(hotAlerts(await state()).length, 0, "contact déjà contacté : pas d'alerte");
+  });
+
+  await scenario("SC5 · tâches horaires : quota bas → alerte une fois/jour ; RDV confirmé → +25 une fois, sans alerte", async () => {
+    await seed({ email: "rdv@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "Prévu" } });
+    await seed({ email: "rien@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "À préciser" } });
+    await configure({ credits: 50 });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    assert.equal((await post("/api/marketing/maintenance", {})).status, 401);
+    const r1 = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(r1.status, 200, JSON.stringify(r1.body));
+    assert.equal(r1.body.quota.remaining, 50);
+    assert.equal(r1.body.quota.alert, "sent");
+    assert.equal(r1.body.meetings.events, 1);
+    const r2 = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(r2.body.meetings.inserted, 0, "RDV déjà compté");
+    const s = await state();
+    assert.equal(s.emails.filter((e) => e.tags?.includes("alerte-quota")).length, 1, "une alerte quota par jour");
+    const rdv = s.contacts.find((c) => c.email === "rdv@cabinet.fr")!;
+    assert.equal(rdv.attributes.BEHAVIOR_SCORE, 25);
+    assert.equal(rdv.attributes.LEAD_SCORE, 30);
+    assert.equal(hotAlerts(s).length, 0, "RDV en cours : pas d'alerte lead chaud");
+    assert.equal(s.contacts.find((c) => c.email === "rien@cabinet.fr")!.attributes.LEAD_SCORE, 5);
+  });
+
+  await scenario("SC6 · présence webinar (n8n → /api/sequences/event) → +15, une fois", async () => {
+    await seed({ email: "present@cabinet.fr", attributes: { LEAD_SCORE: 8 } });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const evt = { email: "present@cabinet.fr", event: "webinar_attended", properties: { webinar: "ia-cabinet-2026" } };
+    assert.equal((await post("/api/sequences/event", evt, auth)).status, 200);
+    assert.equal((await post("/api/sequences/event", evt, auth)).status, 200);
+    const c = (await contactOf("present@cabinet.fr"))!;
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 15);
+    assert.equal(c.attributes.LEAD_SCORE, 23);
+  });
+
+  /* ── Sécurité des échanges (Brevo → Vercel, n8n → Vercel) ──────────── */
+  const ROUTES: { path: string; secret: string; valid: () => unknown; expect: number }[] = [
+    { path: "/api/webhooks/brevo", secret: WEBHOOK_SECRET, valid: () => ({ event: "opened", email: "sec@cabinet.fr" }), expect: 200 },
+    { path: "/api/sequences/step", secret: SEQUENCE_SECRET, valid: () => ({ enrollmentId: "e1.inconnu.inconnu", stepId: "relance-j2" }), expect: 400 },
+    { path: "/api/sequences/event", secret: SEQUENCE_SECRET, valid: () => ({ email: "sec@cabinet.fr", event: "webinar_no_show", properties: { webinar: "test" } }), expect: 200 },
+    { path: "/api/sequences/alert", secret: SEQUENCE_SECRET, valid: () => ({ workflow: "test", executionId: `sec-${Date.now()}`, node: "n", message: "m" }), expect: 200 },
+    { path: "/api/marketing/score", secret: SEQUENCE_SECRET, valid: () => ({ rows: [] }), expect: 200 },
+    { path: "/api/marketing/maintenance", secret: SEQUENCE_SECRET, valid: () => ({}), expect: 200 },
+  ];
+
+  await scenario("SEC1 · matrice : sans jeton / jeton faux → 401 sans aucun traitement ; GET → 405 ; JSON cassé → 400 ; trop gros → 413 ; valide → OK", async () => {
+    await seed({ email: "sec@cabinet.fr", attributes: { LEAD_SCORE: 1 } });
+    for (const r of ROUTES) {
+      const before = (await state()).requests.length;
+      assert.equal((await post(r.path, r.valid())).status, 401, `${r.path} sans jeton`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: "Bearer faux" })).status, 401, `${r.path} jeton faux`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: `Bearer ${r.secret}x` })).status, 401, `${r.path} jeton presque juste`);
+      assert.equal((await post(r.path, r.valid(), { Authorization: r.secret })).status, 401, `${r.path} sans « Bearer »`);
+      assert.equal((await state()).requests.length, before, `${r.path} : aucun appel Brevo avant authentification`);
+      const auth = { Authorization: `Bearer ${r.secret}` };
+      assert.equal((await fetch(`${APP}${r.path}`, { method: "GET", headers: auth })).status, 405, `${r.path} GET`);
+      assert.equal((await fetch(`${APP}${r.path}`, { method: "PUT", headers: auth })).status, 405, `${r.path} PUT`);
+      if (r.path !== "/api/marketing/maintenance") {
+        const broken = await post(r.path, "{pas du json", auth);
+        assert.equal(broken.status, 400, `${r.path} JSON cassé`);
+        const big = await fetch(`${APP}${r.path}`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ x: "a".repeat(700_000) }) });
+        assert.equal(big.status, 413, `${r.path} corps trop volumineux`);
+      }
+      const ok = await post(r.path, r.valid(), auth);
+      assert.equal(ok.status, r.expect, `${r.path} requête valide : ${JSON.stringify(ok.body)}`);
+    }
+    // Corps envoyé en flux (chunked, sans Content-Length) sur une connexion dédiée : coupé à la limite
+    const streamedStatus = await new Promise<number>((resolve, reject) => {
+      const r = request(`${APP}/api/webhooks/brevo`, { method: "POST", agent: false, headers: { Authorization: `Bearer ${WEBHOOK_SECRET}`, "Content-Type": "application/json" } }, (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+        r.destroy();
+      });
+      r.on("error", (e) => (r.destroyed ? undefined : reject(e)));
+      for (let i = 0; i < 40; i++) r.write("x".repeat(20_000));
+      r.end();
+    });
+    assert.equal(streamedStatus, 413, "flux de 800 Ko sans Content-Length → 413");
+    // Jeton dans l'URL : plus accepté (il finirait dans les journaux d'accès)
+    assert.equal((await post(`/api/webhooks/brevo?token=${WEBHOOK_SECRET}`, { event: "opened", email: "sec@cabinet.fr" })).status, 401);
+  });
+
+  await scenario("SEC2 · étape n8n : 5 appels simultanés, rejeu 30 min et 2 h plus tard → un seul email", async () => {
+    process.env.SIGNING_SECRET = "e2e";
+    const { signEnrollment } = await import("@/lib/sequences/enrollment");
+    const id = await (await seed({ email: "concurrence@cabinet.fr", attributes: { VERTICAL: "FINANCE", MARKETING_STATUS: "B2B_ELIGIBLE", EMAIL_STATUS: "PENDING" }, listIds: [10] })).json().then((x: { id: number }) => x.id);
+    const enr = signEnrollment({ s: "guide-12-cas-ec-v1", c: id, t: Date.now() - 48 * 3_600_000, r: "12-cas-usage-experts-comptables" })!;
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const outs = await Promise.all(Array.from({ length: 5 }, () => post("/api/sequences/step", { enrollmentId: enr, stepId: "relance-j2" }, auth)));
+    assert.ok(outs.every((o) => o.status === 200 || o.status === 502), JSON.stringify(outs.map((o) => o.status)));
+    await configure({ idemTtlMs: 15 * 60_000 });
+    for (const offset of [30 * 60_000, 2 * 3_600_000]) {
+      await fetch(`${MOCK}/__config`, { method: "POST", body: JSON.stringify({ clockOffsetMs: offset }) });
+      const again = await post("/api/sequences/step", { enrollmentId: enr, stepId: "relance-j2" }, auth);
+      assert.equal(again.status, 200, JSON.stringify(again.body));
+    }
+    const s = await state();
+    assert.equal(s.emails.filter((e) => e.to[0]?.email === "concurrence@cabinet.fr").length, 1, "une seule relance");
+    assert.ok(s.events.some((e) => e.event_name === "email_send_attempt" && e.event_properties?.message_id), "messageId historisé");
+  });
+
+  await scenario("SEC4 · Turnstile : absent / invalide / déjà utilisé → 403 sans contact ; Cloudflare en panne → mode dégradé plafonné, aucun email", async () => {
+    const reject = async (mode: string, over: Record<string, unknown> = {}) => {
+      await configure({ turnstile: mode });
+      const r = await post("/api/lead", lead({ email: `ts-${mode}@gmail.com`, tel: "06 11 22 33 44", ...over }));
+      return r.status;
+    };
+    assert.equal(await reject("ok", { turnstileToken: undefined }), 403, "jeton absent");
+    assert.equal(await reject("invalid"), 403, "jeton invalide");
+    assert.equal(await reject("duplicate"), 403, "jeton déjà utilisé ou expiré (timeout-or-duplicate)");
+    assert.equal((await state()).contacts.length, 0, "aucun contact créé");
+
+    for (const mode of ["down", "internal"]) {
+      await configure({ turnstile: mode });
+      const ip = { "x-real-ip": `10.9.9.${mode === "down" ? 1 : 2}` };
+      const ok = await post("/api/lead", lead({ email: `degrade-${mode}@gmail.com`, tel: mode === "down" ? "06 45 87 12 36" : "06 45 87 12 35" }), ip);
+      assert.equal(ok.status, 200, `${mode} : prospect accepté (${JSON.stringify(ok.body)})`);
+    }
+    await sleep(600);
+    let s = await state();
+    assert.equal(s.contacts.length, 2, "contacts enregistrés");
+    assert.ok(s.contacts.every((c) => c.listIds.length === 0), "pas d'ajout à la liste (l'automation Brevo enverrait un email)");
+    assert.equal(s.emails.length, 0, "aucun email automatique en mode dégradé");
+    assert.equal(s.n8n.length, 0, "aucune inscription de séquence");
+    assert.ok(s.events.some((e) => e.event_properties?.turnstile === "unverified"), "marqué non vérifié");
+
+    await configure({ turnstile: "down" });
+    const same = { "x-real-ip": "10.9.9.1" };
+    assert.equal((await post("/api/lead", lead({ email: "degrade-2@gmail.com", tel: "06 45 87 12 38" }), same)).status, 200, "2e soumission de l'IP");
+    assert.equal((await post("/api/lead", lead({ email: "degrade-3@gmail.com", tel: "06 45 87 12 37" }), same)).status, 503, "3e en 10 min : plafond par IP");
+    s = await state();
+    assert.equal(s.emails.length, 0);
+    await configure({ turnstile: "ok" });
+  });
+
+  await scenario("SC7 · clic de robot (< 15 s après l'envoi) non compté ; clic humain compté", async () => {
+    await seed({ email: "robot@cabinet.fr", attributes: { LEAD_SCORE: 2 } });
+    const sent = Math.floor(Date.now() / 1000) - 3600;
+    const r = await hook([
+      { event: "click", email: "robot@cabinet.fr", camp_id: 51, URL: "https://cal.com/althoce-conseil-4ncbuz/30min", ts_sent: sent, ts_event: sent + 4 },
+      { event: "click", email: "robot@cabinet.fr", camp_id: 52, URL: "https://www.linkedin.com/posts/x", ts_sent: sent, ts_event: sent + 600 },
+    ]);
+    assert.equal(r.status, 200);
+    const s = await state();
+    assert.equal(s.ledger.length, 1, "seul le clic humain est journalisé");
+    assert.equal(s.contacts[0].attributes.BEHAVIOR_SCORE, 3);
+  });
+
+  await scenario("SC8 · webhook abandonné par Brevo : rattrapé par la tâche horaire (journal des clics), puis rejeu sans double comptage", async () => {
+    await seed({ email: "perdu@cabinet.fr", attributes: { LEAD_SCORE: 5 } });
+    const sentAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const clickAt = new Date(Date.now() - 3_600_000).toISOString();
+    await fetch(`${MOCK}/__stats`, { method: "POST", body: JSON.stringify({ events: [
+      { event: "requests", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: sentAt, templateId: 36 },
+      { event: "clicks", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: clickAt, templateId: 36, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+      { event: "clicks", email: "espoir@contact.althoce.com", messageId: "<m-interne@relay>", date: clickAt, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    ] }) });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const m = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(m.status, 200, JSON.stringify(m.body));
+    assert.equal(m.body.clicks.inserted, 1, "clic rattrapé ; email interne ignoré");
+    let c = (await contactOf("perdu@cabinet.fr"))!;
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
+    // Brevo finit par livrer le webhook : même clé, aucun double comptage
+    await hook(click("perdu@cabinet.fr", "<m-perdu@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min"));
+    await post("/api/marketing/maintenance", {}, auth);
+    c = (await contactOf("perdu@cabinet.fr"))!;
+    assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
+    assert.equal((await state()).ledger.length, 1);
+  });
+
   await scenario("Brevo en panne : message clair, réessai possible", async () => {
     mock.close();
     await sleep(200);
@@ -482,6 +762,10 @@ async function main() {
   });
 
   app.kill();
+  const journal = logs.join("");
+  const leaked = [WEBHOOK_SECRET, SEQUENCE_SECRET, "e2e-n8n-token", MOCK_API_KEY].filter((x) => journal.includes(x));
+  results.push({ name: "SEC3 · aucun secret dans les journaux du serveur", ok: leaked.length === 0, error: leaked.length ? "secret trouvé dans les logs" : undefined });
+  console.log(`  ${leaked.length ? "✗" : "✓"} SEC3 · aucun secret dans les journaux du serveur`);
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} scénarios OK\n`);
   if (failed.length) {

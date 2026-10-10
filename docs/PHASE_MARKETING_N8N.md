@@ -43,11 +43,32 @@ n8n « Althoce · Séquences (moteur) » : attend la date → POST /api/sequence
 
 - **Configuration** : `config/sequences.ts` (étapes, catégorie `transactional` / `marketing`, délais, ancre inscription ou événement), `config/leadMagnets.ts` (séquence + automation historique par guide), `config/emailTemplates.ts` (modèles as code, `emails/sequences/`).
 - **Identifiant d'inscription signé** (`lib/sequences/enrollment.ts`) : séquence, contact, dates — aucun état à stocker côté Vercel, infalsifiable par n8n.
-- **Historique durable** : événements Brevo sur la fiche du contact (`guide_delivered`, `sequence_enrolled`, `sequence_step_sent`, `sequence_step_skipped`, `sequence_enroll_failed`) + exécutions n8n + clés d'idempotence Brevo.
+- **Historique durable** : événements Brevo sur la fiche du contact (`email_send_attempt` avec statut et `messageId` à chaque tentative, `guide_delivered`, `sequence_enrolled`, `sequence_step_sent`, `sequence_step_skipped`, `sequence_enroll_failed`) + exécutions n8n + journal des envois Brevo.
 - **Arrêt** : désinscrit / non éligible (`marketing_not_allowed`), `LIFECYCLE_STAGE` ∈ MEETING_BOOKED, OPPORTUNITY, CLIENT, LOST ou `TYPE_RDV` / `ETAT_RDV` renseigné (`commercial_cycle`), email INVALID/DISPOSABLE/BOUNCED, contact supprimé.
 - **Re-téléchargement** : livraison renvoyée (sauf même jour : idempotence), **pas de nouvelle séquence** si le contact était déjà dans la liste du guide (couvre aussi les contacts engagés dans l'ancienne séquence Brevo).
 - **n8n indisponible** : 3 tentatives, puis `sequence_enroll_failed` (avec l'`enrollment_id` pour rejouer). Le guide est déjà livré.
-- **Brevo / Vercel indisponible pendant une étape** : n8n réessaie toutes les 30 min (24 h), sans risque de doublon.
+- **Brevo / Vercel indisponible pendant une étape** : n8n réessaie toutes les 30 min (jusqu'à 24 h ; une étape dépassée de plus de 12 h est abandonnée, jamais envoyée en retard), sans risque de doublon (ci-dessous).
+
+### Envoi unique : jamais deux emails pour une même étape (`lib/brevo/sendOnce.ts`)
+
+L'`idempotencyKey` Brevo ne vaut que **15 à 30 min** (doc Brevo). Or n8n réessaie au bout de 30 min : elle ne suffit pas. Il y a donc deux protections.
+
+| Protection | Rôle | Durée |
+| --- | --- | --- |
+| **Clé métier** = contact × séquence × étape (livraison : × jour), empreinte SHA-256 | La même pour deux inscriptions simultanées du même contact | permanente |
+| **Journal Brevo** : chaque email porte l'étiquette `k:<clé>` ; avant tout envoi, `GET /smtp/emails` vérifie qu'aucun email de cette clé n'est parti | Preuve durable : reprise après 30 min, 2 h, 24 h, réponse perdue | conservation du journal Brevo |
+| **idempotencyKey** (UUID dérivé de la clé) | Atomique : Brevo n'accepte qu'un envoi parmi des appels simultanés ; couvre le délai d'indexation du journal (51 s mesurées) | 15 à 30 min |
+
+États : `PENDING` (vérification du journal) → `SENDING` → `SENT` (`messageId` conservé) | `FAILED` (400/404 : abandon ; 401/403 : reprise) | `UNKNOWN` (réponse perdue, 5xx, journal injoignable).
+- **UNKNOWN : rien n'est renvoyé à l'aveugle.** Le journal est revérifié, puis n8n réessaie 30 min plus tard, et la vérification du journal passe toujours en premier.
+- **Journal Brevo injoignable : on n'envoie pas.**
+
+Tests réels (Brevo, adresse QA, 10/10/2026) :
+- premier envoi, puis rejeu immédiat : 1 email ;
+- 5 appels simultanés : 1 email (1 envoyé, 2 refusés comme doublons, 2 en issue incertaine non renvoyés) ;
+- délai d'apparition dans le journal : 51 s.
+
+Reprises réelles à +31 min et +2 h : voir § Tests. Simulations : reprises à 30 min, 2 h et 24 h avec l'idempotence expirée ; réponse perdue ; journal en retard ou injoignable ; 10 appels simultanés ; double inscription.
 
 ### Variables (Vercel, jamais affichées ni commitées)
 
@@ -61,29 +82,35 @@ n8n « Althoce · Séquences (moteur) » : attend la date → POST /api/sequence
 | `N8N_WEBHOOK_TOKEN` | Bearer Vercel → n8n (`openssl rand -hex 32`) |
 | `SEQUENCE_API_SECRET` | Bearer n8n → Vercel (`openssl rand -hex 32`) |
 | `SITE_URL` | domaine des liens (défaut : URL de branche en Preview, sinon Production) |
+| `N8N_EVENTS_WEBHOOK_URL` | journal du scoring : `https://n8n.srv1242605.hstgr.cloud/webhook/althoce-marketing-events` (vide = scoring comportemental désactivé) |
 
-Garde-fou de build : en Production, `ALTHOCE_SEQUENCE_GUIDES` non vide sans les trois variables n8n → build refusé.
+Garde-fous de build : en Production, `ALTHOCE_SEQUENCE_GUIDES` non vide sans les trois variables n8n → build refusé ; `N8N_EVENTS_WEBHOOK_URL` sans `N8N_WEBHOOK_TOKEN` et `SEQUENCE_API_SECRET` → build refusé.
 
 ### Mise en place n8n (instance existante `n8n.srv1242605.hstgr.cloud`, rien d'existant modifié)
 
-Workflows créés par API (inactifs, aucun secret ; sources dans `n8n/`, conventions de `règle du jeu - automatisation n8n.md`) :
+Workflows créés par API (inactifs, aucun secret ; sources générées par `n8n/build.py`, IDs non secrets dans `n8n/instance.json`, conventions de `règle du jeu - automatisation n8n.md`) :
 
-| Workflow | Rôle |
-| --- | --- |
-| `Marketing — Séquences guides et webinars (moteur) — v1` (`PLyOhSt5zreUoBKW`) | webhook d'inscription → attente → `/api/sequences/step` → boucle ; Error Workflow = alertes |
-| `Marketing — Alertes séquences — v1` (`XDp4BEtctA5ogbDg`) | Error Trigger → `/api/sequences/alert` → email à `espoir@contact.althoce.com` (la clé Brevo reste sur Vercel) |
-| `Webinar — Présences vers Brevo — v1` (`77IigBEDaaGro2Xa`) | modèle manuel : présences / absences → `/api/sequences/event` |
+| Workflow | ID | Rôle |
+| --- | --- | --- |
+| `ALTHOCE \| Marketing \| Séquences guides et webinars — v1` | `PLyOhSt5zreUoBKW` | webhook d'inscription → attente → `/api/sequences/step` → boucle |
+| `ALTHOCE \| Marketing \| Alertes n8n — v1` | `XDp4BEtctA5ogbDg` | Error Workflow de tous les workflows ci-dessous → `/api/sequences/alert` → email à `espoir@contact.althoce.com` |
+| `ALTHOCE \| Webinar \| Présences vers Brevo — v1` | `77IigBEDaaGro2Xa` | modèle manuel : présences / absences → `/api/sequences/event` (+15 au score) |
+| `ALTHOCE \| Marketing \| Journal des événements — v1` | `XFDILN56cJw3XPuF` | webhook `althoce-marketing-events` : journal du scoring (Data table), voir § 7 |
+| `ALTHOCE \| Marketing \| Recalcul des scores — v1` | `ZGbvCLVrJItTXqSS` | toutes les heures (h:17) : filet de sécurité du scoring → `/api/marketing/score` ; suppression des doublons du journal ; la nuit, conservation 400 jours |
+| `ALTHOCE \| Marketing \| Quota Brevo et RDV — v1` | `TN4d97jsaiCxvgVt` | toutes les heures (h:07) → `/api/marketing/maintenance` : quota d'envoi, RDV confirmés, livraisons de guide en attente, clics transactionnels manqués |
 
-Boucle validée dans n8n le 10/10/2026 avec un faux point d'entrée Vercel : exécution réussie, 2 attentes, 2 appels, décisions « attendre » puis « terminé » (workflows de test supprimés ensuite).
+Data table `althoce_marketing_events` (`7IVWbyzYpzdvHA4W`, projet Personal) : `event_key` (texte), `contact_id` (nombre), `category` (texte), `points` (nombre), `occurred_at` (date), `source` (texte), `ref` (texte).
+
+Boucle du moteur validée dans n8n le 10/10/2026 avec un faux point d'entrée Vercel ; journal et recalcul validés le même jour (§ 7). Workflows de test et lignes de test supprimés ensuite.
 
 **À faire par vous (secrets : jamais dans le chat, jamais dans Git)** :
 1. Générer deux jetons dans votre terminal : `openssl rand -hex 32` (deux fois).
 2. n8n → Credentials → New → Header Auth :
    - `Althoce · Vercel → n8n (Bearer)` : Name `Authorization`, Value `Bearer <jeton 1>`
    - `Althoce · n8n → Vercel (Bearer)` : Name `Authorization`, Value `Bearer <jeton 2>`
-3. Rattacher : « Recevoir l'inscription (Vercel) » → credential 1 ; « Exécuter l'étape (Vercel) », « Envoyer l'alerte (Vercel) », « Enregistrer l'événement Brevo (Vercel) » → credential 2.
-4. Vercel (Production, au moment du test QA) : `N8N_WEBHOOK_TOKEN` = jeton 1, `SEQUENCE_API_SECRET` = jeton 2, `N8N_SEQUENCE_WEBHOOK_URL` = `https://n8n.srv1242605.hstgr.cloud/webhook/althoce-sequences`. Copier aussi les deux jetons dans `althoce-ressources/.env` (non commité) pour les tests locaux.
-5. Activer « Marketing — Séquences… » et « Marketing — Alertes séquences » seulement au test QA (§ 4).
+3. Rattacher le credential 1 aux nœuds de réception : « Recevoir l'inscription (Vercel) », « Recevoir les événements (Vercel) ». Rattacher le credential 2 aux appels vers Vercel : « Exécuter l'étape (Vercel) », « Envoyer l'alerte (Vercel) », « Enregistrer l'événement Brevo (Vercel) », « Recalculer les scores (Vercel) », « Lancer les tâches (Vercel) ».
+4. Vercel (Production) : `N8N_WEBHOOK_TOKEN` = jeton 1, `SEQUENCE_API_SECRET` = jeton 2, `N8N_SEQUENCE_WEBHOOK_URL` = `https://n8n.srv1242605.hstgr.cloud/webhook/althoce-sequences`, `N8N_EVENTS_WEBHOOK_URL` = `https://n8n.srv1242605.hstgr.cloud/webhook/althoce-marketing-events`. Copier aussi les deux jetons dans `althoce-ressources/.env` (non commité) pour les tests locaux.
+5. Activer « Alertes n8n » en premier, puis les autres au moment voulu (§ 4 pour le moteur, § 7 pour le scoring).
 
 ## 4. Pilote : `12-cas-usage-experts-comptables`
 
@@ -99,7 +126,7 @@ Boucle validée dans n8n le 10/10/2026 avec un faux point d'entrée Vercel : ex�
 ### Bascule (avec votre validation)
 
 1. Retirer `:qa` et `ALTHOCE_SEQUENCE_QA_*` à l'étape 4 ci-dessous.
-2. `npm run brevo:webhooks -- --url https://guide-gratuit-pi.vercel.app/api/webhooks/brevo --apply` (ajoute `unsubscribed`).
+2. `npm run brevo:webhooks -- --url https://guide-gratuit-pi.vercel.app/api/webhooks/brevo --apply` (complète les 2 webhooks existants : désinscription, plainte, clics…, § 7).
 3. Brevo → Automatisations → #4 : fermer l'entrée de nouveaux contacts **sans couper ceux en cours** (déclencheur « Ajouté à une liste » déplacé vers une liste vide « LM - 12 cas (ancien parcours fermé) »), puis immédiatement :
 4. Vercel : `ALTHOCE_SEQUENCE_GUIDES=12-cas-usage-experts-comptables` → Redeploy (~1 min). Un doublon de livraison n'est possible que dans cette minute.
 5. Contrôle 48 h : `guide_delivered` / `sequence_enrolled` sur les nouveaux leads, exécutions n8n en attente, relance J+2 reçue par un contact QA.
@@ -136,12 +163,86 @@ Par guide :
 - Confirmation et rappels = messages pratiques liés à l'inscription (envoyés même à un opposant) ; le suivi commercial respecte l'opposition.
 - Modèles : `emails/sequences/webinar/*.html` (IDs `null` : créés par `npm run brevo:templates -- --apply` quand un webinar réel est planifié). Tant qu'ils n'existent pas, le parcours est inactif.
 - Un webinar = un bloc dans `config/webinars.ts` avec `sequence: "webinar-standard-v1"`, une date **validée** et `status: "open"`. Aucun webinar n'est programmé.
-- Présences / absences : `n8n/althoce-webinar-presences.json` (modèle à brancher sur la plateforme) → `/api/sequences/event` → événements `webinar_attended` / `webinar_no_show`.
+- Présences / absences : `n8n/althoce-webinar-presences.json` (modèle à brancher sur la plateforme) → `/api/sequences/event` → événements `webinar_attended` / `webinar_no_show` ; une présence ajoute +15 au score (une fois par webinar).
 
-## 7. Scoring et enrichissement (points d'extension)
+## 7. Scoring comportemental (journal durable dans n8n)
 
-- `/api/sequences/event` (Bearer `SEQUENCE_API_SECRET`) enregistre un événement de la liste blanche (webinar, replay, pages commerciales) sur la fiche Brevo. Aucun score modifié tant que `EVENT_SCORING_ENABLED` est faux.
-- Détection des leads chauds : segment Brevo `LEADS — HOT` (id 6), inchangé. Enrichissement LinkedIn : non branché (aucun service payant).
+### Chaîne
+
+```
+Brevo (webhooks marketing + transactionnels, TOUS les événements)
+  → Vercel /api/webhooks/brevo   (point d'entrée unique, Bearer BREVO_WEBHOOK_SECRET)
+       bounce → BOUNCED ; désinscription / plainte spam → OPPOSED ; ouverture, délivré… → reçus, 0 point
+       clic → catégorie (config/scoring.ts) + clé unique (HMAC, sans email) + points du barème
+  → n8n « Journal des événements » (Data table althoce_marketing_events)
+       insère si la clé est nouvelle, renvoie l'historique complet du contact
+  → Vercel recalcule depuis l'historique et écrit Brevo (jamais à la baisse)
+  → alerte « lead chaud » à espoir@contact.althoce.com, une seule fois
+Toutes les heures : n8n « Recalcul des scores » renvoie l'historique des contacts actifs (3 h ; la nuit, 8 jours) → rattrapage
+Toutes les heures : n8n « Quota Brevo et RDV » → quota d'envoi + RDV confirmés (+25)
+```
+
+Les règles (barème, classification, calcul) vivent dans le code Vercel testé (`config/scoring.ts`, `lib/scoring/behavior.ts`) ; n8n stocke et planifie. Aucune donnée personnelle dans n8n : ID contact Brevo, catégorie, points, date, clé opaque.
+
+### Barème appliqué
+
+| Événement | Points | Clé (compté une fois par…) |
+| --- | ---: | --- |
+| Formulaire | 0 à 15 | `FORM_SCORE` (meilleur score formulaire) |
+| Email ouvert | 0 | — (non fiable : Apple Mail, antivirus) |
+| Clic contenu (newsletter, post, article) | +3 | email × catégorie |
+| Clic guide (page Notion, page `/r/…`) | +5 | email × catégorie |
+| Clic offre (prise de RDV cal.com) | +10 | email × catégorie |
+| Inscription webinar | +8 | webinar × contact |
+| Participation webinar | +15 | webinar × contact |
+| RDV confirmé (`ETAT_RDV` = Prévu, `STATUT_APPEL` = RDV planifié / RDV booke, `LIFECYCLE_STAGE` = MEETING_BOOKED) | +25 | contact |
+
+Jamais comptés : liens de désinscription, de confirmation d'adresse, `mailto:`, emails internes (tags `alerte-*`).
+`LEAD_SCORE = max(LEAD_SCORE actuel, min(100, FORM_SCORE + BEHAVIOR_SCORE))`. Un contact antérieur au scoring garde son score : son score formulaire est figé à `min(LEAD_SCORE, 15)` au premier calcul. Seuil HOT : 25 → `LIFECYCLE_STAGE = HOT_LEAD` (jamais au-delà d'une étape commerciale).
+
+### Anti-doublons (testé en réel)
+
+- Même clic rejoué par Brevo, deux clics sur le même lien ou deux articles d'un même email : **même clé** → compté une fois.
+- La Data table n8n n'a pas de contrainte d'unicité : sous 5 envois simultanés de la même clé, elle a stocké jusqu'à 5 lignes. Le calcul ignore les doublons de clé : score juste (18, pas 30). C'est pourquoi le calcul repart **toujours** de l'historique complet.
+- n8n arrêté → Vercel répond 429 à Brevo, qui rejoue plus tard : aucun événement perdu, aucun double comptage au rejeu.
+- Écriture Brevo refusée → l'événement est déjà journalisé : la passe horaire rattrape.
+
+### Alerte « lead chaud »
+
+Une seule fois par contact (`HOT_ALERT_SENT_AT` + clé d'idempotence Brevo), seulement avant toute prise en charge commerciale (étape SUBSCRIBER, LEAD, MQL ou HOT_LEAD, aucun RDV, pas « Ne plus appeler », email utilisable). Contenu : nom, entreprise, téléphone, ressource, score (formulaire + comportement), 10 derniers signaux, lien vers la fiche Brevo. Aucun contact n'a aujourd'hui un score ≥ 25 : pas de vague d'alertes au démarrage.
+
+### Quota Brevo
+
+`/api/marketing/maintenance` lit les crédits d'envoi restants du jour (`GET /account`, offre Free : 300/jour, 237 restants au relevé du 10/10). Sous 60 restants : un email d'alerte, une fois par jour. Au-delà du quota, Brevo refuse les envois : livraisons et relances sont réessayées par n8n (30 min × 48).
+
+### Attributs Brevo (créés par `npm run brevo:attributes -- --apply`, avec validation)
+
+`FORM_SCORE` (nombre), `BEHAVIOR_SCORE` (nombre, ne baisse jamais), `LAST_EMAIL_CLICK_AT`, `LAST_ENGAGEMENT_AT`, `SCORE_UPDATED_AT`, `HOT_ALERT_SENT_AT` (dates). Le segment `LEADS — HOT` (id 6, `LEAD_SCORE ≥ 25`) reste inchangé et intègre désormais le comportement.
+
+### Tests
+
+| Test | Où | Résultat |
+| --- | --- | --- |
+| Barème, classification des liens, clés sans email, agrégat sans doublon, jamais de baisse, plafond, alerte unique | unitaire (`tests/behavior-scoring.test.ts`, 11 tests) | ✅ |
+| Clic RDV → +10 ; rejeu → rien ; clic guide → lead chaud + alerte unique ; clic newsletter +3 sans 2e alerte | e2e SC1 | ✅ |
+| n8n arrêté → 429, rien écrit ; rejeu → compté une fois | e2e SC2 | ✅ |
+| Liens de désinscription / confirmation / mailto ignorés ; plainte spam → opposition | e2e SC3 | ✅ |
+| Passe horaire : secret exigé, idempotente, score manuel conservé, étape commerciale intouchée | e2e SC4 | ✅ |
+| Quota bas → alerte unique ; RDV → +25 une fois, sans alerte | e2e SC5 | ✅ |
+| Présence webinar → +15 une fois | e2e SC6 | ✅ |
+| **Journal réel n8n** : insertion, rejeu ignoré, doublon de lot, lot invalide → 400, 5 envois simultanés, panne interne jamais vue comme un succès, passe horaire | instance n8n, 10/10/2026 (11/11) | ✅ |
+| Chaîne réelle Brevo → Vercel → n8n → Brevo | Production, après credentials et validation | ⏳ |
+
+### Mise en service (avec votre validation)
+
+1. Credentials n8n et variables Vercel (§ 3), dont `N8N_EVENTS_WEBHOOK_URL`.
+2. `npm run brevo:attributes` (à blanc) puis `-- --apply` : création des 8 attributs (6 du scoring, 2 de la livraison durable).
+3. Déploiement de la branche.
+4. Activer « Journal des événements », « Recalcul des scores », « Quota Brevo et RDV ».
+5. `npm run brevo:webhooks -- --url https://guide-gratuit-pi.vercel.app/api/webhooks/brevo` (à blanc) puis `--apply` : complète les deux webhooks existants (#2241079 marketing, #2241080 transactionnel) avec tous les événements, sans en créer de nouveaux.
+6. Test réel avec une adresse QA : clic dans un email → ligne dans la Data table, `BEHAVIOR_SCORE` sur la fiche.
+
+**Retour arrière** : vider `N8N_EVENTS_WEBHOOK_URL` (Redeploy) → plus aucun scoring comportemental ; les scores déjà écrits restent.
 
 ## 8. Coûts et limites réelles
 
@@ -149,16 +250,20 @@ Par guide :
 | --- | --- | --- |
 | Brevo Free | 0 € | **300 emails / jour, tous types confondus** (livraisons, relances, newsletters). Volume actuel ≈ 40 emails/jour (≈ 20 livraisons + ≈ 20 relances). |
 | n8n (instance existante) | 0 € de plus | 1 exécution par inscription (en attente jusqu'à la relance). Auto-hébergé : sans limite ; n8n Cloud : quota d'exécutions mensuel de l'offre. |
-| Vercel (projet existant) | 0 € | Fonctions largement suffisantes. ⚠️ L'offre Hobby est réservée à un usage non commercial selon les conditions Vercel : à vérifier pour Althoce. |
+| Vercel (projet existant) | 0 € | Fonctions largement suffisantes, y compris ≈ 1 appel par événement email (≈ 500/jour au plafond de 300 emails). ⚠️ L'offre Hobby est réservée à un usage non commercial selon les conditions Vercel : à vérifier pour Althoce. |
+| n8n Data table | 0 € | 50 Mo par défaut pour toutes les tables de l'instance ; ≈ 200 octets par événement scoré (clics, webinars, RDV seulement) → des années au volume actuel. |
+| Appels API Brevo du scoring | 0 € | 1 lecture + 1 écriture par contact actif et par heure au plus (aucune écriture si rien ne change). |
 
 **Limite majeure : la newsletter.** Avec 300 emails/jour, une newsletter ne peut pas dépasser ≈ 250 destinataires par jour une fois les livraisons servies. Deux newsletters par semaine vers les segments FINANCE (838 experts-comptables, 132 DAF une fois le backfill fait) imposent soit d'envoyer par lots sur plusieurs jours, soit une offre Brevo payante (sans limite quotidienne). Le moteur sort de la limite des 2 000 contacts des automations, **pas** de celle des 300 emails/jour.
 
 ## 9. Reste à valider ou à faire
 
-- Accès n8n : importer le workflow, créer les deux credentials, fournir l'URL du webhook (dans Vercel).
-- Variables Production (après fusion) : `N8N_SEQUENCE_WEBHOOK_URL`, `N8N_WEBHOOK_TOKEN`, `SEQUENCE_API_SECRET`, puis mode QA du pilote (§ 4) → test réel avec des contacts QA.
+- Credentials n8n (2 Header Auth) et variables Vercel Production (§ 3) : à faire par vous, secrets hors chat.
+- Fusion de la PR, puis mode QA du pilote (§ 4) → test réel avec des contacts QA, puis bascule.
+- Scoring (§ 7) : création des 8 attributs Brevo, activation des 3 workflows, mise à jour des 2 webhooks Brevo, test QA réel. Ordre complet : `docs/MISE_EN_PRODUCTION.md`.
+- À valider : « RDV confirmé » = `ETAT_RDV` Prévu / `STATUT_APPEL` RDV planifié ou RDV booke ; pages d'offre althoce.com à ajouter à `OFFER_URL_PREFIXES` (aujourd'hui : prise de RDV cal.com seulement).
 - Segments Brevo 7, 8, 9 : remplacer `OPT_IN = Vrai` par `MARKETING_STATUS est égal à CONSENT, B2B_ELIGIBLE` (même conditions sinon), vérifier les effectifs, puis `MARKETING_SEGMENTS_REVIEWED=true`.
 - Backfill du statut marketing des contacts historiques (à blanc puis `--apply`) : décision juridique sur les 1 772 contacts sans statut (`TO_REVIEW` par défaut).
 - Effet réel du lien de désinscription newsletter : envoyer la campagne QA #39 à la liste QA #18 (1 contact).
-- Mise en Production (fusion de la PR) puis bascule du pilote (§ 4).
 - Contact QA `espoir+qa-optout@contact.althoce.com` (#1802, dans l'automation #4) : vérifier le 12/10 si la relance J+2 lui a été envoyée, puis le supprimer.
+- Instance n8n en 2.1.5 (39 versions de retard) : mise à jour à planifier (sauvegarde avant) ; 2 webhooks non protégés existent sur des workflows qui ne sont pas les nôtres (signalé, non modifié).

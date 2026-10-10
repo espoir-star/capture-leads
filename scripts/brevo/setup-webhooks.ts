@@ -1,8 +1,11 @@
 /**
- * Webhooks Brevo → /api/webhooks/brevo :
- *   hardBounce   → EMAIL_STATUS = BOUNCED
- *   unsubscribed → MARKETING_STATUS = OPPOSED (désinscription d'une campagne
- *                  ou du lien Brevo d'un email transactionnel/automation)
+ * Webhooks Brevo → /api/webhooks/brevo (point d'entrée UNIQUE, voir la route) :
+ *   hardBounce         → EMAIL_STATUS = BOUNCED
+ *   unsubscribed, spam → MARKETING_STATUS = OPPOSED (désinscription d'une
+ *                        campagne ou du lien Brevo d'un email transactionnel)
+ *   click              → scoring comportemental (journal n8n)
+ *   autres             → reçus, sans effet (0 point) : delivered, opened…
+ * Les deux webhooks existants sont COMPLÉTÉS (PUT), jamais dupliqués.
  * API officielle : POST /v3/webhooks (création), PUT /v3/webhooks/{id}
  * (ajout d'événements à un webhook existant), authentification Bearer.
  *
@@ -24,8 +27,16 @@ const APPLY = argv.includes("--apply");
 const url = argv[argv.indexOf("--url") + 1];
 
 const WEBHOOKS = [
-  { type: "marketing", events: ["hardBounce", "unsubscribed"], description: "Althoce — hard bounce / désinscription campagnes" },
-  { type: "transactional", events: ["hardBounce", "unsubscribed"], description: "Althoce — hard bounce / désinscription transactionnel" },
+  {
+    type: "marketing",
+    events: ["delivered", "opened", "click", "hardBounce", "softBounce", "spam", "unsubscribed"],
+    description: "Althoce — événements campagnes (statuts, opposition, scoring)",
+  },
+  {
+    type: "transactional",
+    events: ["request", "delivered", "opened", "uniqueOpened", "click", "hardBounce", "softBounce", "blocked", "invalid", "deferred", "spam", "unsubscribed"],
+    description: "Althoce — événements transactionnels (statuts, opposition, scoring)",
+  },
 ];
 
 async function main() {

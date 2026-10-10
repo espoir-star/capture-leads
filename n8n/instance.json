@@ -1,0 +1,13 @@
+{
+  "_doc": "Identifiants NON secrets de l'instance n8n Althoce (n8n.srv1242605.hstgr.cloud). Les credentials ne sont jamais ici.",
+  "alertWorkflowId": "XDp4BEtctA5ogbDg",
+  "eventsTableId": "7IVWbyzYpzdvHA4W",
+  "workflows": {
+    "althoce-sequences.json": "PLyOhSt5zreUoBKW",
+    "althoce-alertes-sequences.json": "XDp4BEtctA5ogbDg",
+    "althoce-webinar-presences.json": "77IigBEDaaGro2Xa",
+    "althoce-journal-evenements.json": "XFDILN56cJw3XPuF",
+    "althoce-recalcul-scores.json": "ZGbvCLVrJItTXqSS",
+    "althoce-quota-rdv.json": "TN4d97jsaiCxvgVt"
+  }
+}

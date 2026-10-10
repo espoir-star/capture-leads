@@ -4,15 +4,21 @@
  *   POST { email, event, properties? }   Authorization: Bearer SEQUENCE_API_SECRET
  *
  * Enregistre un événement Brevo de la liste blanche ci-dessous (participation
- * webinar, replay, pages commerciales…) sur la fiche du contact. Aucun score
- * n'est modifié tant que EVENT_SCORING_ENABLED est faux (lib/scoring) : les
- * données s'accumulent d'abord, les règles viendront quand elles seront fiables.
+ * webinar, replay, pages commerciales…) sur la fiche du contact.
+ *
+ * `webinar_attended` avec `properties.webinar` (slug) alimente aussi le
+ * scoring comportemental (+15, une fois par webinar et par contact).
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getContactByEmail } from "@/lib/brevo/api";
 import { BREVO_EVENTS, sendBrevoEvent, type BrevoEventName, type EventProperties } from "@/lib/brevo/events";
+import { applyBehaviorScores } from "@/lib/scoring/apply";
+import { makeEvent } from "@/lib/scoring/behavior";
+import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
 import { bearerMatches } from "@/lib/security/bearer";
 import { isValidEmailSyntax, normalizeEmail } from "@/lib/validation/email";
+import { readBodyLimited } from "@/lib/security/body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,8 +40,9 @@ export async function POST(req: NextRequest) {
   }
   let body: { email?: unknown; event?: unknown; properties?: unknown };
   try {
-    const text = await req.text();
-    if (text.length > 4000) return NextResponse.json({ ok: false }, { status: 413 });
+    const read = await readBodyLimited(req, 4000);
+    if (!read.ok) return NextResponse.json({ ok: false }, { status: 413 });
+    const text = read.text;
     body = JSON.parse(text);
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });
@@ -51,5 +58,21 @@ export async function POST(req: NextRequest) {
     }
   }
   const ok = await sendBrevoEvent(event, { email_id: email }, props);
-  return NextResponse.json({ ok }, { status: ok ? 200 : 502 });
+  if (!ok) return NextResponse.json({ ok }, { status: 502 });
+
+  const slug = typeof props.webinar === "string" && /^[a-z0-9-]{1,80}$/.test(props.webinar) ? props.webinar : "";
+  if (event === BREVO_EVENTS.WEBINAR_ATTENDED && slug && ledgerConfigured()) {
+    try {
+      const contact = await getContactByEmail(email);
+      if (contact) {
+        const r = await recordEvents([makeEvent("webinar_attended", contact.id, slug, "webinar", new Date())]);
+        if (!r.ok) return NextResponse.json({ ok: false, reason: "journal" }, { status: 502 });
+        await applyBehaviorScores(r.rows).catch((e) => console.error("Scoring présence : écriture différée :", e instanceof Error ? e.message : e));
+      }
+    } catch (e) {
+      console.error("Scoring présence :", e instanceof Error ? e.message : e);
+      return NextResponse.json({ ok: false, reason: "brevo" }, { status: 502 });
+    }
+  }
+  return NextResponse.json({ ok });
 }

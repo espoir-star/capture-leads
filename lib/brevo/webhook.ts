@@ -2,16 +2,17 @@
  * Webhooks Brevo — logique PURE (tests/webhook.test.ts).
  *
  *   hard_bounce → EMAIL_STATUS = BOUNCED   (prioritaire, définitif)
- *   click, opened, … → AUCUN effet sur EMAIL_STATUS. VERIFIED ne vient que du
- *   lien de confirmation dédié (lib/security/emailConfirm.ts), jamais d'un clic
- *   quelconque dans une newsletter. Ces événements restent parsés pour un
- *   futur scoring (désactivé).
+ *   unsubscribed, spam → opposition marketing (MARKETING_STATUS = OPPOSED)
+ *   click → scoring comportemental (lib/scoring/behavior.ts), jamais EMAIL_STATUS :
+ *   VERIFIED ne vient que du lien de confirmation dédié
+ *   (lib/security/emailConfirm.ts), jamais d'un clic dans une newsletter.
+ *   opened, delivered, soft bounce… → reçus, sans effet (0 point).
  *
  * Idempotence : l'effet est un ÉTAT ABSOLU (jamais un incrément, jamais de
  * score). Un même événement reçu deux fois ne produit qu'une écriture.
  */
 
-export type WebhookKind = "hard_bounce" | "click" | "opened" | "unsubscribed" | "other";
+export type WebhookKind = "hard_bounce" | "click" | "opened" | "unsubscribed" | "spam" | "other";
 
 export interface WebhookEvent {
   kind: WebhookKind;
@@ -36,6 +37,7 @@ const KINDS: Record<string, WebhookKind> = {
   uniqueOpened: "opened",
   unsubscribe: "unsubscribed",
   unsubscribed: "unsubscribed",
+  spam: "spam",
 };
 
 /** Accepte les formats marketing (campagnes) et transactionnels de Brevo. Ne fait confiance à rien. */

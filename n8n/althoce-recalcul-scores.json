@@ -1,0 +1,416 @@
+{
+  "name": "ALTHOCE | Marketing | Recalcul des scores — v1",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ALTHOCE | Marketing | Recalcul des scores — v1\nFILET DE SÉCURITÉ du scoring : recalcule depuis le journal les contacts actifs récemment (3 dernières heures ; chaque nuit à 3 h : 8 derniers jours) et envoie leur historique COMPLET à Vercel (/api/marketing/score).\n\nRattrape tout ce que le temps réel aurait manqué (Brevo indisponible, écriture refusée, alerte non partie). Idempotent : un contact à jour ne provoque aucune écriture ; un score ne baisse jamais.\nEntretien : doublons du journal supprimés à chaque passe (la plus ancienne ligne de chaque clé est gardée) ; la nuit, lignes de plus de 400 jours supprimées (BEHAVIOR_SCORE ne baisse pas pour autant).\n\nDocs : althoce-ressources/docs/PHASE_MARKETING_N8N.md",
+        "height": 300,
+        "width": 820
+      },
+      "id": "3253b685-a8e2-4d35-8785-ba51a76710db",
+      "name": "Note d0de",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Credential\n**Recalculer les scores (Vercel)** : Header Auth « Althoce · n8n → Vercel (Bearer) » (Authorization = Bearer SEQUENCE_API_SECRET).",
+        "height": 160,
+        "width": 420,
+        "color": 5
+      },
+      "id": "30026858-4f7d-4fcf-960a-222c2e84e3b2",
+      "name": "Note 106f",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1,
+              "triggerAtMinute": 17
+            }
+          ]
+        }
+      },
+      "id": "3d989614-bbfb-4c31-ba6a-aba10675fe07",
+      "name": "Toutes les heures (h:17)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "356ca803-7097-4563-a438-14aca703ffe1",
+              "name": "scoreUrl",
+              "value": "https://guide-gratuit-pi.vercel.app/api/marketing/score",
+              "type": "string"
+            },
+            {
+              "id": "4bd8d7e0-1fed-4958-b83b-96cc50f23758",
+              "name": "windowHours",
+              "value": "={{ $now.setZone('Europe/Paris').hour === 3 ? 192 : 3 }}",
+              "type": "number"
+            },
+            {
+              "id": "b7e41225-8637-4312-8246-82a7bf9ddb25",
+              "name": "retentionDays",
+              "value": 400,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "01e254d7-d1b8-40b9-8d69-a33313ad2fcb",
+      "name": "Config — Recalcul",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "createdAt",
+              "condition": "gte",
+              "keyValue": "={{ $now.minus({ hours: $('Config — Recalcul').first().json.windowHours }).toISO() }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "510c3e8c-541e-4e0c-9253-911a883cf060",
+      "name": "Événements récents",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Contacts ayant au moins un événement dans la fenêtre (sinon : rien à faire)\nconst ids = [...new Set($input.all().map((i) => Number(i.json.contact_id)).filter((v) => Number.isInteger(v) && v > 0))];\nreturn ids.map((contact_id) => ({ json: { contact_id } }));"
+      },
+      "id": "9211fa1b-f11c-4968-9a34-8c6d78d72e7d",
+      "name": "Contacts actifs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contact_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contact_id }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "406838f3-488e-4897-9eb6-cf45c40e6d11",
+      "name": "Historique complet",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Doublons du journal (insertions simultanées : la Data table n'a pas de contrainte d'unicité).\n// On garde la ligne la plus ancienne (plus petit id) de chaque clé ; les autres sont supprimées.\nconst first = new Map();\nconst extra = [];\nfor (const r of $input.all().map((i) => i.json).filter((r) => r && r.event_key && r.id !== undefined)) {\n  const k = r.event_key;\n  if (!first.has(k)) { first.set(k, r.id); continue; }\n  const keep = Math.min(first.get(k), r.id);\n  extra.push(Math.max(first.get(k), r.id));\n  first.set(k, keep);\n}\nreturn extra.map((id) => ({ json: { id } }));"
+      },
+      "id": "e160e201-0699-4fd6-9327-d5509e28a49e",
+      "name": "Doublons du journal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fad723e8-9c56-4b9d-8f86-d936193e37af",
+      "name": "Supprimer les doublons",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lots de 500 lignes au plus pour /api/marketing/score ; l'historique d'un contact n'est jamais coupé.\nconst by = new Map();\nfor (const r of $input.all().map((i) => i.json).filter((r) => r && r.event_key)) {\n  if (!by.has(r.contact_id)) by.set(r.contact_id, []);\n  by.get(r.contact_id).push(({ event_key: r.event_key, contact_id: r.contact_id, category: r.category, points: r.points, occurred_at: r.occurred_at }));\n}\nconst out = [];\nlet batch = [];\nfor (const rows of by.values()) {\n  if (batch.length && batch.length + rows.length > 500) { out.push({ json: { rows: batch } }); batch = []; }\n  batch.push(...rows);\n}\nif (batch.length) out.push({ json: { rows: batch } });\nreturn out;"
+      },
+      "id": "ffaf36c8-90b7-4bd3-b955-19b0e1e3b533",
+      "name": "Lots pour Vercel",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config — Recalcul').first().json.scoreUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ rows: $json.rows }) }}",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "e086465c-2297-4bab-b38c-6711e5703e9b",
+      "name": "Recalculer les scores (Vercel)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ef3f5758-c80a-4dc0-93d7-7687556b2b13",
+              "leftValue": "={{ $('Config — Recalcul').first().json.windowHours }}",
+              "rightValue": 100,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "024239df-7a78-4162-b66e-0b043af8265d",
+      "name": "Passe de nuit ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7IVWbyzYpzdvHA4W"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "occurred_at",
+              "condition": "lt",
+              "keyValue": "={{ $now.minus({ days: $('Config — Recalcul').first().json.retentionDays }).toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "67b1bd05-d7e1-463e-a82f-810c6eaf7b7f",
+      "name": "Conservation 400 jours",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "Toutes les heures (h:17)": {
+      "main": [
+        [
+          {
+            "node": "Config — Recalcul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config — Recalcul": {
+      "main": [
+        [
+          {
+            "node": "Événements récents",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Passe de nuit ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passe de nuit ?": {
+      "main": [
+        [
+          {
+            "node": "Conservation 400 jours",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Événements récents": {
+      "main": [
+        [
+          {
+            "node": "Contacts actifs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contacts actifs": {
+      "main": [
+        [
+          {
+            "node": "Historique complet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Historique complet": {
+      "main": [
+        [
+          {
+            "node": "Doublons du journal",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lots pour Vercel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doublons du journal": {
+      "main": [
+        [
+          {
+            "node": "Supprimer les doublons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lots pour Vercel": {
+      "main": [
+        [
+          {
+            "node": "Recalculer les scores (Vercel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Paris",
+    "errorWorkflow": "XDp4BEtctA5ogbDg"
+  }
+}
