@@ -1,0 +1,99 @@
+{
+  "name": "Althoce · Webinar · Présences → Brevo (modèle)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "bc8d362c-b82e-4bb0-975b-6bc1bbfc5469",
+      "name": "Lancer après le webinar",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// À ADAPTER à la plateforme (Zoom, Livestorm, Teams…) : un item par inscrit.\n// Exemple attendu : [{ email, attended: true|false }]. Brancher ici l'export CSV\n// ou l'API de la plateforme ; laisser vide tant qu'aucun webinar réel n'a eu lieu.\nconst webinar = 'slug-du-webinar'; // = clé dans config/webinars.ts\nconst participants = []; // ← remplir\nreturn participants.map((p) => ({\n  json: { email: String(p.email).trim().toLowerCase(), event: p.attended ? 'webinar_attended' : 'webinar_no_show', properties: { webinar } },\n}));"
+      },
+      "id": "0ba1c914-8379-495d-84cb-03399af85121",
+      "name": "Présences (à adapter)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://guide-gratuit-pi.vercel.app/api/sequences/event",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email, event: $json.event, properties: $json.properties }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 1000
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "id": "afafc7c7-57e7-484b-a201-44a5784a469e",
+      "name": "Événement Brevo (Vercel)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Althoce · n8n → Vercel (Bearer)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Lancer après le webinar": {
+      "main": [
+        [
+          {
+            "node": "Présences (à adapter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Présences (à adapter)": {
+      "main": [
+        [
+          {
+            "node": "Événement Brevo (Vercel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [],
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

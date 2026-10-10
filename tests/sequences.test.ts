@@ -61,8 +61,20 @@ test("modèles : fichiers présents, désinscription Althoce, jamais {{ unsubscr
     const html = readFileSync(t.file, "utf8");
     assert.match(html, /params\.UNSUBSCRIBE_URL/, `${key} : lien d'opposition`);
     assert.doesNotMatch(html, /\{\{\s*unsubscribe\s*\}\}/, `${key} : pas de désinscription transactionnelle Brevo`);
-    assert.ok(Number.isInteger(t.id), `${key} : ID Brevo réel`);
+    assert.ok(t.id === null || Number.isInteger(t.id), `${key} : ID réel ou null, jamais fictif`);
   }
+});
+
+test("webinar : parcours inactif tant que ses modèles n'existent pas ; replay seulement s'il est publié", () => {
+  const seq = SEQUENCES["webinar-standard-v1"];
+  assert.equal(sequenceReady(seq), false);
+  assert.equal(sw.webinarSequence({ sequence: "webinar-standard-v1", status: "open" }), null);
+  assert.equal(sw.webinarSequence({ sequence: "guide-generique-v1", status: "draft" }), null, "webinar non ouvert");
+  assert.equal(seq.steps.find((x) => x.id === "replay")?.requires, "replayUrl");
+  assert.deepEqual(
+    seq.steps.map((x) => [x.id, x.category]),
+    [["rappel-j-1", "transactional"], ["rappel-h-1", "transactional"], ["replay", "transactional"], ["suivi", "marketing"]]
+  );
 });
 
 /* ── Statut marketing ──────────────────────────────────────────────── */
@@ -131,7 +143,19 @@ test("décision : marketing refusé aux opposants et en cycle commercial, transa
 test("bascule : explicite par slug, séquence prête exigée ; pause ; liens selon l'environnement", () => {
   const lm = LEAD_MAGNETS["12-cas-usage-experts-comptables"];
   assert.equal(sw.activeGuideSequence(lm, {}), null);
-  assert.equal(sw.activeGuideSequence(lm, { ALTHOCE_SEQUENCE_GUIDES: "autre, 12-cas-usage-experts-comptables" })?.id, pilot.id);
+  assert.equal(sw.activeGuideSequence(lm, { ALTHOCE_SEQUENCE_GUIDES: "autre, 12-cas-usage-experts-comptables" })?.seq.id, pilot.id);
+  // mode QA : seulement les adresses autorisées, délais accélérés, pas d'ajout à la liste
+  const qaEnv = {
+    ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables:qa",
+    ALTHOCE_SEQUENCE_QA_EMAILS: "qa@althoce.test",
+    ALTHOCE_SEQUENCE_QA_TIME_SCALE: "120",
+  };
+  assert.equal(sw.activeGuideSequence(lm, qaEnv, "prospect@cabinet.fr"), null, "vrai prospect : automation historique");
+  assert.deepEqual(sw.activeGuideSequence(lm, qaEnv, "QA@althoce.test"), { seq: pilot, qa: true, timeScale: 120 });
+  const fast = { s: pilot.id, c: 1, t: T0.getTime(), k: 120 };
+  assert.equal(plan.stepAt(fast, pilot.steps[0]), T0.getTime() + 24 * 60_000, "J+2 → 24 min");
+  const signed = enrollment.signEnrollment(fast)!;
+  assert.equal(enrollment.verifyEnrollment(signed)?.k, 120);
   assert.equal(sw.activeGuideSequence({ slug: "x", sequence: "inconnue" }, { ALTHOCE_SEQUENCE_GUIDES: "x" }), null);
   assert.equal(sw.sequencesPaused({ ALTHOCE_SEQUENCES_PAUSED: "true" }), true);
   assert.equal(links.siteUrl({ VERCEL_ENV: "preview", VERCEL_BRANCH_URL: "app-git-x.vercel.app" }), "https://app-git-x.vercel.app");

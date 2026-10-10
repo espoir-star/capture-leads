@@ -13,6 +13,7 @@
  *  Étapes complètes : docs/BREVO_SETUP.md § Webinars.
  */
 
+import type { SequenceId } from "@/config/sequences";
 import { SENDERS, type Sender } from "@/config/senders";
 import type { Subsector, Vertical } from "@/config/taxonomy";
 
@@ -45,6 +46,8 @@ export interface WebinarConfig {
   replayUrl?: string;
   /** Expéditeur des emails de ce webinar (défaut : WEBINAR_DEFAULT_SENDER) */
   sender?: Sender;
+  /** Parcours email du moteur (ex. "webinar-standard-v1") ; absent = automation Brevo sur la liste */
+  sequence?: SequenceId;
   status: "draft" | "open" | "closed" | "done";
 }
 

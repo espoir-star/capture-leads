@@ -24,7 +24,7 @@ import {
   verifyEnrollment,
   type Enrollment,
 } from "@/lib/sequences/enrollment";
-import { confirmUrl, CTA_URL, guideParams, unsubscribeLinks } from "@/lib/sequences/links";
+import { confirmUrl, CTA_URL, resourceParams, unsubscribeLinks } from "@/lib/sequences/links";
 import { notifyN8n } from "@/lib/sequences/n8n";
 import { decideStep, nextStep, stepAt } from "@/lib/sequences/plan";
 import { sequencesPaused } from "@/lib/sequences/switch";
@@ -41,7 +41,7 @@ export class SequenceSendError extends Error {
 function baseParams(email: string, slug: string | undefined): Record<string, string> {
   const links = unsubscribeLinks(email);
   return {
-    ...(guideParams(slug) ?? {}),
+    ...resourceParams(slug),
     CTA_URL,
     ...(links && { UNSUBSCRIBE_URL: links.page }),
   };
@@ -88,9 +88,18 @@ export async function enrollInSequence(opts: {
   slug: string;
   now: Date;
   eventAt?: Date;
+  /** mode QA uniquement */
+  timeScale?: number;
 }): Promise<EnrollOutcome> {
   const { seq, contactId, slug, now } = opts;
-  const enr: Enrollment = { s: seq.id, c: contactId, t: now.getTime(), r: slug, ...(opts.eventAt && { e: opts.eventAt.getTime() }) };
+  const enr: Enrollment = {
+    s: seq.id,
+    c: contactId,
+    t: now.getTime(),
+    r: slug,
+    ...(opts.eventAt && { e: opts.eventAt.getTime() }),
+    ...(opts.timeScale && opts.timeScale > 1 && { k: opts.timeScale }),
+  };
   const first = nextStep(seq, enr, null, now.getTime());
   if (!first) return "no_steps";
   const enrollmentId = signEnrollment(enr);
@@ -140,8 +149,11 @@ export async function runStep(enrollmentId: unknown, stepId: unknown, now = new 
 
   let sent = false;
   let skipReason: string | undefined;
+  const resource = resourceParams(enr.r);
   if (t > at + STEP_STALE_AFTER_HOURS * HOUR) {
     skipReason = "stale";
+  } else if (step.requires === "replayUrl" && !resource.REPLAY_URL) {
+    skipReason = "missing_replay";
   } else {
     const contact = await getContactById(enr.c);
     const decision = decideStep(contact, step);

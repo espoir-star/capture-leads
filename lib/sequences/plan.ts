@@ -19,7 +19,7 @@ const HOUR = 3_600_000;
 /** Date prévue d'une étape, ou null si son ancre manque (webinar sans date) */
 export function stepAt(enr: Enrollment, step: SequenceStep): number | null {
   const base = step.anchor === "event" ? enr.e : enr.t;
-  return base === undefined ? null : base + step.offsetHours * HOUR;
+  return base === undefined ? null : base + (step.offsetHours * HOUR) / (enr.k ?? 1);
 }
 
 /**

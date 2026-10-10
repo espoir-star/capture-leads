@@ -37,7 +37,7 @@ import { logLead, maskEmail, maskPhone } from "@/lib/lead/log";
 import { createEmailConfirmToken } from "@/lib/security/emailConfirm";
 import { createMarketingOptoutToken } from "@/lib/marketing/token";
 import { deliverGuide, enrollInSequence } from "@/lib/sequences/run";
-import { activeGuideSequence } from "@/lib/sequences/switch";
+import { activeGuideSequence, webinarSequence } from "@/lib/sequences/switch";
 import { signLeadRef } from "@/lib/security/leadToken";
 import { cleanTouch, resolveAttribution } from "@/lib/tracking/utm";
 import type { LeadInput } from "@/lib/validation/leadSchema";
@@ -113,13 +113,17 @@ export async function captureLead(
       now,
     });
     const lm = isWebinar ? undefined : getLeadMagnet(source.slug);
-    const sequence = lm ? activeGuideSequence(lm) : null;
+    const webinar = isWebinar ? getWebinar(source.slug) : undefined;
+    const active = lm ? activeGuideSequence(lm, process.env, email.email) : null;
+    const sequence = active?.seq ?? (lm ? null : webinarSequence(webinar));
     const opposed = update.marketingStatus === "OPPOSED";
     const legacyOpposed = !!lm && !sequence && opposed;
     const wasInList = existing?.listIds?.includes(source.brevoListId) ?? false;
+    // Mode QA : l'automation historique reste active → pas d'ajout à la liste pour l'adresse QA
+    const skipList = legacyOpposed || !!active?.qa;
 
     const result = await upsertContact(
-      email.email, update.attributes, legacyOpposed ? [] : [source.brevoListId], existing,
+      email.email, update.attributes, skipList ? [] : [source.brevoListId], existing,
       (attrs) => withoutRejectedSms(attrs, existing),
       input.marketingOpposition
     );
@@ -157,8 +161,16 @@ export async function captureLead(
           sequence: deliverySequence.id,
           valeur: maskEmail(email.email),
         });
-        if (sequence && !opposed && !wasInList) {
-          await enrollInSequence({ seq: sequence, contactId: result.contactId, slug: source.slug, now });
+        // Webinar : les rappels pratiques restent dus à un opposant inscrit (seul le suivi marketing est filtré)
+        if (sequence && (!opposed || webinar) && !wasInList) {
+          await enrollInSequence({
+            seq: sequence,
+            contactId: result.contactId,
+            slug: source.slug,
+            now,
+            ...(webinar && { eventAt: new Date(webinar.startsAt) }),
+            ...(active?.qa && { timeScale: active.timeScale }),
+          });
         }
       }
       return sendBrevoEvent(

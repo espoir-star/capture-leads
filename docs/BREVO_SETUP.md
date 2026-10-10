@@ -14,7 +14,7 @@ Post LinkedIn ── URL trackée (utm_source / medium / campaign / content)
 Landing /r/[slug] ── first touch mémorisé 90 j (localStorage, sans donnée personnelle)
       │             bannière cookies : ESSENTIAL par défaut, traceurs seulement après « Tout accepter »
       ↓
-Formulaire (prénom, nom, email, mobile, objectif IA, horizon + case newsletter facultative)
+Formulaire (prénom, nom, email, mobile, objectif IA, horizon + mention métier et opposition « Ne pas recevoir ces communications »)
       ↓
 POST /api/lead (serveur) : rate limit → honeypot → schéma Zod → Turnstile
       → email (syntaxe, factice, jetable, capacité de réception) → téléphone (libphonenumber)
@@ -26,7 +26,9 @@ POST /api/lead (serveur) : rate limit → honeypot → schéma Zod → Turnstile
 Brevo : LISTE = provenance · ATTRIBUTS = profil · ÉVÉNEMENTS = comportement · SEGMENTS = audience
       ↓
 Email de bienvenue (automation par liste) ── lien « Confirmer mon adresse » → EMAIL_STATUS = VERIFIED
-Newsletter (campagnes, OPT_IN = true) · Webinars · Site althoce.com
+Newsletter (campagnes, MARKETING_STATUS = CONSENT ou B2B_ELIGIBLE) · Webinars · Site althoce.com
+
+Livraison et relances des guides basculés : moteur de séquences Vercel + n8n (docs/PHASE_MARKETING_N8N.md). Nouveau guide : docs/NOUVEAU_GUIDE.md.
       ↓
 LEAD_SCORE → segment LEADS — HOT → (futur) n8n enrichissement LinkedIn → commercial → appel → RDV
 ```
@@ -55,7 +57,8 @@ LEAD_SCORE → segment LEADS — HOT → (futur) n8n enrichissement LinkedIn →
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | navigateur | **obligatoire** | Clé publique Turnstile. |
 | `TURNSTILE_SECRET_KEY` | serveur | **obligatoire** | Secret Turnstile (toujours avec la clé publique). |
 | `SIGNING_SECRET` | serveur | **obligatoire** | Signe le jeton « guide ouvert », chiffre les liens de confirmation. Stable : le changer invalide les liens déjà envoyés. |
-| `BREVO_WEBHOOK_SECRET` | serveur | recommandé | Active `/api/webhooks/brevo` (hard bounce). |
+| `BREVO_WEBHOOK_SECRET` | serveur | recommandé | Active `/api/webhooks/brevo` (hard bounce, désinscription). |
+| `ALTHOCE_SEQUENCE_GUIDES`, `N8N_*`, `SEQUENCE_API_SECRET` | serveur | moteur | Moteur de séquences (docs/PHASE_MARKETING_N8N.md § 3). |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | navigateur | optionnel | GA4 (défaut du code si non définie, désactivé si vide). |
 | `NEXT_PUBLIC_META_PIXEL_ID` | navigateur | optionnel | Meta Pixel (défaut du code si non définie, désactivé si vide). |
 | `NEXT_PUBLIC_BREVO_CLIENT_KEY` | navigateur | optionnel | Tracker Brevo (désactivé si vide). |
@@ -102,7 +105,9 @@ Tous créés le 08/10/2026 ; le script ne crée que les attributs manquants, jam
 | VERTICAL, SUBSECTOR | depuis la config, seulement si vides (ou VERTICAL = GENERAL) |
 | BESOIN_PRIORITAIRE, HORIZON_PROJET | dernière déclaration |
 | UTM_*, SOURCE_CONTENT_URL | first touch : écrits **uniquement si aucun UTM n'existe** |
-| OPT_IN | case newsletter cochée → `true` ; non cochée → `false`, sauf si le contact avait déjà `true` (ne pas cocher n'est pas se désinscrire) |
+| OPT_IN | historique, **jamais réécrit** (le formulaire n'a plus de case newsletter) |
+| MARKETING_STATUS | `OPPOSED` (opposition, définitive) > `CONSENT` (ancien OPT_IN = true) > `TO_REVIEW` (ancien OPT_IN = false, ou guide sans verticale) > `B2B_ELIGIBLE` (guide métier, mention affichée, pas d'opposition) — `lib/marketing/status.ts` |
+| MARKETING_OPTOUT_TOKEN | jeton chiffré du lien `/desinscription`, écrit s'il est vide |
 | EMAIL_STATUS | `PENDING` (VERIFIED et BOUNCED conservés) — jamais VERIFIED depuis le formulaire |
 | EMAIL_CONFIRM_TOKEN | écrit s'il est vide (lien stable) |
 | PHONE_STATUS | statut du numéro **réellement stocké dans SMS** ; vide si aucun SMS |
@@ -153,12 +158,12 @@ L'API officielle Brevo permet seulement de **lire** les segments (`GET /v3/conta
 | DATA QUALITY — REVIEW | EMAIL_STATUS = PENDING **OU** PHONE_STATUS = SUSPECT |
 | DATA QUALITY — REJECTED | EMAIL_STATUS = INVALID **OU** = DISPOSABLE **OU** = BOUNCED |
 | LEADS — HOT | LEAD_SCORE ≥ 25 **ET** LIFECYCLE_STAGE ≠ CLIENT **ET** ≠ LOST **ET** EMAIL_STATUS ≠ INVALID, ≠ DISPOSABLE, ≠ BOUNCED **ET** PHONE_STATUS ≠ INVALID |
-| NEWSLETTER — FINANCE | VERTICAL = FINANCE **ET** OPT_IN = Oui **ET** EMAIL_STATUS ≠ INVALID, ≠ DISPOSABLE, ≠ BOUNCED |
+| NEWSLETTER — FINANCE | VERTICAL = FINANCE **ET** MARKETING_STATUS = CONSENT, B2B_ELIGIBLE **ET** EMAIL_STATUS ≠ INVALID, ≠ DISPOSABLE, ≠ BOUNCED ⚠️ segments 7/8/9 créés le 09/10 avec `OPT_IN = Vrai` : à mettre à jour (PHASE_MARKETING_N8N § 9) |
 | NEWSLETTER — EXPERTISE COMPTABLE | NEWSLETTER — FINANCE **ET** SUBSECTOR = EXPERTISE_COMPTABLE |
 | NEWSLETTER — DAF | NEWSLETTER — FINANCE **ET** SUBSECTOR = DAF_FINANCE |
 
 - Désabonnés et blocklistés sont exclus d'office par Brevo de toute campagne.
-- **OPT_IN = Oui est obligatoire pour la newsletter** ; EMAIL_STATUS n'est jamais un substitut de consentement. Les contacts historiques ont OPT_IN vide : ils n'entrent pas dans les segments newsletter tant qu'ils n'ont pas coché la case (formulaire ou page de confirmation).
+- **Newsletter : MARKETING_STATUS = CONSENT ou B2B_ELIGIBLE** ; EMAIL_STATUS n'est jamais un substitut. Les contacts historiques n'ont pas encore de MARKETING_STATUS : ils n'entrent dans aucun segment newsletter avant le backfill (TO_REVIEW par défaut, CONSENT si OPT_IN = true, OPPOSED si bloqué).
 - Appels prioritaires : LEADS — HOT en excluant aussi STATUT_APPEL = « Ne plus appeler ».
 
 ---
@@ -169,7 +174,7 @@ Champs : Prénom, Nom (côte à côte), Email, Mobile (indicatif pays), **Quel e
 
 > ☐ Je souhaite recevoir les actualités, conseils, ressources et invitations aux webinaires d'Althoce par email. Je peux me désinscrire à tout moment.
 
-Case **facultative, non précochée**, qui ne contrôle **que OPT_IN**. Le guide est délivré quelle que soit la réponse. Aucun lien avec les cookies, GA, Meta, le tracker Brevo ou Turnstile.
+Plus de case newsletter : une **mention** informe le professionnel des communications Althoce liées à son métier, avec le lien **« Ne pas recevoir ces communications »**. L'opposition est envoyée avec le formulaire ; la page merci ne la confirme qu'après enregistrement côté serveur. Le guide est délivré dans tous les cas. Aucun lien avec les cookies, GA, Meta, le tracker Brevo ou Turnstile.
 
 Mention sous le bouton : « Vous recevrez le guide par email. Althoce peut vous recontacter au sujet de votre demande. Vos données ne sont jamais revendues. Politique de confidentialité ».
 
@@ -261,7 +266,7 @@ hard bounce (webhook Brevo) ─────────────────�
   - entouré d'une condition, pour qu'un contact sans jeton (inscrit avant la mise en production) ne reçoive pas un lien vide :
     `{% if contact.EMAIL_CONFIRM_TOKEN %}` … bouton … `{% endif %}`
   - le lien « Ouvrir le guide » reste le premier bouton : la confirmation ne conditionne jamais l'accès au guide.
-- La page `/confirmer-email` affiche l'adresse masquée, une case newsletter facultative et un bouton **Confirmer mon adresse**. Seul ce clic (POST `/api/email/confirm`) passe le contact en VERIFIED : les antivirus et aperçus qui ouvrent le lien ne confirment rien. Cocher la case passe OPT_IN à `true` (jamais l'inverse).
+- La page `/confirmer-email` affiche l'adresse masquée et un bouton **Confirmer mon adresse**. Seul ce clic (POST `/api/email/confirm`) passe le contact en VERIFIED : les antivirus et aperçus qui ouvrent le lien ne confirment rien. Elle ne touche plus aux préférences marketing.
 - Idempotent : une 2e confirmation ne réécrit rien et ne renvoie pas l'événement `email_confirmed`.
 - Si le libellé du bouton évoque « recevoir les prochaines ressources », c'est la case de la page qui recueille ce consentement.
 
@@ -283,7 +288,7 @@ En cas de doute : SUSPECT plutôt qu'INVALID. INVALID ne vient que du backfill o
 
 ### Anti-bot et résilience
 
-- **Honeypot** rempli → succès factice, aucun contact. **Rate limit** : 6/min et 30/h par IP. **Turnstile** (mode Managed, `interaction-only`) vérifié côté serveur (`siteverify`) : jeton absent ou refusé → 403, aucun contact. Indépendant des cookies, d'OPT_IN, de GA, Meta et du tracker.
+- **Honeypot** rempli → succès factice, aucun contact. **Rate limit** : 6/min et 30/h par IP. **Turnstile** (mode Managed, `interaction-only`) vérifié côté serveur (`siteverify`) : jeton absent ou refusé → 403, aucun contact. Indépendant des cookies, du statut marketing, de GA, Meta et du tracker.
 - Turnstile sans clés : local → désactivé (avertissement) ; Preview → clés de test Cloudflare automatiques ; Production → vraies clés obligatoires (garde-fou de build). Cloudflare injoignable : fail-open journalisé.
 - Priorité : sécurité → validation essentielle → création du lead → accès au guide → événements CRM → analytics. Erreur fondamentale (email invalide, Turnstile invalide, payload invalide) : blocage propre avec message. Brevo indisponible : message « Réessayez », double clic neutralisé, une nouvelle tentative serveur.
 
@@ -354,6 +359,7 @@ Route `POST /api/webhooks/brevo` (404 tant que `BREVO_WEBHOOK_SECRET` est vide).
 | Événement | Effet |
 | --- | --- |
 | `hard_bounce` / `hardBounce` | EMAIL_STATUS → BOUNCED |
+| `unsubscribe` / `unsubscribed` | MARKETING_STATUS → OPPOSED + blocage marketing (idempotent) |
 | `click`, `opened`, autres | aucun (journalisés ; prêts pour un futur scoring) |
 
 - **Sécurité** : Brevo ne signe pas ses webhooks (pas de HMAC). Protection retenue : jeton **Bearer** configuré dans le webhook (`auth: { type: "bearer", token }`) et vérifié en temps constant ; payload revalidé champ par champ, taille bornée. Option : restreindre en plus aux plages IP publiées par Brevo (help.brevo.com, article 208848409).
@@ -364,13 +370,13 @@ Route `POST /api/webhooks/brevo` (404 tant que `BREVO_WEBHOOK_SECRET` est vide).
   npm run brevo:webhooks -- --url https://<domaine>/api/webhooks/brevo          # dry run
   npm run brevo:webhooks -- --url https://<domaine>/api/webhooks/brevo --apply  # crée marketing + transactionnel
   ```
-  (API officielle `POST /v3/webhooks`, événement `hardBounce`, auth Bearer = `BREVO_WEBHOOK_SECRET` local, même valeur que sur Vercel.)
+  (API officielle `POST /v3/webhooks` / `PUT /v3/webhooks/{id}`, événements `hardBounce` + `unsubscribed`, auth Bearer = `BREVO_WEBHOOK_SECRET` local, même valeur que sur Vercel. `unsubscribed` à ajouter aux webhooks existants à la mise en Production de la branche marketing.)
 
 ---
 
 ## 14. Newsletter
 
-Campagnes Brevo (pas une automation), ~2/semaine, préparées à l'avance. Expéditeur : Althoce `<newsletter@althoce.fr>`, réponses sur `espoir@contact.althoce.com` (`config/senders.ts`, § 21) ; `--create` refuse tant que cet expéditeur n'est pas actif dans Brevo. Tags : `NL_FINANCE`, `NL_EXPERT_COMPTABLE`, `NL_MARKETING`, `WEBINAR_FINANCE`, `CASE_STUDY`, `COMMERCIAL`. Audiences = segments NEWSLETTER (OPT_IN = Oui), exclusion DATA QUALITY — REJECTED.
+Campagnes Brevo (pas une automation), ~2/semaine, préparées à l'avance. Expéditeur : Althoce `<newsletter@althoce.fr>`, réponses sur `espoir@contact.althoce.com` (`config/senders.ts`, § 21) ; `--create` refuse tant que cet expéditeur n'est pas actif dans Brevo. Tags : `NL_FINANCE`, `NL_EXPERT_COMPTABLE`, `NL_MARKETING`, `WEBINAR_FINANCE`, `CASE_STUDY`, `COMMERCIAL` (gardés dans le fichier ; **Brevo Free refuse l'option tag des campagnes** : envoyée seulement avec `BREVO_CAMPAIGN_TAGS=true`). Audiences = segments NEWSLETTER (MARKETING_STATUS = CONSENT ou B2B_ELIGIBLE), exclusion DATA QUALITY — REJECTED. `--create` refusé tant que `MARKETING_SEGMENTS_REVIEWED=true` n'est pas posé. ⚠️ **300 emails/jour sur Brevo Free, livraisons comprises** (PHASE_MARKETING_N8N § 8).
 
 **Newsletter-as-code** : `content/newsletters/AAAA-MM-JJ-audience.md` (frontmatter title, subject, previewText, scheduledAt, audience, tag, utmCampaign, status + Markdown avec blocs `:::usecase` / `:::insight`) → template `emails/templates/newsletter.html` (Althoce · hook · intro · contenu · cas d'usage · insight · CTA · signature · footer `{{ unsubscribe }}` ; tables, CSS inline, sans JS). Détails : `content/newsletters/README.md`.
 
@@ -413,6 +419,7 @@ Règles (`lib/backfill/plan.ts`) : uniquement ce qui est prouvé, uniquement des
 | EMAIL_STATUS | preuve négative : BOUNCED (Brevo), DISPOSABLE, INVALID | VERIFIED, PENDING |
 | PHONE_STATUS | SMS stocké et preuve dans le numéro : INVALID / SUSPECT | VALID_FORMAT, VERIFIED |
 | OPT_IN, LEAD_SCORE, UTM | — | jamais |
+| MARKETING_STATUS (si vide) | bloqué → OPPOSED ; OPT_IN = true → CONSENT ; sinon TO_REVIEW | jamais B2B_ELIGIBLE |
 
 Dry run du 08/10/2026 : **1 759 contacts lus, 1 725 concernés, aucune modification appliquée.**
 

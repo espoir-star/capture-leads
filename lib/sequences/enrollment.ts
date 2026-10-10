@@ -22,6 +22,8 @@ export interface Enrollment {
   e?: number;
   /** slug de la ressource (paramètres des modèles) */
   r?: string;
+  /** accélération du temps (mode QA uniquement) : délais divisés par k */
+  k?: number;
 }
 
 const PREFIX = "e1.";
@@ -50,7 +52,8 @@ export function verifyEnrollment(id: unknown): Enrollment | null {
       Number.isInteger(enr.c) &&
       Number.isFinite(enr.t) &&
       (enr.e === undefined || Number.isFinite(enr.e)) &&
-      (enr.r === undefined || typeof enr.r === "string");
+      (enr.r === undefined || typeof enr.r === "string") &&
+      (enr.k === undefined || (Number.isFinite(enr.k) && enr.k >= 1 && enr.k <= 1440));
     return ok ? enr : null;
   } catch {
     return null;

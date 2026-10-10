@@ -61,7 +61,7 @@ test("preuves négatives seulement : bounce Brevo, jetable, domaine sans récept
 });
 
 test("jamais d'écrasement, provenance ambiguë ou conflictuelle laissée vide", () => {
-  const filled = contact({ VERTICAL: "LEGAL", EMAIL_STATUS: "VERIFIED", PHONE_STATUS: "VERIFIED", LIFECYCLE_STAGE: "CLIENT" });
+  const filled = contact({ VERTICAL: "LEGAL", EMAIL_STATUS: "VERIFIED", PHONE_STATUS: "VERIFIED", LIFECYCLE_STAGE: "CLIENT", MARKETING_STATUS: "CONSENT" });
   assert.deepEqual(planContactBackfill(filled, ctx()).set, {});
   assert.equal("VERTICAL" in planContactBackfill(contact({}, [14]), ctx()).set, false, "liste data.gouv ambiguë");
   const conflict = planContactBackfill(contact({}, [10, 12]), ctx());
@@ -77,4 +77,12 @@ test("LEAD seulement sans statut commercial ; mapping commercial uniquement sur 
     "MEETING_BOOKED"
   );
   assert.equal("LIFECYCLE_STAGE" in planContactBackfill(contact({}, [17]), ctx()).set, false, "hors liste LM");
+});
+
+test("statut marketing historique : choix préservés, rien de converti, jamais B2B_ELIGIBLE", () => {
+  assert.equal(planContactBackfill(contact({ OPT_IN: true }), ctx()).set.MARKETING_STATUS, "CONSENT");
+  assert.equal(planContactBackfill(contact({ OPT_IN: false }), ctx()).set.MARKETING_STATUS, "TO_REVIEW");
+  assert.equal(planContactBackfill(contact({}), ctx()).set.MARKETING_STATUS, "TO_REVIEW");
+  assert.equal(planContactBackfill({ ...contact({ OPT_IN: true }), emailBlacklisted: true }, ctx()).set.MARKETING_STATUS, "OPPOSED");
+  assert.equal("MARKETING_STATUS" in planContactBackfill(contact({ MARKETING_STATUS: "B2B_ELIGIBLE" }), ctx()).set, false);
 });

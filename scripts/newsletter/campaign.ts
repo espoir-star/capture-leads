@@ -135,7 +135,9 @@ async function main() {
       sender: NEWSLETTER_SENDER,
       replyTo: NEWSLETTER_REPLY_TO,
       htmlContent: html,
-      tag: meta.tag,
+      // Brevo Free refuse l'option tag sur les campagnes (« not allowed to avail tag option ») :
+      // le tag reste dans le fichier et le nom de campagne ; envoyé seulement si l'offre le permet.
+      ...(process.env.BREVO_CAMPAIGN_TAGS === "true" && { tag: meta.tag }),
       recipients: {
         segmentIds: [targetId],
         ...(excludeIds.length && { exclusionSegmentIds: excludeIds }),

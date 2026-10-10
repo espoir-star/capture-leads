@@ -38,6 +38,8 @@ export interface SequenceStep {
   offsetHours: number;
   /** enrollment = inscription ; event = début du webinar */
   anchor: "enrollment" | "event";
+  /** Étape envoyée seulement si la ressource fournit ce lien (ex. replay publié) */
+  requires?: "replayUrl";
 }
 
 export interface SequenceConfig {
@@ -70,6 +72,22 @@ export const SEQUENCES = {
     label: "Guide (modèles génériques)",
     delivery: "generique.delivery",
     steps: [{ id: "relance-j2", template: "generique.relance-j2", category: "marketing", offsetHours: 48, anchor: "enrollment" }],
+  },
+  /**
+   * Webinar : confirmation, rappels J-1 / H-1 et replay = messages pratiques
+   * liés à l'inscription (transactionnels) ; suivi commercial = marketing.
+   * Inactif tant que ses modèles n'existent pas dans Brevo.
+   */
+  "webinar-standard-v1": {
+    id: "webinar-standard-v1",
+    label: "Webinar (parcours standard)",
+    delivery: "webinar.confirmation",
+    steps: [
+      { id: "rappel-j-1", template: "webinar.j-1", category: "transactional", offsetHours: -24, anchor: "event" },
+      { id: "rappel-h-1", template: "webinar.h-1", category: "transactional", offsetHours: -1, anchor: "event" },
+      { id: "replay", template: "webinar.replay", category: "transactional", offsetHours: 20, anchor: "event", requires: "replayUrl" },
+      { id: "suivi", template: "webinar.suivi", category: "marketing", offsetHours: 72, anchor: "event" },
+    ],
   },
 } satisfies Record<string, SequenceConfig>;
 

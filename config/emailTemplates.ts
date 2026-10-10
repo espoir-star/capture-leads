@@ -46,6 +46,37 @@ export const EMAIL_TEMPLATES = {
     file: "emails/sequences/generique/relance-j2.html",
     id: 38,
   },
+  /* Webinars : créés par `npm run brevo:templates -- --apply` quand un webinar réel est planifié */
+  "webinar.confirmation": {
+    name: "SEQ · Webinar · Confirmation",
+    subject: "Inscription confirmée : {{ params.WEBINAR_TITLE }}",
+    file: "emails/sequences/webinar/confirmation.html",
+    id: null,
+  },
+  "webinar.j-1": {
+    name: "SEQ · Webinar · Rappel J-1",
+    subject: "Demain : {{ params.WEBINAR_TITLE }}",
+    file: "emails/sequences/webinar/rappel-j-1.html",
+    id: null,
+  },
+  "webinar.h-1": {
+    name: "SEQ · Webinar · Rappel H-1",
+    subject: "On commence dans une heure : {{ params.WEBINAR_TITLE }}",
+    file: "emails/sequences/webinar/rappel-h-1.html",
+    id: null,
+  },
+  "webinar.replay": {
+    name: "SEQ · Webinar · Replay",
+    subject: "Le replay : {{ params.WEBINAR_TITLE }}",
+    file: "emails/sequences/webinar/replay.html",
+    id: null,
+  },
+  "webinar.suivi": {
+    name: "SEQ · Webinar · Suivi",
+    subject: "Et maintenant, on l'applique chez vous ?",
+    file: "emails/sequences/webinar/suivi.html",
+    id: null,
+  },
 } satisfies Record<string, EmailTemplateDef>;
 
 export type EmailTemplateKey = keyof typeof EMAIL_TEMPLATES;

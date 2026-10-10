@@ -3,6 +3,7 @@
  * Calculés à l'envoi : aucun attribut Brevo n'est nécessaire.
  */
 
+import { getWebinar } from "@/config/webinars";
 import { getRessource } from "@/lib/ressources";
 import { createEmailConfirmToken } from "@/lib/security/emailConfirm";
 import { createMarketingOptoutToken } from "@/lib/marketing/token";
@@ -39,6 +40,29 @@ export function confirmUrl(email: string, emailStatus: unknown): string | undefi
   if (emailStatus === "VERIFIED") return undefined;
   const t = createEmailConfirmToken(email);
   return t ? `${siteUrl()}/confirmer-email?t=${t}` : undefined;
+}
+
+/** Titre, date (heure de Paris), lien de connexion et replay d'un webinar (config/webinars.ts) */
+export function webinarParams(slug: string | undefined): Record<string, string> | null {
+  const w = slug ? getWebinar(slug) : undefined;
+  if (!w) return null;
+  const date = new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "Europe/Paris",
+  }).format(new Date(w.startsAt));
+  return {
+    WEBINAR_TITLE: w.title,
+    WEBINAR_DATE: date,
+    WEBINAR_DURATION: `${w.durationMin} min`,
+    ...(w.joinUrl && { JOIN_URL: w.joinUrl }),
+    ...(w.replayUrl && { REPLAY_URL: w.replayUrl }),
+  };
+}
+
+/** Paramètres de la ressource (guide ou webinar) */
+export function resourceParams(slug: string | undefined): Record<string, string> {
+  return guideParams(slug) ?? webinarParams(slug) ?? {};
 }
 
 /** Titre et lien du guide (modèles génériques) depuis lib/ressources.ts */
