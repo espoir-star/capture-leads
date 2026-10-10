@@ -66,7 +66,7 @@ const reset = () => fetch(`${MOCK}/__reset`, { method: "POST" });
 const seed = (c: Partial<MockContact>) =>
   fetch(`${MOCK}/__seed`, { method: "POST", body: JSON.stringify(c) });
 const contactOf = async (email: string) => (await state()).contacts.find((c) => c.email === email);
-const configure = (c: { credits?: number; ledgerDown?: boolean; idemTtlMs?: number; clockOffsetMs?: number }) =>
+const configure = (c: { credits?: number; ledgerDown?: boolean; idemTtlMs?: number; clockOffsetMs?: number; turnstile?: string }) =>
   fetch(`${MOCK}/__config`, { method: "POST", body: JSON.stringify(c) });
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -92,6 +92,7 @@ async function main() {
       BREVO_API_KEY: MOCK_API_KEY,
       BREVO_API_BASE_URL: `${MOCK}/v3`,
       TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+      TURNSTILE_VERIFY_URL: `${MOCK}/__turnstile`, // faux Cloudflare : e2e sans dépendance réseau
       BREVO_WEBHOOK_SECRET: WEBHOOK_SECRET,
       SIGNING_SECRET: "e2e",
       // Moteur de séquences : seul le guide pilote a basculé
@@ -673,6 +674,40 @@ async function main() {
     const s = await state();
     assert.equal(s.emails.filter((e) => e.to[0]?.email === "concurrence@cabinet.fr").length, 1, "une seule relance");
     assert.ok(s.events.some((e) => e.event_name === "email_send_attempt" && e.event_properties?.message_id), "messageId historisé");
+  });
+
+  await scenario("SEC4 · Turnstile : absent / invalide / déjà utilisé → 403 sans contact ; Cloudflare en panne → mode dégradé plafonné, aucun email", async () => {
+    const reject = async (mode: string, over: Record<string, unknown> = {}) => {
+      await configure({ turnstile: mode });
+      const r = await post("/api/lead", lead({ email: `ts-${mode}@gmail.com`, tel: "06 11 22 33 44", ...over }));
+      return r.status;
+    };
+    assert.equal(await reject("ok", { turnstileToken: undefined }), 403, "jeton absent");
+    assert.equal(await reject("invalid"), 403, "jeton invalide");
+    assert.equal(await reject("duplicate"), 403, "jeton déjà utilisé ou expiré (timeout-or-duplicate)");
+    assert.equal((await state()).contacts.length, 0, "aucun contact créé");
+
+    for (const mode of ["down", "internal"]) {
+      await configure({ turnstile: mode });
+      const ip = { "x-real-ip": `10.9.9.${mode === "down" ? 1 : 2}` };
+      const ok = await post("/api/lead", lead({ email: `degrade-${mode}@gmail.com`, tel: mode === "down" ? "06 45 87 12 36" : "06 45 87 12 35" }), ip);
+      assert.equal(ok.status, 200, `${mode} : prospect accepté (${JSON.stringify(ok.body)})`);
+    }
+    await sleep(600);
+    let s = await state();
+    assert.equal(s.contacts.length, 2, "contacts enregistrés");
+    assert.ok(s.contacts.every((c) => c.listIds.length === 0), "pas d'ajout à la liste (l'automation Brevo enverrait un email)");
+    assert.equal(s.emails.length, 0, "aucun email automatique en mode dégradé");
+    assert.equal(s.n8n.length, 0, "aucune inscription de séquence");
+    assert.ok(s.events.some((e) => e.event_properties?.turnstile === "unverified"), "marqué non vérifié");
+
+    await configure({ turnstile: "down" });
+    const same = { "x-real-ip": "10.9.9.1" };
+    assert.equal((await post("/api/lead", lead({ email: "degrade-2@gmail.com", tel: "06 45 87 12 38" }), same)).status, 200, "2e soumission de l'IP");
+    assert.equal((await post("/api/lead", lead({ email: "degrade-3@gmail.com", tel: "06 45 87 12 37" }), same)).status, 503, "3e en 10 min : plafond par IP");
+    s = await state();
+    assert.equal(s.emails.length, 0);
+    await configure({ turnstile: "ok" });
   });
 
   await scenario("Brevo en panne : message clair, réessai possible", async () => {

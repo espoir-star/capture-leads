@@ -60,13 +60,15 @@ export interface MockState {
   journalDown: boolean;
   /** Comme le vrai Brevo : refuse une date de journal future (heure de Paris, horloge réelle) */
   journalStrictDates: boolean;
+  /** Faux Cloudflare Turnstile : ok | down | duplicate | invalid | internal */
+  turnstile: string;
   /** Délai avant qu'un envoi apparaisse dans le journal */
   journalDelayMs: number;
 }
 
 const emptyState = (): MockState => ({
   contacts: [], events: [], requests: [], emails: [], n8n: [], ledger: [], credits: 300, ledgerDown: false,
-  idemTtlMs: 30 * 60_000, clockOffsetMs: 0, dropResponses: 0, sendFailStatus: 0, journalDown: false, journalStrictDates: false, journalDelayMs: 0,
+  idemTtlMs: 30 * 60_000, clockOffsetMs: 0, dropResponses: 0, sendFailStatus: 0, journalDown: false, journalStrictDates: false, journalDelayMs: 0, turnstile: "ok",
 });
 
 export const MOCK_API_KEY = "mock-key-e2e";
@@ -103,7 +105,13 @@ export function startMockBrevo(port: number) {
     new Promise<Record<string, unknown>>((resolve) => {
       let raw = "";
       req.on("data", (c) => (raw += c));
-      req.on("end", () => resolve(raw ? JSON.parse(raw) : {}));
+      req.on("end", () => {
+        try {
+          resolve(raw ? JSON.parse(raw) : {});
+        } catch {
+          resolve({}); // corps non JSON (formulaire Turnstile, flux de test)
+        }
+      });
     });
 
   const server = createServer(async (req, res) => {
@@ -134,7 +142,14 @@ export function startMockBrevo(port: number) {
       if (typeof body.ledgerDown === "boolean") state.ledgerDown = body.ledgerDown;
       if (typeof body.journalDown === "boolean") state.journalDown = body.journalDown;
       if (typeof body.journalStrictDates === "boolean") state.journalStrictDates = body.journalStrictDates;
+      if (typeof body.turnstile === "string") state.turnstile = body.turnstile;
       return send(res, 204);
+    }
+    if (url.pathname === "/__turnstile" && req.method === "POST") {
+      if (state.turnstile === "down") return send(res, 503, {});
+      if (state.turnstile === "ok") return send(res, 200, { success: true });
+      const code = { duplicate: "timeout-or-duplicate", invalid: "invalid-input-response", internal: "internal-error" }[state.turnstile] ?? "invalid-input-response";
+      return send(res, 200, { success: false, "error-codes": [code] });
     }
     if (url.pathname === "/__n8n_events" && req.method === "POST") {
       if (state.ledgerDown) return send(res, 503, { message: "n8n arrêté" });
