@@ -12,7 +12,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         <p className="font-display text-lg font-semibold">Althoce<span className="text-accent">.</span></p>
         <h1 className="mt-6 text-2xl font-bold">Gérer mes emails</h1>
         {token ? <MarketingUnsubscribe token={token} /> :
-          <p className="mt-4 text-secondaire">Ce lien n'est pas valide. Contactez Althoce pour exercer votre opposition.</p>}
+          <p className="mt-4 text-secondaire">Ce lien n&apos;est pas valide. Contactez Althoce pour exercer votre opposition.</p>}
       </div>
     </main>
   );

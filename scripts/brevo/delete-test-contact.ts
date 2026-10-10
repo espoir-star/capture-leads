@@ -1,6 +1,6 @@
 /**
  * Supprime EXCLUSIVEMENT les contacts de QA créés pendant la recette du
- * 08/10/2026. Aucune suppression générique ni par motif : chaque contact est
+ * 08/10/2026 et le test de mise en Production du 09/10/2026. Aucune suppression générique ni par motif : chaque contact est
  * identifié par son email exact et son empreinte (prénom, nom, listes, date
  * de création) ; au moindre écart, il est ignoré.
  *
@@ -22,6 +22,8 @@ const QA_CONTACTS: QaContact[] = [
   { email: "qa-capture-test@example.com", prenom: "Test", nom: "QA Althoce", lists: [] },
   { email: "echelleprod+qa-althoce-1@gmail.com", prenom: "QA", nom: "Test QA ne pas appeler", lists: [10] },
   { email: "echelleprod+qa-althoce-2@gmail.com", prenom: "QA", nom: "Test QA ne pas appeler", lists: [10] },
+  // test de mise en Production du 09/10/2026
+  { email: "espoir+qa-prod@contact.althoce.com", prenom: "Test QA", nom: "Ne pas appeler", lists: [10] },
 ];
 
 /** Créés pendant la recette : rien d'antérieur ne peut correspondre */

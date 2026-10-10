@@ -13,7 +13,7 @@ export default function MarketingUnsubscribe({ token }: { token: string }) {
   }
   return (
     <div className="mt-4 space-y-5">
-      {state === "done" ? <p role="status" className="text-secondaire">Vous ne recevrez plus de newsletters ni de relances marketing d'Althoce.</p> :
+      {state === "done" ? <p role="status" className="text-secondaire">Vous ne recevrez plus de newsletters ni de relances marketing d&apos;Althoce.</p> :
       <>
         <p className="text-secondaire">Vous pouvez arrêter les emails marketing Althoce. Les guides demandés restent accessibles.</p>
         {state === "error" && <p role="alert" className="text-red-400">Erreur temporaire. Réessayez.</p>}

@@ -179,7 +179,10 @@ test("règle complète PHONE_STATUS : valide / douteux selon le SMS écrit", () 
 test("B · email techniquement valide, aucune interaction → PENDING, jamais VERIFIED", () => {
   assert.equal(buildContactUpdate(null, data()).attributes.EMAIL_STATUS, "PENDING");
   assert.equal(buildContactUpdate(contact({}), data()).attributes.EMAIL_STATUS, "PENDING");
-  assert.equal(buildContactUpdate(contact({ EMAIL_STATUS: "PENDING" }), data()).attributes.EMAIL_STATUS, und/* ── Préférences marketing B2B ─────────────────────────────────────── */
+  assert.equal(buildContactUpdate(contact({ EMAIL_STATUS: "PENDING" }), data()).attributes.EMAIL_STATUS, undefined);
+});
+
+/* ── Préférences marketing B2B ─────────────────────────────────────── */
 
 test("nouveau lead métier informé sans opposition → B2B_ELIGIBLE", () => {
   const u = buildContactUpdate(null, data());
@@ -202,9 +205,6 @@ test("contact déjà désabonné ne peut être réinscrit par une nouvelle captu
 test("ancien OPT_IN false reste TO_REVIEW, true devient CONSENT", () => {
   assert.equal(buildContactUpdate(contact({ OPT_IN: false }), data()).marketingStatus, "TO_REVIEW");
   assert.equal(buildContactUpdate(contact({ OPT_IN: true }), data()).marketingStatus, "CONSENT");
-});
-
-, true);
 });
 
 test("jeton de confirmation écrit une seule fois (lien stable)", () => {

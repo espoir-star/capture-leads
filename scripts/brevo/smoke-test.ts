@@ -53,7 +53,7 @@ async function main() {
     nom: "QA Althoce",
     besoin: "DEPLOYER_AGENT_IA",
     horizon: "MOINS_3_MOIS",
-    optIn: false,
+    marketingOpposition: false,
     confirmToken: createEmailConfirmToken(email),
     phone,
     attribution: {
@@ -86,7 +86,7 @@ async function main() {
     expect("EMAIL_STATUS", a.EMAIL_STATUS, "PENDING");
     // PHONE_STATUS ne décrit que le numéro réellement stocké dans SMS
     expect("PHONE_STATUS", a.PHONE_STATUS, a.SMS ? "VALID_FORMAT" : undefined);
-    expect("OPT_IN (case non cochée)", a.OPT_IN, false);
+    expect("MARKETING_STATUS (lead métier, pas d'opposition)", a.MARKETING_STATUS, "B2B_ELIGIBLE");
   }
 
   const ev = await sendBrevoEvent(BREVO_EVENTS.LEAD_MAGNET_SUBMITTED, { contact_id: c1!.id }, {
@@ -113,7 +113,7 @@ async function main() {
     nom: "QA Althoce",
     besoin: "VEILLE_IA",
     horizon: "PAS_DE_PROJET",
-    optIn: true,
+    marketingOpposition: true,
     phone,
     attribution: { utm_source: "google", utm_medium: "cpc", utm_content: "GOOGLE_01" },
     source: LEAD_MAGNETS["guide-claude-pennylane"],
@@ -129,7 +129,7 @@ async function main() {
   expect("LEAD_SCORE", b.LEAD_SCORE, 30);
   expect("LIFECYCLE_STAGE", b.LIFECYCLE_STAGE, "HOT_LEAD");
   expect("RESSOURCE", b.RESSOURCE, "guide-claude-pennylane");
-  expect("OPT_IN (case cochée)", b.OPT_IN, true);
+  expect("MARKETING_STATUS (opposition explicite)", b.MARKETING_STATUS, "OPPOSED");
   expect("listes", (c3?.listIds ?? []).length, 0);
 
   /* 3. Nettoyage : aucun numéro fictif ne reste stocké, donc aucun PHONE_STATUS */
