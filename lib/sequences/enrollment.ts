@@ -27,6 +27,12 @@ export interface Enrollment {
   r?: string;
   /** accélération du temps (mode QA uniquement) : délais divisés par k */
   k?: number;
+  /**
+   * livraison effective du guide (ms epoch), seulement si elle est tardive :
+   * les étapes ancrées sur l'inscription partent alors de d et non de t, pour
+   * qu'une relance ne suive jamais de près une livraison reprise en retard.
+   */
+  d?: number;
 }
 
 const PREFIX = "e1.";
@@ -56,7 +62,8 @@ export function verifyEnrollment(id: unknown): Enrollment | null {
       Number.isFinite(enr.t) &&
       (enr.e === undefined || Number.isFinite(enr.e)) &&
       (enr.r === undefined || typeof enr.r === "string") &&
-      (enr.k === undefined || (Number.isFinite(enr.k) && enr.k >= 1 && enr.k <= 1440));
+      (enr.k === undefined || (Number.isFinite(enr.k) && enr.k >= 1 && enr.k <= 1440)) &&
+      (enr.d === undefined || Number.isFinite(enr.d));
     return ok ? enr : null;
   } catch {
     return null;

@@ -59,6 +59,8 @@ export async function processGuideRequest(contactId: number, slug: string, now =
   const prior = readGuideReceipt(contact.attributes[fields.sent]);
   const done = prior?.key === sendKey ? prior : null;
   let delivery: GuideProcessReport["delivery"] = "already_sent";
+  // Date de livraison connue (reçu) ; sinon maintenant. Sert d'ancre aux relances si elle est tardive.
+  let deliveredAt = done?.status === "SENT" ? new Date(done.at) : now;
   if (done?.status === "EXPIRED") return { delivery: "expired" };
   if (done?.status !== "SENT") {
     if (!decideStep(contact, { category: "transactional" }).send) return { delivery: "blocked" };
@@ -71,6 +73,7 @@ export async function processGuideRequest(contactId: number, slug: string, now =
     const result = await deliverGuide({ seq, contactId, email: contact.email, slug, emailStatus: contact.attributes.EMAIL_STATUS, now, requestedAt: new Date(request.requestedAt) });
     if (result.status === "error") return { delivery: "pending" };
     await receipt(contactId, fields.sent, sendKey, "SENT", now);
+    deliveredAt = now;
     delivery = result.status === "sent" ? "sent" : "already_sent";
   }
   const enrollKey = guideEnrollmentKey(contactId, request);
@@ -86,7 +89,7 @@ export async function processGuideRequest(contactId: number, slug: string, now =
     await receipt(contactId, fields.enrolled, enrollKey, "SKIPPED", now);
     return { delivery, enrollment: "skipped" };
   }
-  const outcome = await enrollInSequence({ seq, contactId, slug, now: new Date(request.followupAt!), ...(request.scale && { timeScale: request.scale }) });
+  const outcome = await enrollInSequence({ seq, contactId, slug, now: new Date(request.followupAt!), deliveredAt, ...(request.scale && { timeScale: request.scale }) });
   if (outcome === "enrolled" || outcome === "no_steps") {
     await receipt(contactId, fields.enrolled, enrollKey, outcome === "enrolled" ? "ENROLLED" : "SKIPPED", now);
     return { delivery, enrollment: outcome === "enrolled" ? "enrolled" : "none" };

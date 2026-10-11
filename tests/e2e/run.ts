@@ -95,8 +95,12 @@ async function main() {
       TURNSTILE_VERIFY_URL: `${MOCK}/__turnstile`, // faux Cloudflare : e2e sans dépendance réseau
       BREVO_WEBHOOK_SECRET: WEBHOOK_SECRET,
       SIGNING_SECRET: "e2e",
-      // Moteur de séquences : seul le guide pilote a basculé
-      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables",
+      // Moteur de séquences : guide pilote basculé ; Pennylane en mode QA (adresses QA seulement)
+      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables,guide-claude-pennylane:qa",
+      ALTHOCE_SEQUENCE_QA_EMAILS: "qa-multi.e2e@cabinet.fr,qa-retard.e2e@cabinet.fr",
+      ALTHOCE_SEQUENCE_QA_TIME_SCALE: "120",
+      // Multi-guides en recette, comme la Production du 11/10/2026 (incident #1810)
+      ALTHOCE_MULTI_GUIDES: "qa",
       N8N_SEQUENCE_WEBHOOK_URL: `${MOCK}/__n8n`,
       N8N_WEBHOOK_TOKEN: "e2e-n8n-token",
       N8N_EVENTS_WEBHOOK_URL: `${MOCK}/__n8n_events`,
@@ -757,6 +761,42 @@ async function main() {
     c = (await contactOf("perdu@cabinet.fr"))!;
     assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
     assert.equal((await state()).ledger.length, 1);
+  });
+
+  await scenario("INC1810 · adresse neuve, deux guides (journal réel « {} ») + fiche sans email : livrés, maintenance OK", async () => {
+    await seed({ email: null, attributes: { SMS: "33600000000" } } as unknown as Partial<MockContact>);
+    const qa = "qa-multi.e2e@cabinet.fr";
+    assert.equal((await post("/api/lead", lead({ email: qa, sessionId: "inc-ec" }))).status, 200);
+    assert.equal((await post("/api/lead", lead({ email: qa, slug: "guide-claude-pennylane", sessionId: "inc-pl" }))).status, 200);
+    const s = await until((x) => x.emails.length === 2, "deux livraisons");
+    assert.deepEqual(s.emails.map((e) => e.tags.find((t) => t.startsWith("guide:"))).sort(), ["guide:12-cas-usage-experts-comptables", "guide:guide-claude-pennylane"]);
+    const c = (await contactOf(qa))!;
+    for (const list of [10, 6]) assert.match(String(c.attributes[`MG_SENT_${list}`]), /"status":"SENT"/, `reçu MG_SENT_${list}`);
+    assert.equal(c.attributes.GUIDES_COUNT, 2);
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const m = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(m.status, 200, JSON.stringify(m.body));
+    assert.equal(m.body.multiGuides.enabled, true);
+    assert.equal(m.body.multiGuides.failed, 0);
+    assert.equal((await state()).emails.length, 2, "maintenance : aucun renvoi");
+  });
+
+  await scenario("INC1810 · journal de scoring en panne : la maintenance livre quand même le guide en attente, sans relance immédiate", async () => {
+    const requestedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const req = { v: 1, slug: "12-cas-usage-experts-comptables", sequenceId: "guide-12-cas-ec-v1", requestedAt, firstTrackedAt: requestedAt, queued: true, followupAt: requestedAt, scale: 120, source: {} };
+    await seed({ email: "qa-retard.e2e@cabinet.fr", attributes: { EMAIL_STATUS: "PENDING", MARKETING_STATUS: "B2B_ELIGIBLE", MG_REQ_10: JSON.stringify(req) } });
+    await seed({ email: "rdv-panne@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "Prévu" } });
+    await configure({ ledgerDown: true });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const before = Date.now();
+    const m = await post("/api/marketing/maintenance", {}, auth);
+    assert.equal(m.status, 502, "panne signalée à n8n");
+    assert.deepEqual(m.body.failed, ["meetings"]);
+    assert.equal(m.body.multiGuides.processed, 1);
+    const s = await state();
+    assert.equal(s.emails.filter((e) => e.to[0].email === "qa-retard.e2e@cabinet.fr").length, 1, "guide livré malgré la panne du scoring");
+    const at = Date.parse((s.n8n.at(-1)!.body as { at: string }).at);
+    assert.ok(at >= before + 24 * 60_000 - 5_000, "relance 24 min (J+2 accéléré) APRÈS la livraison tardive, pas tout de suite");
   });
 
   await scenario("Brevo en panne : message clair, réessai possible", async () => {

@@ -6,7 +6,9 @@
 import { LEAD_MAGNETS, getLeadMagnet } from "@/config/leadMagnets";
 
 type Env = Record<string, string | undefined>;
-export function multiGuidesEnabled(email: string, env: Env = process.env): boolean {
+/** Contact sans adresse email (fiche SMS seule, ex. contact Brevo n°2) : jamais concerné, jamais d'exception. */
+export function multiGuidesEnabled(email: unknown, env: Env = process.env): boolean {
+  if (typeof email !== "string" || !email.trim()) return false;
   if (env.ALTHOCE_MULTI_GUIDES === "on") return true;
   return env.ALTHOCE_MULTI_GUIDES === "qa" && (env.ALTHOCE_SEQUENCE_QA_EMAILS ?? "")
     .split(/[,;\s]+/).map((v) => v.trim().toLowerCase()).filter(Boolean).includes(email.trim().toLowerCase());
