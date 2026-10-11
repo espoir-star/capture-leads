@@ -1,60 +1,49 @@
 /**
- * Modèles email « as code » du moteur de séquences (emails/sequences/*.html).
+ * Modèles email « as code ». Les noms sont les clés de rapprochement Brevo.
+ * `npm run brevo:templates` compare en lecture seule ; --apply écrit :
+ * ne pas lancer le script global avant d'avoir revu son périmètre (webinars).
  *
- * `npm run brevo:templates` (dry run) compare chaque fichier au modèle Brevo
- * du même NOM EXACT ; `-- --apply` crée les absents et met à jour ceux qui
- * diffèrent, puis affiche les IDs à recopier ici. Tant qu'un ID est null, la
- * séquence qui l'utilise ne peut pas être activée (aucun ID fictif).
- *
- * Ces modèles n'utilisent jamais {{ unsubscribe }} (désinscription Brevo
- * transactionnelle = blocage de TOUS les emails, guides compris) : le lien
- * passe par params.UNSUBSCRIBE_URL → /desinscription (opposition marketing).
- * Exception : les modèles « interne.* », envoyés à l'équipe seulement.
+ * Guides : ALTHOCE_GUIDE_EMAIL_VERSION=2 choisit les publications #41–44,
+ * créées depuis les HTML validés et relues via API. Vide/1 = #35–38 historiques.
+ * La sélection ne change pas les identifiants de séquence ni les clés métier.
+ * Désabonnement marketing : params.UNSUBSCRIBE_URL, pas {{ unsubscribe }}.
  */
+import { guideEmailPublication } from "@/config/guideEmailPublications";
 
 export interface EmailTemplateDef {
-  /** Nom exact dans Brevo (clé de rapprochement) */
   name: string;
   subject: string;
-  /** Fichier HTML, relatif à la racine du dépôt */
   file: string;
-  /** ID Brevo réel (null tant que non créé) */
   id: number | null;
 }
 
 export const EMAIL_TEMPLATES = {
   "guide-12-cas-ec.delivery": {
-    name: "SEQ · 12 cas EC · Livraison",
+    ...guideEmailPublication("guide-12-cas-ec.delivery"),
     subject: "Votre guide Claude pour les experts-comptables",
     file: "emails/sequences/guide-12-cas-ec/delivery.html",
-    id: 35,
   },
   "guide-12-cas-ec.relance-j2": {
-    name: "SEQ · 12 cas EC · Relance J+2",
+    ...guideEmailPublication("guide-12-cas-ec.relance-j2"),
     subject: "Quel premier usage IA pour votre cabinet ?",
     file: "emails/sequences/guide-12-cas-ec/relance-j2.html",
-    id: 36,
   },
   "generique.delivery": {
-    name: "SEQ · Générique · Livraison",
+    ...guideEmailPublication("generique.delivery"),
     subject: "Votre guide : {{ params.GUIDE_TITLE }}",
     file: "emails/sequences/generique/delivery.html",
-    id: 37,
   },
   "generique.relance-j2": {
-    name: "SEQ · Générique · Relance J+2",
+    ...guideEmailPublication("generique.relance-j2"),
     subject: "Votre guide IA : par où commencer ?",
     file: "emails/sequences/generique/relance-j2.html",
-    id: 38,
   },
-  /* Alertes internes (équipe uniquement, jamais un prospect) : n8n, lead chaud, quota */
   "interne.alerte": {
     name: "INTERNE · Alerte",
     subject: "{{ params.SUBJECT }}",
     file: "emails/interne/alerte.html",
     id: 40,
   },
-  /* Webinars : créés par `npm run brevo:templates -- --apply` quand un webinar réel est planifié */
   "webinar.confirmation": {
     name: "SEQ · Webinar · Confirmation",
     subject: "Inscription confirmée : {{ params.WEBINAR_TITLE }}",
@@ -88,7 +77,6 @@ export const EMAIL_TEMPLATES = {
 } satisfies Record<string, EmailTemplateDef>;
 
 export type EmailTemplateKey = keyof typeof EMAIL_TEMPLATES;
-
 export function templateId(key: EmailTemplateKey): number | null {
   return EMAIL_TEMPLATES[key].id;
 }
