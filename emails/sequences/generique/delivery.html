@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <!--
-  LIVRAISON GÉNÉRIQUE d'un guide (transactionnel : envoyé à chaque demande,
-  même en cas d'opposition marketing). Paramètres fournis par le moteur
-  (lib/sequences) : GUIDE_TITLE, GUIDE_URL, CTA_URL, CONFIRM_URL (absent si
-  l'adresse est déjà confirmée), UNSUBSCRIBE_URL.
+  LIVRAISON GÉNÉRIQUE d'un guide. Paramètres affichés : GUIDE_TITLE,
+  GUIDE_URL, CTA_URL et UNSUBSCRIBE_URL. La vérification d'adresse reste
+  disponible pour les anciens liens, sans demande supplémentaire ici.
 -->
 <html lang="fr">
 <head>
@@ -43,20 +42,6 @@
               <p style="margin:20px 0 0;color:#A0A0A0;font-size:13px;line-height:1.6;">
                 Gardez cet email : le lien reste actif.
               </p>
-              {% if params.CONFIRM_URL %}
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 0;">
-                <tr>
-                  <td style="border:1px solid #1D9E75;border-radius:8px;">
-                    <a href="{{ params.CONFIRM_URL }}" target="_blank" style="display:inline-block;padding:11px 22px;color:#1D9E75;font-size:14px;font-weight:bold;text-decoration:none;">
-                      Confirmer mon adresse email
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:8px 0 0;color:#A0A0A0;font-size:12px;line-height:1.5;">
-                Un clic pour confirmer que cette adresse est bien la vôtre.
-              </p>
-              {% endif %}
             </td>
           </tr>
 
