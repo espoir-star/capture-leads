@@ -74,7 +74,7 @@ test("publication : journal malformé n'autorise aucun envoi", async (t) => {
   let sends = 0;
   t.mock.method(globalThis, "fetch", async (_url: unknown, options?: RequestInit) => {
     if (options?.method === "POST") sends++;
-    return new Response("{}", { status: 200 });
+    return new Response(JSON.stringify({ unexpected: true }), { status: 200 });
   });
   const out = await sending.sendOnce(input(41, sending.sendKeyOf("invalid-journal"), now()));
   assert.equal(out.status, "UNKNOWN");
@@ -85,4 +85,49 @@ test("publication : page tronquée n'est pas assimilée à une absence d'envoi",
   t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ count: 10, transactionalEmails: [] }), { status: 200 }));
   const at = now();
   await assert.rejects(sending.findSentEmail({ email: "qa@example.test", templateId: 41, sendKey: sending.sendKeyOf("truncated"), since: at, now: at }), /incomplète/);
+});
+
+for (const empty of [{}, { count: 0 }]) {
+  test(`premier envoi : réponse vide ${JSON.stringify(empty)} puis rejeu sans double email`, async (t) => {
+    const key = sending.sendKeyOf("empty-first-send", JSON.stringify(empty));
+    const records: { messageId: string; tags: string[] }[] = [];
+    let posts = 0;
+    t.mock.method(globalThis, "fetch", async (url: string | URL | Request, options?: RequestInit) => {
+      const u = new URL(typeof url === "string" ? url : url instanceof URL ? url.href : url.url);
+      if (u.pathname === "/v3/smtp/email" && options?.method === "POST") {
+        posts++;
+        const body = JSON.parse(String(options.body)) as { tags: string[] };
+        records.push({ messageId: "qa-new-message", tags: body.tags });
+        return new Response(JSON.stringify({ messageId: "qa-new-message" }), { status: 201 });
+      }
+      assert.equal(u.pathname, "/v3/smtp/emails");
+      return new Response(JSON.stringify(records.length ? { count: records.length, transactionalEmails: records } : empty), { status: 200 });
+    });
+    const at = now();
+    const first = await sending.sendOnce(input(41, key, at));
+    assert.equal(first.status, "SENT");
+    const replay = await sending.sendOnce({ ...input(41, key, new Date(at.getTime() + 2 * 3_600_000)), since: at });
+    assert.ok(replay.status === "SENT" && replay.via === "journal");
+    assert.equal(posts, 1);
+  });
+}
+
+test("journal : HTTP 403, HTML, 204 et count positif sans liste bloquent tout envoi", async (t) => {
+  const responses = [
+    { body: "{}", status: 403 },
+    { body: "<html>error</html>", status: 200 },
+    { body: null, status: 204 },
+    { body: JSON.stringify({ count: 2 }), status: 200 },
+  ];
+  for (const response of responses) {
+    let posts = 0;
+    const mock = t.mock.method(globalThis, "fetch", async (_url: unknown, options?: RequestInit) => {
+      if (options?.method === "POST") posts++;
+      return new Response(response.body, { status: response.status });
+    });
+    const outcome = await sending.sendOnce(input(41, sending.sendKeyOf("bad-transport", response.status, response.body ?? ""), now()));
+    assert.equal(outcome.status, "UNKNOWN");
+    assert.equal(posts, 0);
+    mock.mock.restore();
+  }
 });
