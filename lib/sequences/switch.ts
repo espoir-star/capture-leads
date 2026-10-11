@@ -4,7 +4,12 @@
  *   ALTHOCE_SEQUENCE_GUIDES   slugs séparés par des virgules (vide = aucun) ;
  *                             « slug:qa » = actif seulement pour les adresses de
  *                             ALTHOCE_SEQUENCE_QA_EMAILS (test en Production sans
- *                             toucher aux vrais prospects)
+ *                             toucher aux vrais prospects) ;
+ *                             « slug:sans-liste » = actif pour tous, SANS ajout à
+ *                             la liste du guide : l'automation Brevo historique
+ *                             (déclenchée par l'ajout à la liste) ne reçoit plus
+ *                             d'entrées et peut se vider puis être mise en pause,
+ *                             sans trou de livraison ni double envoi
  *   ALTHOCE_SEQUENCE_QA_TIME_SCALE  mode QA : délais divisés par ce facteur
  *                             (ex. 120 → relance J+2 après 24 min)
  *   ALTHOCE_SEQUENCES_PAUSED  "true" = les étapes différées sont reportées
@@ -19,12 +24,13 @@ import { getSequence, sequenceReady, type SequenceConfig } from "@/config/sequen
 
 type Env = Record<string, string | undefined>;
 
-/** Mode de bascule par slug : "all" (tous les leads) ou "qa" (adresses QA seulement) */
-export function switchedGuides(env: Env = process.env): Map<string, "all" | "qa"> {
-  const out = new Map<string, "all" | "qa">();
+export type SwitchMode = "all" | "qa" | "nolist";
+/** Mode de bascule par slug : "all" (tous les leads), "qa" (adresses QA seulement), "nolist" (tous, hors liste) */
+export function switchedGuides(env: Env = process.env): Map<string, SwitchMode> {
+  const out = new Map<string, SwitchMode>();
   for (const raw of (env.ALTHOCE_SEQUENCE_GUIDES ?? "").split(",")) {
     const [slug, mode] = raw.trim().split(":");
-    if (slug) out.set(slug, mode === "qa" ? "qa" : "all");
+    if (slug) out.set(slug, mode === "qa" ? "qa" : mode === "sans-liste" ? "nolist" : "all");
   }
   return out;
 }
@@ -34,6 +40,8 @@ export interface ActiveSequence {
   /** mode QA : pas d'ajout à la liste (l'automation historique reste active), délais accélérés */
   qa: boolean;
   timeScale: number;
+  /** false = la liste du guide n'est pas alimentée (QA ou bascule « sans-liste ») */
+  addToList: boolean;
 }
 
 /** Séquence active pour ce guide et cette adresse, ou null s'il reste sur l'automation Brevo */
@@ -46,11 +54,12 @@ export function activeGuideSequence(
   if (!mode) return null;
   const seq = getSequence(lm.sequence);
   if (!seq || !sequenceReady(seq)) return null;
-  if (mode === "all") return { seq, qa: false, timeScale: 1 };
+  if (mode === "all") return { seq, qa: false, timeScale: 1, addToList: true };
+  if (mode === "nolist") return { seq, qa: false, timeScale: 1, addToList: false };
   const qaEmails = new Set((env.ALTHOCE_SEQUENCE_QA_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean));
   if (!email || !qaEmails.has(email.toLowerCase())) return null;
   const k = Number(env.ALTHOCE_SEQUENCE_QA_TIME_SCALE ?? 1);
-  return { seq, qa: true, timeScale: Number.isFinite(k) && k >= 1 && k <= 1440 ? k : 1 };
+  return { seq, qa: true, timeScale: Number.isFinite(k) && k >= 1 && k <= 1440 ? k : 1, addToList: false };
 }
 
 /** Parcours d'un webinar ouvert, si sa séquence est prête (modèles créés) */

@@ -96,7 +96,7 @@ async function main() {
       BREVO_WEBHOOK_SECRET: WEBHOOK_SECRET,
       SIGNING_SECRET: "e2e",
       // Moteur de séquences : seul le guide pilote a basculé
-      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables",
+      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables,guide-claude-meta-ads:sans-liste",
       N8N_SEQUENCE_WEBHOOK_URL: `${MOCK}/__n8n`,
       N8N_WEBHOOK_TOKEN: "e2e-n8n-token",
       N8N_EVENTS_WEBHOOK_URL: `${MOCK}/__n8n_events`,
@@ -757,6 +757,17 @@ async function main() {
     c = (await contactOf("perdu@cabinet.fr"))!;
     assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
     assert.equal((await state()).ledger.length, 1);
+  });
+
+  await scenario("B1 · bascule « sans-liste » : prospect réel livré par le nouveau moteur, hors liste (automation historique non déclenchée), J+2 réel", async () => {
+    const r = await post("/api/lead", lead({ slug: "guide-claude-meta-ads", email: "prospect.bascule@cabinet.fr" }));
+    assert.equal(r.status, 200);
+    const s = await until((x) => x.emails.length === 1 && x.n8n.length === 1, "livraison + inscription");
+    assert.ok(s.emails[0].tags.includes("guide:guide-claude-meta-ads"));
+    const c = (await contactOf("prospect.bascule@cabinet.fr"))!;
+    assert.deepEqual(c.listIds, [], "liste 7 non alimentée : l'automation n°3 ne reçoit pas ce contact");
+    const at = Date.parse((s.n8n[0].body as { at: string }).at);
+    assert.ok(at - Date.now() > 47 * 3_600_000, "relance à J+2 réel, pas accélérée");
   });
 
   await scenario("Brevo en panne : message clair, réessai possible", async () => {
