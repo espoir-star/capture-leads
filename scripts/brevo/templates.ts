@@ -3,6 +3,7 @@
  *
  *   npm run brevo:templates            → état de chaque modèle (absent, identique, à mettre à jour)
  *   npm run brevo:templates -- --apply → crée les absents, met à jour ceux qui diffèrent
+ *   … -- --apply --only interne.alerte → limite l'action à un modèle
  *
  * Rapprochement par NOM EXACT (config/emailTemplates.ts). Ne touche à aucun
  * autre modèle (les emails des automations Brevo historiques restent intacts).
@@ -16,6 +17,7 @@ import { EMAIL_TEMPLATES } from "@/config/emailTemplates";
 import { REPLY_TO, SENDERS } from "@/config/senders";
 
 const APPLY = process.argv.includes("--apply");
+const ONLY = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1] : undefined;
 
 interface BrevoTemplate {
   id: number;
@@ -43,6 +45,7 @@ async function main() {
   const existing = await listTemplates();
 
   for (const [key, def] of Object.entries(EMAIL_TEMPLATES)) {
+    if (ONLY && key !== ONLY) continue;
     const html = readFileSync(resolve(process.cwd(), def.file), "utf8");
     const matches = existing.filter((t) => t.name === def.name);
     if (matches.length > 1) {

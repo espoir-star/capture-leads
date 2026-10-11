@@ -59,7 +59,7 @@ test("modèles : fichiers présents, désinscription Althoce, jamais {{ unsubscr
   for (const [key, t] of Object.entries(EMAIL_TEMPLATES)) {
     assert.ok(existsSync(t.file), key);
     const html = readFileSync(t.file, "utf8");
-    assert.match(html, /params\.UNSUBSCRIBE_URL/, `${key} : lien d'opposition`);
+    if (!key.startsWith("interne.")) assert.match(html, /params\.UNSUBSCRIBE_URL/, `${key} : lien d'opposition`);
     assert.doesNotMatch(html, /\{\{\s*unsubscribe\s*\}\}/, `${key} : pas de désinscription transactionnelle Brevo`);
     assert.ok(t.id === null || Number.isInteger(t.id), `${key} : ID réel ou null, jamais fictif`);
   }

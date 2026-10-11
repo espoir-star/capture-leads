@@ -17,9 +17,8 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { brevoRequest, type BrevoContact } from "@/lib/brevo/api";
-import { isIdempotencyDuplicate } from "@/lib/brevo/transactional";
+import { sendInternalAlert } from "@/lib/brevo/internalAlert";
 import { BREVO_DAILY_LIMIT, QUOTA_ALERT_REMAINING } from "@/config/scoring";
-import { REPLY_TO, SENDERS } from "@/config/senders";
 import { applyBehaviorScores } from "@/lib/scoring/apply";
 import { retryPendingDeliveries } from "@/lib/sequences/delivery";
 import { reconcileTransactionalClicks } from "@/lib/scoring/clicks";
@@ -46,20 +45,14 @@ async function checkQuota(now: Date): Promise<Quota> {
   const remaining = typeof plan?.credits === "number" ? plan.credits : null;
   if (remaining === null || remaining > QUOTA_ALERT_REMAINING) return { remaining, limit: BREVO_DAILY_LIMIT, alert: "none" };
   const day = now.toISOString().slice(0, 10);
-  const sent = await brevoRequest("/smtp/email", {
-    method: "POST",
-    body: {
-      sender: SENDERS.resources,
-      to: [{ email: REPLY_TO }],
-      subject: `[Alerte quota Brevo] ${remaining} emails restants aujourd'hui`,
-      htmlContent: `<p>Il reste <strong>${remaining}</strong> envois sur ${BREVO_DAILY_LIMIT} aujourd'hui (offre Brevo Free).</p>
-<p>Au-delà, Brevo refuse les envois : les livraisons de guides et relances sont réessayées automatiquement (n8n, toutes les 30 min pendant 24 h). Éviter toute campagne aujourd'hui.</p>`,
-      tags: ["alerte-quota"],
-      headers: { idempotencyKey: `quota.${createHash("sha256").update(`quota:${day}`).digest("hex").slice(0, 24)}` },
-    },
-    retries: 1,
-  }).catch(() => null);
-  const ok = !!sent && (sent.ok || isIdempotencyDuplicate(sent.status, sent.message));
+  const ok = await sendInternalAlert({
+    subject: `[Alerte quota Brevo] ${remaining} emails restants aujourd'hui`,
+    title: `Il reste ${remaining} envois sur ${BREVO_DAILY_LIMIT} aujourd'hui (offre Brevo Free)`,
+    intro:
+      "Au-delà, Brevo refuse les envois : les livraisons de guides et relances sont réessayées automatiquement (n8n, toutes les 30 min pendant 24 h). Éviter toute campagne aujourd'hui.",
+    tag: "alerte-quota",
+    idempotencyKey: `quota.${createHash("sha256").update(`quota:${day}`).digest("hex").slice(0, 24)}`,
+  });
   return { remaining, limit: BREVO_DAILY_LIMIT, alert: ok ? "sent" : "failed" };
 }
 

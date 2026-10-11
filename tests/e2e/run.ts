@@ -434,6 +434,8 @@ async function main() {
     assert.equal(s.emails.length, 1);
     assert.equal(s.emails[0].to[0].email, "espoir@contact.althoce.com");
     assert.ok(s.emails[0].tags.includes("alerte-sequences"));
+    assert.equal(s.emails[0].templateId, 40, "alerte par modèle (délivrée en 2 s, contre 6 h pour du HTML brut)");
+    assert.equal(s.emails[0].params.SUBJECT, "[Alerte n8n] Marketing — Séquences (moteur) — v1");
   });
 
   await scenario("54 · confirmation dédiée → VERIFIED ; 2e clic sans effet ; jeton falsifié refusé", async () => {
@@ -520,9 +522,13 @@ async function main() {
     s = await state();
     assert.equal(hotAlerts(s).length, 1);
     assert.equal(hotAlerts(s)[0].to[0].email, "espoir@contact.althoce.com");
-    const html = String((hotAlerts(s)[0] as unknown as { htmlContent: string }).htmlContent);
-    assert.match(html, /Cabinet &lt;Test&gt;/, "valeurs échappées");
-    assert.match(html, /formulaire 12 \+ comportement 15/);
+    // Alerte par le modèle Brevo « INTERNE · Alerte » (id 40) : valeurs brutes en paramètres, échappées par Brevo
+    const alert = hotAlerts(s)[0];
+    assert.equal(alert.templateId, 40, "modèle d'alerte interne");
+    const rowsOf = JSON.stringify((alert.params as unknown as { ROWS: { LABEL: string; VALUE: string }[] }).ROWS);
+    assert.match(rowsOf, /Cabinet <Test>/, "valeur transmise telle quelle, le modèle l'échappe");
+    assert.match(rowsOf, /formulaire 12 \+ comportement 15/);
+    assert.match(String(alert.params.SUBJECT), /^\[Lead chaud\] Léa — Cabinet <Test> \(score 27\)$/);
 
     await hook({ event: "click", email: "chaud@cabinet.fr", camp_id: 41, URL: "https://www.linkedin.com/posts/x", ts_event: 1 });
     s = await state();

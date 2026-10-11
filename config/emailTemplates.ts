@@ -9,6 +9,7 @@
  * Ces modèles n'utilisent jamais {{ unsubscribe }} (désinscription Brevo
  * transactionnelle = blocage de TOUS les emails, guides compris) : le lien
  * passe par params.UNSUBSCRIBE_URL → /desinscription (opposition marketing).
+ * Exception : les modèles « interne.* », envoyés à l'équipe seulement.
  */
 
 export interface EmailTemplateDef {
@@ -45,6 +46,13 @@ export const EMAIL_TEMPLATES = {
     subject: "Avez-vous pu ouvrir le guide ?",
     file: "emails/sequences/generique/relance-j2.html",
     id: 38,
+  },
+  /* Alertes internes (équipe uniquement, jamais un prospect) : n8n, lead chaud, quota */
+  "interne.alerte": {
+    name: "INTERNE · Alerte",
+    subject: "{{ params.SUBJECT }}",
+    file: "emails/interne/alerte.html",
+    id: 40,
   },
   /* Webinars : créés par `npm run brevo:templates -- --apply` quand un webinar réel est planifié */
   "webinar.confirmation": {
