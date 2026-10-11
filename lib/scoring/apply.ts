@@ -1,22 +1,16 @@
 /**
  * Agrégats du journal → attributs Brevo + alerte « lead chaud ».
- *
- * Appelé en temps réel (webhook Brevo, capture webinar, présences) et par la
- * passe horaire n8n (« ALTHOCE | Marketing | Recalcul des scores — v1 ») qui
- * repart de l'historique complet : un échec ponctuel est rattrapé à l'heure
- * suivante, sans jamais compter deux fois.
- *
- * Ordre des écritures : score d'abord, puis alerte, puis HOT_ALERT_SENT_AT.
- * Si l'alerte échoue (quota Brevo épuisé…), elle repart à la passe suivante ;
- * la clé d'idempotence Brevo empêche un doublon si seule la date a échoué.
+ * Appelé en temps réel et lors de la passe horaire n8n.
+ * L'alerte réutilise les guides associés au contact, sans notification
+ * supplémentaire, sans modifier son métier ni lui attribuer une lecture.
  */
-
 import { createHash } from "node:crypto";
 import { brevoRequest, getContactById, type AttributeValue, type BrevoContact } from "@/lib/brevo/api";
 import { updateContactAttributes } from "@/lib/brevo/contacts";
 import { sendInternalAlert } from "@/lib/brevo/internalAlert";
 import { BEHAVIOR_POINTS, type BehaviorCategory } from "@/config/scoring";
 import { aggregateLedger, brevoDate, EVENT_KEY_RE, planScoreUpdate, type LedgerRow, type ScorePlan } from "@/lib/scoring/behavior";
+import { guideInterestRows } from "@/lib/guides/interests";
 
 export interface ApplyResult {
   contactId: number;
@@ -24,20 +18,14 @@ export interface ApplyResult {
   score?: number;
   hotAlert?: "sent" | "failed";
 }
-
 export class ScoreWriteError extends Error {
   constructor(readonly contactId: number, readonly httpStatus: number) {
     super(`Écriture du score impossible (contact ${contactId}, HTTP ${httpStatus})`);
   }
 }
-
 const LABELS: Record<BehaviorCategory, string> = {
-  content_click: "Clic contenu",
-  guide_click: "Clic guide",
-  offer_click: "Clic offre / prise de RDV",
-  webinar_registered: "Inscription webinar",
-  webinar_attended: "Participation webinar",
-  meeting_booked: "RDV confirmé",
+  content_click: "Clic contenu", guide_click: "Clic guide", offer_click: "Clic offre / prise de RDV",
+  webinar_registered: "Inscription webinar", webinar_attended: "Participation webinar", meeting_booked: "RDV confirmé",
 };
 
 async function sendHotAlert(contact: BrevoContact, plan: ScorePlan, rows: readonly LedgerRow[]): Promise<boolean> {
@@ -63,7 +51,7 @@ async function sendHotAlert(contact: BrevoContact, plan: ScorePlan, rows: readon
       ...field("Entreprise", a.ENTREPRISE),
       ...field("Fonction", a.JOB_TITLE),
       ...field("Téléphone", a.SMS),
-      ...field("Ressource d'origine", a.RESSOURCE),
+      ...guideInterestRows(contact),
       ...field("Verticale", a.VERTICAL),
       ...field("Statut marketing", a.MARKETING_STATUS),
       { label: "Score", value: `${plan.score} (formulaire ${plan.formScore} + comportement ${plan.behavior}, avant : ${plan.previousScore})` },
@@ -80,10 +68,6 @@ async function write(contactId: number, attributes: Record<string, AttributeValu
   if (!res.ok) throw new ScoreWriteError(contactId, res.status);
 }
 
-/**
- * Applique les lignes du journal (historique complet de chaque contact).
- * Lève ScoreWriteError si Brevo refuse une écriture (l'appelant réessaie).
- */
 export async function applyBehaviorScores(rows: readonly LedgerRow[], now: Date = new Date()): Promise<ApplyResult[]> {
   const out: ApplyResult[] = [];
   for (const agg of aggregateLedger(rows)) {
@@ -95,9 +79,7 @@ export async function applyBehaviorScores(rows: readonly LedgerRow[], now: Date 
     const plan = planScoreUpdate(contact.attributes, agg, now);
     if (Object.keys(plan.attributes).length) await write(contact.id, plan.attributes);
     const result: ApplyResult = {
-      contactId: contact.id,
-      status: Object.keys(plan.attributes).length ? "updated" : "unchanged",
-      score: plan.score,
+      contactId: contact.id, status: Object.keys(plan.attributes).length ? "updated" : "unchanged", score: plan.score,
     };
     if (plan.hotAlert) {
       const sent = await sendHotAlert(contact, plan, rows).catch(() => false);
