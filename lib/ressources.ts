@@ -54,12 +54,13 @@ export interface Ressource {
   signature?: string;
   /**
    * Personnalisation de la page merci (remplace le titre/texte par défaut).
+   * Ne jamais promettre un délai d'email : la page ignore l'état de l'envoi.
    * ctaTitre/ctaTexte personnalisent le second bloc (relance call) ;
    * ctaTexte omis = texte par défaut, ctaTexte: "" = pas de texte sous le titre.
    */
   merci?: {
-    titre: string;
-    texte: string;
+    titre?: string;
+    texte?: string;
     ctaTitre?: string;
     ctaTexte?: string;
   };
@@ -150,11 +151,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Guide rédigé par Espoir Mwami — Althoce",
-    merci: {
-      titre: "C'est parti — le guide arrive dans votre boîte mail.",
-      texte:
-        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
-    },
   },
 
   /* ─────────────────────────────────────────────────────────────
@@ -197,9 +193,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     cta: "Recevoir le guide",
     signature: "Guide rédigé par Espoir Mwami — Althoce",
     merci: {
-      titre: "C'est parti — le guide arrive dans votre boîte mail.",
-      texte:
-        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
       ctaTitre:
         "Une question sur le paramétrage de votre compte ou sur le cadre RGPD ?",
       ctaTexte: "",
@@ -227,11 +220,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",
-    merci: {
-      titre: "C'est parti — le guide arrive dans votre boîte mail.",
-      texte:
-        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
-    },
   },
 
   /* ─────────────────────────────────────────────────────────────
@@ -256,11 +244,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",
-    merci: {
-      titre: "C'est parti — le guide arrive dans votre boîte mail.",
-      texte:
-        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
-    },
   },
 
   /* ─────────────────────────────────────────────────────────────
@@ -284,11 +267,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",
-    merci: {
-      titre: "C'est parti — le guide arrive dans votre boîte mail.",
-      texte:
-        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
-    },
   },
 
   /* ─────────────────────────────────────────────────────────────
@@ -311,11 +289,6 @@ export const RESSOURCES: Record<string, Ressource> = {
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",
-    merci: {
-      titre: "C'est parti — le guide arrive dans votre boîte mail.",
-      texte:
-        "Vérifiez vos spams si vous ne le voyez pas dans les deux minutes.",
-    },
   },
 };
 
