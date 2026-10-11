@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getRessource, getAllSlugs } from "@/lib/ressources";
 import GuideLink from "@/components/GuideLink";
 import OppositionNotice from "@/components/OppositionNotice";
+import DeliveryStatus from "@/components/DeliveryStatus";
 
 const CAL_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
 
@@ -50,10 +51,10 @@ export default async function PageMerci({ params }: Props) {
         </h1>
 
         <p className="mt-4 text-secondaire leading-relaxed">
-          {/* La page ignore l'état de l'envoi : aucun délai promis, l'accès direct reste la référence. */}
-          {r.merci?.texte ??
-            "Vous pouvez le consulter dès maintenant ci‑dessous. Une copie du lien vous est également adressée par email ; selon votre messagerie, elle peut mettre un peu de temps à arriver ou se trouver dans les courriers indésirables."}
+          {r.merci?.texte ?? "Vous pouvez le consulter dès maintenant ci‑dessous."}
         </p>
+        {/* État réel de l'envoi (jamais de délai promis) ; l'accès direct reste la référence. */}
+        <DeliveryStatus slug={r.slug} />
 
         <OppositionNotice slug={r.slug} />
 
