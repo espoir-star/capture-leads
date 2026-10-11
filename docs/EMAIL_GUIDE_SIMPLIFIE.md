@@ -1,34 +1,39 @@
-# Emails de livraison : supprimer le bouton de confirmation d'adresse
+# Emails de guides — présentation cabinet de conseil IA (11/10/2026)
 
-Décision d'Espoir du 11/10/2026 : retirer la demande de confirmation d'adresse des prochains emails de livraison, sans toucher à l'accès au guide, au lien de rendez-vous, au désabonnement ni aux préférences enregistrées.
+## Demande d’Espoir
 
-## Changement versionné
+- Vouvoiement intégral.
+- Présenter Althoce comme un **cabinet de conseil en intelligence artificielle**.
+- Mentionner trois accompagnements : **audit IA, formation, intégration**.
+- Aucune mention de Bordeaux ni de positionnement « agence » dans les nouveaux emails.
+- Retirer le bouton facultatif de confirmation d’adresse des prochains emails, tout en laissant les anciens liens fonctionner.
+- Design cohérent avec les pages de capture : palette #0A0A0A / #111311 / #1D9E75 / #26C08F, carte de ressource, typographie hiérarchisée, bouton principal unique, signature EM ; pas d’emojis décoratifs.
 
-Les fichiers suivants retirent uniquement le bloc visuel facultatif de confirmation et sa phrase explicative :
+## Texte commun intégré
 
-- `emails/sequences/guide-12-cas-ec/delivery.html` — modèle Brevo #35.
-- `emails/sequences/generique/delivery.html` — modèle Brevo #37.
+> Althoce, cabinet de conseil en intelligence artificielle, vous accompagne dans l’audit de vos usages et opportunités IA, la formation de vos équipes et l’intégration de solutions adaptées à vos métiers.
 
-Les trois autres liens de chaque modèle restent exactement identiques. Les modèles de relance #36 et #38 n'ont pas été modifiés. Les tests `tests/guide-email-copy.test.ts` vérifient le contenu des deux fichiers et la conservation des liens.
+## Fichiers concernés dans le dépôt
 
-## Ce qui reste inchangé
+- `emails/sequences/guide-12-cas-ec/delivery.html` — Brevo #35
+- `emails/sequences/guide-12-cas-ec/relance-j2.html` — Brevo #36
+- `emails/sequences/generique/delivery.html` — Brevo #37
+- `emails/sequences/generique/relance-j2.html` — Brevo #38
+- `tests/guide-email-copy.test.ts`
 
-- Les anciennes URLs `/confirmer-email` et leur endpoint continuent de fonctionner pour les emails déjà envoyés.
-- Aucun contact n'est artificiellement marqué VERIFIED et aucun consentement n'est fabriqué.
-- Les règles d'éligibilité marketing, de désabonnement, d'anti-robot, de scoring et de délivrance sont inchangées.
-- Le paramètre technique CONFIRM_URL peut encore être transmis par le moteur, mais n'est plus affiché par ces nouveaux HTML. Le conserver évite de modifier le backend et les anciens liens dans ce changement de contenu.
+Les noms et IDs des modèles sont conservés. Les URLs des guides, du rendez-vous et du désabonnement restent identiques ; un lien de confidentialité est présent dans le pied de page.
 
-## Publication Brevo : étape distincte, non exécutée par ces commits
+## Publication distincte de la modification GitHub
 
-Fusionner ces fichiers dans GitHub ne modifie PAS les modèles déjà enregistrés dans Brevo. Le connecteur utilisé pour cette intervention fournit des opérations de lecture/création, mais aucune opération de modification d'un modèle existant.
+Le navigateur sécurisé a redirigé vers login.brevo.com lors du contrôle de la session. **Aucun HTML enregistré dans Brevo n’a été remplacé pendant cette préparation.** Une fusion GitHub seule ne modifie pas le contenu des modèles Brevo.
 
-Pour appliquer le changement en ligne avec un accès autorisé :
+Après reconnexion :
+1. Sauvegarder le HTML et la configuration des modèles concernés.
+2. Publier uniquement les quatre modèles #35–38 et leurs objets validés ; ne pas appliquer aveuglément le script général qui pourrait créer les modèles webinars encore inactifs.
+3. Vérifier par relecture API le HTML réellement enregistré, les paramètres, les expéditeurs et le Reply-To.
+4. Envoyer un test à une adresse QA autorisée, après validation, et vérifier la réception sur ordinateur/mobile.
+5. Harmoniser séparément les 18 anciens emails de livraison/relance mappés dans `config/leadMagnets.ts`. Sauvegarder d’abord et préserver leur mécanisme de désabonnement historique : ne pas substituer `params.UNSUBSCRIBE_URL` si l’ancienne automation ne fournit pas ce paramètre.
 
-1. Relire et sauvegarder les modèles actuels #35 et #37 hors du dépôt (ne pas écraser une modification concurrente).
-2. Mettre à jour leur HTML en retirant uniquement le bloc `{% if params.CONFIRM_URL %} ... {% endif %}` et le texte de confirmation qu'il contient.
-3. Conserver noms, objets, expéditeurs, Reply-To, statut actif, IDs, guide, lien RDV et désabonnement.
-4. Auditer également les 9 anciens modèles de livraison identifiés précédemment (#1, #6, #9, #11, #16, #19, #26, #29, #34). Relire chaque contenu actuel puis supprimer uniquement le bloc conditionnel sur EMAIL_CONFIRM_TOKEN s'il correspond bien au bouton de confirmation d'adresse. Ne jamais supprimer le désabonnement ou modifier un workflow pour ce changement.
-5. Contrôler les aperçus avec et sans prénom, puis un envoi QA limité à une adresse de test explicitement autorisée. Ne pas envoyer de campagne ni de relance à la base.
-6. Consigner les IDs réellement modifiés et les résultats des contrôles. Ne pas affirmer que la suppression est en production avant relecture des modèles Brevo.
+## Invariants
 
-Ne pas lancer aveuglément la synchronisation globale des modèles : le script existant peut aussi créer des modèles de webinaire sans rapport avec cette demande. Privilégier une modification ciblée des HTML réellement concernés.
+Aucune modification du scoring, de l’éligibilité marketing, des routes de confirmation, du formulaire, des automations ou des contacts. Aucun passage automatique de PENDING à VERIFIED. Aucun email réel envoyé pendant la préparation. Ne pas confondre tests navigateur/CI et rendu prouvé dans Outlook/Gmail/Apple Mail.
