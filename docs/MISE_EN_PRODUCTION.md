@@ -7,7 +7,21 @@ Ordre : PR #1 → #2 → #3, une étape à la fois. Chaque étape est réversibl
 **État au 11/10/2026, 1 h 40.**
 - ✅ Étapes 0, 1, 2, 3 et 4 faites.
 - ✅ Étape 6 en partie : les workflows « Journal » et « Recalcul » sont actifs et les 2 webhooks Brevo complétés.
-- ⏳ Étape 5 (pilote QA) et fin de l'étape 6 : il reste à enregistrer 4 variables Vercel, puis à redéployer. Le classifieur de sécurité m'a interdit d'enregistrer moi-même des variables de production.
+- ⏳ Étape 5 (pilote QA) et fin de l'étape 6 : il reste à enregistrer 4 variables Vercel, puis à redéployer. Le classifieur de sécurité m'a interdit d'enregistrer moi-même des variables de production :
+  - `N8N_EVENTS_WEBHOOK_URL` = `https://n8n.srv1242605.hstgr.cloud/webhook/althoce-marketing-events`
+  - `ALTHOCE_SEQUENCE_GUIDES` = `12-cas-usage-experts-comptables:qa`
+  - `ALTHOCE_SEQUENCE_QA_EMAILS` = `espoir+qa-pilote@contact.althoce.com,espoir+qa-pilote-optout@contact.althoce.com`
+  - `ALTHOCE_SEQUENCE_QA_TIME_SCALE` = `120`
+
+Vérifications de la nuit (11/10) :
+- Workflows actifs : Alertes, Quota Brevo et RDV, Journal, Recalcul, Séquences. Leurs webhooks refusent toute requête sans jeton (403).
+- Première exécution de « Quota » à 2 h 07 : OK (223 envois restants sur 300, aucune livraison en attente).
+- Première exécution de « Recalcul » à 2 h 17 : OK.
+- Jeton n8n → Vercel vérifié en réel (200). Jeton Vercel → n8n : vérifié au premier événement après l'enregistrement de `N8N_EVENTS_WEBHOOK_URL`.
+- Webhooks Brevo complétés : la production reçoit bien les événements (200, ignorés tant que le scoring n'est pas branché).
+- ⚠️ **Email d'alerte (contenu HTML, sans modèle)** : accepté et « sent » par Brevo à 1 h 26, mais **toujours pas délivré une heure plus tard**. Un email à modèle part, lui, en 1 s. Les alertes « lead chaud » et « quota » utilisent le même procédé. À vérifier :
+  - s'il est arrivé au réveil, rien à faire ;
+  - sinon, faire passer les alertes internes par un modèle Brevo, comme les autres emails.
 
 | # | Étape | Qui | Contrôle | Retour arrière |
 | --- | --- | --- | --- | --- |
