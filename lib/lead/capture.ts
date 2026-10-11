@@ -81,7 +81,7 @@ export async function captureLead(
     const opposed = update.marketingStatus === "OPPOSED";
     const legacyOpposed = !!lm && !sequence && opposed;
     const wasInList = existing?.listIds?.includes(source.brevoListId) ?? false;
-    const skipList = legacyOpposed || !!active?.qa || !!ctx.degraded;
+    const skipList = legacyOpposed || (!!active && !active.addToList) || !!ctx.degraded;
     // Repli opposant : identité propre au guide, mêmes modèles génériques.
     const deliverySequence = sequence ?? (legacyOpposed && lm ? getSequence(lm.sequence) : undefined);
     const trackedGuide = !!lm && !ctx.degraded && multiGuidesEnabled(email.email);

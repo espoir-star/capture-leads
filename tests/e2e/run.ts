@@ -95,8 +95,9 @@ async function main() {
       TURNSTILE_VERIFY_URL: `${MOCK}/__turnstile`, // faux Cloudflare : e2e sans dépendance réseau
       BREVO_WEBHOOK_SECRET: WEBHOOK_SECRET,
       SIGNING_SECRET: "e2e",
-      // Moteur de séquences : guide pilote basculé ; Pennylane en mode QA (adresses QA seulement)
-      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables,guide-claude-pennylane:qa",
+      // Moteur de séquences : guide pilote basculé ; Pennylane en mode QA (adresses QA seulement) ;
+      // Meta Ads en bascule « sans-liste » (tous les prospects, automation historique non alimentée)
+      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables,guide-claude-pennylane:qa,guide-claude-meta-ads:sans-liste",
       ALTHOCE_SEQUENCE_QA_EMAILS: "qa-multi.e2e@cabinet.fr,qa-retard.e2e@cabinet.fr",
       ALTHOCE_SEQUENCE_QA_TIME_SCALE: "120",
       // Multi-guides en recette, comme la Production du 11/10/2026 (incident #1810)
@@ -761,6 +762,17 @@ async function main() {
     c = (await contactOf("perdu@cabinet.fr"))!;
     assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
     assert.equal((await state()).ledger.length, 1);
+  });
+
+  await scenario("B1 · bascule « sans-liste » : prospect réel livré par le nouveau moteur, hors liste (automation historique non déclenchée), J+2 réel", async () => {
+    const r = await post("/api/lead", lead({ slug: "guide-claude-meta-ads", email: "prospect.bascule@cabinet.fr" }));
+    assert.equal(r.status, 200);
+    const s = await until((x) => x.emails.length === 1 && x.n8n.length === 1, "livraison + inscription");
+    assert.ok(s.emails[0].tags.includes("guide:guide-claude-meta-ads"));
+    const c = (await contactOf("prospect.bascule@cabinet.fr"))!;
+    assert.deepEqual(c.listIds, [], "liste 7 non alimentée : l'automation n°3 ne reçoit pas ce contact");
+    const at = Date.parse((s.n8n[0].body as { at: string }).at);
+    assert.ok(at - Date.now() > 47 * 3_600_000, "relance à J+2 réel, pas accélérée");
   });
 
   await scenario("M1 · page merci : état réel de l'envoi via leadRef (POST), sans donnée personnelle ; jeton falsifié refusé", async () => {
