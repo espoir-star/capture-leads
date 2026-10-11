@@ -58,3 +58,30 @@ Le mode `slug:sans-liste` de `ALTHOCE_SEQUENCE_GUIDES` active le nouveau moteur 
 2. Réactiver l'automation correspondante.
 
 Les contacts capturés pendant la période « sans liste » ne sont pas dans la liste : ils ne recevront pas l'ancienne relance, mais ils ont reçu le guide et leur relance n8n reste planifiée. Pour l'arrêter, mettre `ALTHOCE_SEQUENCES_PAUSED=true`.
+
+## Journal de bascule
+
+### Recette réelle du 11/10/2026 (production, contacts QA, J+2 accéléré à 24 min)
+
+| Scénario | Contact QA | Résultat |
+|---|---|---|
+| Incident #1810 : 2 demandes en attente reprises par la maintenance | 1810 | modèles 41 et 43 acceptés 23:07:59 / 23:08:01, reçus en boîte de réception ; une seule relance (Pennylane, 23:31:58) ; 12 cas : `multi_guide_consolidated` |
+| Adresse neuve venant de LinkedIn | 1811 | livré environ 2 s après la demande ; UTM LinkedIn enregistré ; relance 42 à 00:04:47 |
+| Demande répétée | 1811 | nouvelle demande enregistrée, aucun second email |
+| Deux guides, même adresse | 1812 | 2 livraisons ; Copilot (verticale GENERAL) sans relance ; une relance Droit à 00:10:23 |
+| Soumissions rapprochées (2,1 s) | 1813 | un email, une inscription |
+| Provenance par demande / first touch | 1814 | MG_REQ_16 = LinkedIn LI_GEN, MG_REQ_6 = vide (visite directe) ; first touch conservé |
+| RDV pris avant relance | 1816 | +25 une seule fois (maintenance 00:07), pas d'alerte HOT ; relance `commercial_cycle` |
+| Désabonnement avant relance, puis nouvelle demande | 1813 | relance `marketing_not_allowed` ; 12 skills livré après opposition, toujours OPPOSED, sans liste ni relance |
+| Guide sans verticale (data.gouv) | 1817 | livré ; TO_REVIEW, sans relance |
+| Adresse mal saisie (vrai prospect, ancien parcours) | 1815 | automation 8 : email envoyé en 6 s, rebond définitif → `EMAIL_STATUS=BOUNCED` |
+| Clic guide puis second clic | 1810 | +5 une seule fois |
+| Routes protégées | — | 401 / 405 / 413 / 400 / 403, sans création de contact |
+
+Les 12 emails au nouveau modèle sont arrivés en boîte de réception (Gmail, aucun en indésirables).
+
+### Bascule du 12/10/2026, vers 00 h 30
+
+- **Variables Vercel (Production) :** `ALTHOCE_SEQUENCE_GUIDES` = les 9 guides en `:sans-liste` ; `ALTHOCE_MULTI_GUIDES=on`. Les autres variables sont inchangées.
+- **Redéploiement :** ce commit sur `main`.
+- **Automations Brevo :** laissées actives cette nuit. Elles ne reçoivent plus d'entrées du site, car celui-ci n'ajoute plus personne aux listes. À mettre en pause après la première capture réelle validée sur le nouveau moteur : la 4 après ses relances en cours, les autres dès la validation. En cas d'erreur de configuration, l'ancien parcours (liste → automation) reste donc un filet de sécurité, sans double envoi.
