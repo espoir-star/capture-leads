@@ -59,12 +59,16 @@ export async function deliverGuide(opts: {
 }
 
 export type EnrollOutcome = "enrolled" | "no_steps" | "n8n_not_configured" | "failed";
+/** Au-delà de cet écart entre demande et livraison réelle, les relances partent de la livraison. */
+const LATE_DELIVERY_MS = 5 * 60_000;
 export async function enrollInSequence(opts: {
-  seq: SequenceConfig; contactId: number; slug: string; now: Date; eventAt?: Date; timeScale?: number;
+  seq: SequenceConfig; contactId: number; slug: string; now: Date; eventAt?: Date; timeScale?: number; deliveredAt?: Date;
 }): Promise<EnrollOutcome> {
   const { seq, contactId, slug, now } = opts;
+  const late = opts.deliveredAt && opts.deliveredAt.getTime() - now.getTime() > LATE_DELIVERY_MS ? opts.deliveredAt.getTime() : undefined;
   const enr: Enrollment = { s: seq.id, c: contactId, t: now.getTime(), r: slug,
-    ...(opts.eventAt && { e: opts.eventAt.getTime() }), ...(opts.timeScale && opts.timeScale > 1 && { k: opts.timeScale }) };
+    ...(opts.eventAt && { e: opts.eventAt.getTime() }), ...(opts.timeScale && opts.timeScale > 1 && { k: opts.timeScale }),
+    ...(late !== undefined && { d: late }) };
   const first = nextStep(seq, enr, null, now.getTime());
   if (!first) return "no_steps";
   const enrollmentId = signEnrollment(enr);

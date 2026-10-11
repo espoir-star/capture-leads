@@ -129,7 +129,9 @@ export function startMockBrevo(port: number) {
     }
     if (url.pathname === "/__seed") {
       const c = body as unknown as Partial<MockContact>;
-      state.contacts.push({ emailBlacklisted: false, listIds: [], attributes: {}, ...c, email: String(c.email), id: nextId++ });
+      // email: null → fiche sans adresse (SMS seul), comme le contact Brevo réel n°2 : la propriété est absente.
+      const { email: rawEmail, ...rest } = c as Partial<MockContact> & { email?: string | null };
+      state.contacts.push({ emailBlacklisted: false, listIds: [], attributes: {}, ...rest, ...(rawEmail !== null && { email: String(rawEmail) }), id: nextId++ } as MockContact);
       return send(res, 201, { id: nextId - 1 });
     }
 
@@ -258,9 +260,13 @@ export function startMockBrevo(port: number) {
           (!mid || e.messageId === mid) &&
           (e.acceptedAt ?? 0) <= clock() - state.journalDelayMs
       );
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const page = visible.slice(offset, offset + Number(url.searchParams.get("limit") ?? 500));
+      // Contrat RÉEL observé le 11/10/2026 (incident #1810) : aucune ligne → HTTP 200 « {} », sans count ni liste.
+      if (!page.length) return send(res, 200, {});
       return send(res, 200, {
         count: visible.length,
-        transactionalEmails: visible.map((e) => ({ email: e.to[0]?.email, templateId: e.templateId, messageId: e.messageId, tags: e.tags, date: new Date(e.acceptedAt ?? 0).toISOString() })),
+        transactionalEmails: page.map((e) => ({ email: e.to[0]?.email, templateId: e.templateId, messageId: e.messageId, tags: e.tags, date: new Date(e.acceptedAt ?? 0).toISOString() })),
       });
     }
     if (url.pathname === "/v3/events" && req.method === "POST") {
