@@ -8,6 +8,7 @@
 import { createHash } from "node:crypto";
 import { brevoRequest } from "@/lib/brevo/api";
 import { isIdempotencyDuplicate, type TransactionalEmail } from "@/lib/brevo/transactional";
+import { parseTransactionalJournalPage } from "@/lib/brevo/transactionalJournal";
 import { REPLY_TO, SENDERS } from "@/config/senders";
 
 export type SendPhase = "PENDING" | "SENDING" | "SENT" | "FAILED" | "UNKNOWN";
@@ -31,23 +32,20 @@ interface LogEmail { messageId?: string; tags?: string[]; date?: string }
 /**
  * Recherche par destinataire ET clé, tous modèles confondus : le passage
  * #35 → #41 ne remet pas à zéro l'historique de la même opération.
- * Pagination bornée ; réponse invalide, pages tronquées ou limite atteinte
- * => erreur et UNKNOWN, jamais un renvoi faute de preuve.
+ * Un historique explicitement vide n'est pas une panne. Les erreurs HTTP,
+ * réponses malformées et paginations incomplètes restent bloquantes.
  */
 export async function findSentEmail(q: { email: string; templateId: number; sendKey: string; since: Date; now: Date }): Promise<LogEmail | null> {
   const tag = sendKeyTag(q.sendKey);
   const query = async (extra: Record<string, string>) => {
     const limit = 500;
     for (let page = 0; page < 10; page++) {
-      // templateId est volontairement absent : la clé identifie l'action, pas son design.
       const params = new URLSearchParams({ email: q.email, limit: String(limit), offset: String(page * limit), sort: "desc", ...extra });
-      const res = await brevoRequest<{ transactionalEmails?: LogEmail[]; count?: number }>(`/smtp/emails?${params}`, { method: "GET", retries: 2 });
-      if (!res.ok) throw new Error(`Journal Brevo indisponible (${res.status})`);
-      const emails = res.data?.transactionalEmails;
-      if (!Array.isArray(emails)) throw new Error("Journal Brevo incomplet");
+      const res = await brevoRequest<unknown>(`/smtp/emails?${params}`, { method: "GET", retries: 2 });
+      if (!res.ok || res.status !== 200) throw new Error(`Journal Brevo indisponible (${res.status})`);
+      const { emails, count } = parseTransactionalJournalPage(res.data, page * limit);
       const found = emails.find((e) => Array.isArray(e.tags) && e.tags.includes(tag));
       if (found) return found;
-      const count = res.data?.count;
       if (emails.length < limit) {
         if (typeof count === "number" && count > page * limit + emails.length) throw new Error("Pagination journal Brevo incomplète");
         return null;
