@@ -11,8 +11,8 @@
         "height": 220,
         "width": 700
       },
-      "id": "e76969d5-9ef1-4653-a67e-297582638a7d",
-      "name": "Note 692d",
+      "id": "e9bfc4f5-8d89-41d9-997d-eaea9b8f0247",
+      "name": "Note ab5b",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -22,7 +22,7 @@
     },
     {
       "parameters": {},
-      "id": "c484c5d9-0349-4cd0-b135-bf52593286be",
+      "id": "6ddd3cd3-9bd4-44e3-bb1c-6f8b828101b8",
       "name": "Lancer après le webinar",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -36,13 +36,13 @@
         "assignments": {
           "assignments": [
             {
-              "id": "e2d6fde8-ada5-4bc5-a7f1-5d56315f7223",
+              "id": "c8d37bf0-c7d0-4add-a856-e33f580f33a0",
               "name": "webinarSlug",
               "value": "slug-du-webinar",
               "type": "string"
             },
             {
-              "id": "c4e30dd3-4b4b-42bc-80f0-f3dc6e315535",
+              "id": "2b1ee7f2-0fb5-4d50-bdfd-6fe21aa53593",
               "name": "eventUrl",
               "value": "https://guide-gratuit-pi.vercel.app/api/sequences/event",
               "type": "string"
@@ -51,7 +51,7 @@
         },
         "options": {}
       },
-      "id": "00fa8e64-6ef6-4715-bb4d-98c61d50cf91",
+      "id": "424a4f4b-e159-4a51-84dc-6807f5b99ff1",
       "name": "Config — Webinar",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -64,7 +64,7 @@
       "parameters": {
         "jsCode": "// À ADAPTER à la plateforme (Zoom, Livestorm, Teams…) : un item par inscrit,\n// { email, attended: true|false }. Laisser vide tant qu'aucun webinar réel n'a eu lieu.\nconst cfg = $('Config — Webinar').first().json;\nconst participants = []; // ← brancher ici l'export ou l'API de la plateforme\nreturn participants.map((p) => ({ json: {\n  email: String(p.email).trim().toLowerCase(),\n  event: p.attended ? 'webinar_attended' : 'webinar_no_show',\n  properties: { webinar: cfg.webinarSlug },\n} }));"
       },
-      "id": "84d144ea-639d-41a7-8956-d3f5db8838dd",
+      "id": "f4214c2f-55a0-49f0-989c-2cf74fd35beb",
       "name": "Lister les présences (à adapter)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -92,7 +92,7 @@
           "timeout": 20000
         }
       },
-      "id": "ab383bc8-f781-4632-b6e7-2bc4e404b4c7",
+      "id": "47a1af68-ffc9-43b7-88cc-9f4eccc3ed41",
       "name": "Enregistrer l'événement Brevo (Vercel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -102,7 +102,13 @@
       ],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Fvh73Wb5raBHpxBa",
+          "name": "Althoce · n8n → Vercel (Bearer)"
+        }
+      }
     }
   ],
   "connections": {

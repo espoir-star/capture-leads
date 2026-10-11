@@ -13,7 +13,7 @@ Rien n'est en production tant que les PR ne sont pas fusionnées.
 
 | # | Risque | Statut | Preuve |
 | --- | --- | --- | --- |
-| 1 | n8n 2.1.5 : 182 avis de sécurité (13 critiques, 38 exploitables sans authentification) | **Préparé** : sauvegarde des 31 workflows, restauration vérifiée, plan vers 2.42.6 épinglée (`docs/N8N_MISE_A_JOUR.md`). Mise à jour **non appliquée** | 3 workflows réimportés à l'identique |
+| 1 | n8n 2.1.5 : plus de 180 avis de sécurité (13 à 17 critiques, une quarantaine sans authentification) | **Corrigé le 11/10/2026** : snapshot, archive du volume, mise à jour vers 2.42.6 figée (`docs/N8N_MISE_A_JOUR.md`) | 31/31 workflows, 2 actifs inchangés, credentials déchiffrés, plus aucun avis corrigible |
 | 2 | Double email : l'`idempotencyKey` Brevo ne vaut que 15 à 30 min, n8n réessaie après 30 min ; une double inscription donnait deux clés | **Corrigé** : `lib/brevo/sendOnce.ts` (clé contact × séquence × étape, journal Brevo avant tout envoi, idempotence pour la concurrence, états PENDING / SENDING / SENT / FAILED / UNKNOWN, `messageId` historisé) | 11 tests unitaires, e2e SEC2, tests réels (§ Tests) |
 | 3 | Next.js 15.5.20 : vulnérabilité critique (Server Actions : déni de service, SSRF) | **Corrigé** : 15.5.27 | `npm audit` : 0 critique |
 | 4 | Webhooks et appels inter-services : jeton accepté dans l'URL et sans « Bearer », corps lu en entier avant contrôle de taille | **Corrigé** : Bearer strict, plus de `?token=`, lecture bornée (413 avant lecture) sur les 10 routes | e2e SEC1 (6 routes × 9 cas), n8n Header Auth en réel, production 401/405 |
@@ -65,7 +65,7 @@ Tests réels :
 | Brevo, adresse QA : 5 appels simultanés | 1 email (1 envoyé, 2 refusés comme doublons, 2 « issue incertaine », non renvoyés) |
 | Brevo : délai d'apparition d'un envoi dans le journal | 51 s |
 | Brevo : reprise à +31 min (idempotence expirée, passage de minuit) | email retrouvé au journal, **rien renvoyé** |
-| Brevo : reprise à +2 h | voir § complément ci-dessous |
+| Brevo : reprise à +2 h 22 | email retrouvé au journal, **rien renvoyé** ; décompte final au journal Brevo et dans la boîte de réception : 1 email par clé |
 | n8n, credential jetable (supprimé) : sans jeton / jeton faux / sans « Bearer » | 403 / 403 / 403 ; mauvaise méthode 404 ; JSON cassé 422 ; lot invalide 400 |
 | n8n : journal (11/11) et entretien (5/5) | OK, données et workflows de test supprimés |
 | Production actuelle : webhook Brevo sans jeton / jeton faux / GET | 401 / 401 / 405 |

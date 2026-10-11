@@ -413,6 +413,14 @@ def production(ids):
         for f, wf in wfs.items():
             if f != "althoce-alertes-sequences.json":
                 wf["settings"]["errorWorkflow"] = ids["alertWorkflowId"]
+    # Rattachement des credentials par identifiant (aucun secret : la valeur reste dans n8n)
+    creds = ids.get("credentials") or {}
+    for wf in wfs.values():
+        for n in wf["nodes"]:
+            if n["type"] == "n8n-nodes-base.webhook" and n["parameters"].get("authentication") == "headerAuth" and creds.get("vercelVersN8n"):
+                n["credentials"] = {"httpHeaderAuth": {"id": creds["vercelVersN8n"], "name": CRED_IN}}
+            if n["type"] == "n8n-nodes-base.httpRequest" and n["parameters"].get("genericAuthType") == "httpHeaderAuth" and creds.get("n8nVersVercel"):
+                n["credentials"] = {"httpHeaderAuth": {"id": creds["n8nVersVercel"], "name": CRED_OUT}}
     return wfs
 
 if __name__ == "__main__":

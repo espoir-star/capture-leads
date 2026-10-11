@@ -7,8 +7,8 @@
         "height": 300,
         "width": 820
       },
-      "id": "3253b685-a8e2-4d35-8785-ba51a76710db",
-      "name": "Note d0de",
+      "id": "30f8f5fa-ddc8-4a21-ad06-bd3f49873862",
+      "name": "Note 405c",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -23,8 +23,8 @@
         "width": 420,
         "color": 5
       },
-      "id": "30026858-4f7d-4fcf-960a-222c2e84e3b2",
-      "name": "Note 106f",
+      "id": "6b3aa3d4-c630-4456-9c5f-c3296debf7b4",
+      "name": "Note d1f2",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -44,7 +44,7 @@
           ]
         }
       },
-      "id": "3d989614-bbfb-4c31-ba6a-aba10675fe07",
+      "id": "cbd43998-13da-4ed9-b1d8-0c07b93bbd36",
       "name": "Toutes les heures (h:17)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -58,19 +58,19 @@
         "assignments": {
           "assignments": [
             {
-              "id": "356ca803-7097-4563-a438-14aca703ffe1",
+              "id": "0a0a90ab-13b9-4c19-803f-c2135d2b6bd2",
               "name": "scoreUrl",
               "value": "https://guide-gratuit-pi.vercel.app/api/marketing/score",
               "type": "string"
             },
             {
-              "id": "4bd8d7e0-1fed-4958-b83b-96cc50f23758",
+              "id": "8856101f-a735-4064-9bd5-5b1317f2c3c2",
               "name": "windowHours",
               "value": "={{ $now.setZone('Europe/Paris').hour === 3 ? 192 : 3 }}",
               "type": "number"
             },
             {
-              "id": "b7e41225-8637-4312-8246-82a7bf9ddb25",
+              "id": "2949984a-bb8f-40c1-8936-34813ea6c56b",
               "name": "retentionDays",
               "value": 400,
               "type": "number"
@@ -79,7 +79,7 @@
         },
         "options": {}
       },
-      "id": "01e254d7-d1b8-40b9-8d69-a33313ad2fcb",
+      "id": "d1204ddf-1938-4147-904c-847949bf166b",
       "name": "Config — Recalcul",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -109,7 +109,7 @@
         },
         "returnAll": true
       },
-      "id": "510c3e8c-541e-4e0c-9253-911a883cf060",
+      "id": "0bcae3f5-e5c5-42b8-b500-87463bdbb3d8",
       "name": "Événements récents",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
@@ -123,7 +123,7 @@
       "parameters": {
         "jsCode": "// Contacts ayant au moins un événement dans la fenêtre (sinon : rien à faire)\nconst ids = [...new Set($input.all().map((i) => Number(i.json.contact_id)).filter((v) => Number.isInteger(v) && v > 0))];\nreturn ids.map((contact_id) => ({ json: { contact_id } }));"
       },
-      "id": "9211fa1b-f11c-4968-9a34-8c6d78d72e7d",
+      "id": "8cecec1a-9335-4b5a-8191-611ac62d4bf0",
       "name": "Contacts actifs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -153,7 +153,7 @@
         },
         "returnAll": true
       },
-      "id": "406838f3-488e-4897-9eb6-cf45c40e6d11",
+      "id": "be3fca8e-1275-478f-a89d-4eda4c81fbb3",
       "name": "Historique complet",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
@@ -166,7 +166,7 @@
       "parameters": {
         "jsCode": "// Doublons du journal (insertions simultanées : la Data table n'a pas de contrainte d'unicité).\n// On garde la ligne la plus ancienne (plus petit id) de chaque clé ; les autres sont supprimées.\nconst first = new Map();\nconst extra = [];\nfor (const r of $input.all().map((i) => i.json).filter((r) => r && r.event_key && r.id !== undefined)) {\n  const k = r.event_key;\n  if (!first.has(k)) { first.set(k, r.id); continue; }\n  const keep = Math.min(first.get(k), r.id);\n  extra.push(Math.max(first.get(k), r.id));\n  first.set(k, keep);\n}\nreturn extra.map((id) => ({ json: { id } }));"
       },
-      "id": "e160e201-0699-4fd6-9327-d5509e28a49e",
+      "id": "168c9de4-722e-4b2c-87f5-c46f4e61f063",
       "name": "Doublons du journal",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -196,7 +196,7 @@
         },
         "options": {}
       },
-      "id": "fad723e8-9c56-4b9d-8f86-d936193e37af",
+      "id": "21faa9df-9e66-4d2e-ad0f-ccb8fbc95195",
       "name": "Supprimer les doublons",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
@@ -209,7 +209,7 @@
       "parameters": {
         "jsCode": "// Lots de 500 lignes au plus pour /api/marketing/score ; l'historique d'un contact n'est jamais coupé.\nconst by = new Map();\nfor (const r of $input.all().map((i) => i.json).filter((r) => r && r.event_key)) {\n  if (!by.has(r.contact_id)) by.set(r.contact_id, []);\n  by.get(r.contact_id).push(({ event_key: r.event_key, contact_id: r.contact_id, category: r.category, points: r.points, occurred_at: r.occurred_at }));\n}\nconst out = [];\nlet batch = [];\nfor (const rows of by.values()) {\n  if (batch.length && batch.length + rows.length > 500) { out.push({ json: { rows: batch } }); batch = []; }\n  batch.push(...rows);\n}\nif (batch.length) out.push({ json: { rows: batch } });\nreturn out;"
       },
-      "id": "ffaf36c8-90b7-4bd3-b955-19b0e1e3b533",
+      "id": "4858f8c5-0ebb-43a0-801a-757da7cd2e4c",
       "name": "Lots pour Vercel",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -231,7 +231,7 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
-      "id": "e086465c-2297-4bab-b38c-6711e5703e9b",
+      "id": "40cfbf68-1d86-4e94-947d-38596cd7f797",
       "name": "Recalculer les scores (Vercel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -241,7 +241,13 @@
       ],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Fvh73Wb5raBHpxBa",
+          "name": "Althoce · n8n → Vercel (Bearer)"
+        }
+      }
     },
     {
       "parameters": {
@@ -254,7 +260,7 @@
           },
           "conditions": [
             {
-              "id": "ef3f5758-c80a-4dc0-93d7-7687556b2b13",
+              "id": "58758058-b731-4f6d-8a26-bf981150527a",
               "leftValue": "={{ $('Config — Recalcul').first().json.windowHours }}",
               "rightValue": 100,
               "operator": {
@@ -267,7 +273,7 @@
         },
         "options": {}
       },
-      "id": "024239df-7a78-4162-b66e-0b043af8265d",
+      "id": "db58e513-f010-4171-a42e-bb44bbc48cbf",
       "name": "Passe de nuit ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -297,7 +303,7 @@
         },
         "options": {}
       },
-      "id": "67b1bd05-d7e1-463e-a82f-810c6eaf7b7f",
+      "id": "47abb326-0096-43f5-b7ae-ed7885bbe725",
       "name": "Conservation 400 jours",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,

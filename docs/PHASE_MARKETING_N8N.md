@@ -68,7 +68,7 @@ Tests réels (Brevo, adresse QA, 10/10/2026) :
 - 5 appels simultanés : 1 email (1 envoyé, 2 refusés comme doublons, 2 en issue incertaine non renvoyés) ;
 - délai d'apparition dans le journal : 51 s.
 
-Reprises réelles à +31 min et +2 h : voir § Tests. Simulations : reprises à 30 min, 2 h et 24 h avec l'idempotence expirée ; réponse perdue ; journal en retard ou injoignable ; 10 appels simultanés ; double inscription.
+Reprises réelles à +31 min et +2 h 22 (idempotence Brevo expirée) : email retrouvé au journal, rien renvoyé ; 1 seul email par clé dans la boîte de réception. Simulations : reprises à 30 min, 2 h et 24 h avec l'idempotence expirée ; réponse perdue ; journal en retard ou injoignable ; 10 appels simultanés ; double inscription.
 
 ### Variables (Vercel, jamais affichées ni commitées)
 

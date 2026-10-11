@@ -9,5 +9,9 @@
     "althoce-journal-evenements.json": "XFDILN56cJw3XPuF",
     "althoce-recalcul-scores.json": "ZGbvCLVrJItTXqSS",
     "althoce-quota-rdv.json": "TN4d97jsaiCxvgVt"
+  },
+  "credentials": {
+    "vercelVersN8n": "jAWCiiyeBvBuTS00",
+    "n8nVersVercel": "Fvh73Wb5raBHpxBa"
   }
 }

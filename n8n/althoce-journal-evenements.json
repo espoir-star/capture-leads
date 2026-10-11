@@ -7,8 +7,8 @@
         "height": 400,
         "width": 900
       },
-      "id": "91e9bc84-caa8-4b62-9a58-c2b86fd729ca",
-      "name": "Note 8cad",
+      "id": "f7d50f3f-4d43-4fda-af62-34bc13684e16",
+      "name": "Note 1dae",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -23,8 +23,8 @@
         "width": 420,
         "color": 5
       },
-      "id": "82488466-8234-4277-b3d5-3d88cca98ee1",
-      "name": "Note 5b54",
+      "id": "847a1363-3529-4916-b756-d2453d4c670d",
+      "name": "Note e4cc",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -40,7 +40,7 @@
         "options": {},
         "authentication": "headerAuth"
       },
-      "id": "a9628490-179a-4d70-a530-6e708411a60e",
+      "id": "5ff801be-56e8-4012-aab6-6b849d0f1d83",
       "name": "Recevoir les événements (Vercel)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
@@ -48,13 +48,19 @@
         0,
         300
       ],
-      "webhookId": "d46d17f9-fa5f-4c2a-a969-80beb70b8a23"
+      "webhookId": "4ae7db9c-2b73-4e9b-8ed7-83875459e8bb",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "jAWCiiyeBvBuTS00",
+          "name": "Althoce · Vercel → n8n (Bearer)"
+        }
+      }
     },
     {
       "parameters": {
         "jsCode": "// Lot envoyé par Vercel (lib/scoring/ledger.ts) : aucune donnée personnelle\n// (ID contact Brevo, catégorie, points, date, clé opaque). Le barème vit dans Vercel.\nconst KEY = /^(clk|wreg|watt|rdv)\\.[A-Za-z0-9_-]{32}$/;\nconst CATS = ['content_click', 'guide_click', 'offer_click', 'webinar_registered', 'webinar_attended', 'meeting_booked'];\nconst SOURCES = ['brevo_transactional', 'brevo_marketing', 'capture', 'webinar', 'crm'];\nconst body = $input.first().json.body ?? {};\nconst events = Array.isArray(body.events) ? body.events : [];\n// Lot refusé → réponse 400 (branche « Lot valide ? »), rien n'est écrit\nif (events.length === 0 || events.length > 100) return [{ json: { __invalid: 'Lot invalide : 1 à 100 événements attendus' } }];\nconst seen = new Set();\nconst out = [];\nfor (const e of events) {\n  const ok = e && typeof e.event_key === 'string' && KEY.test(e.event_key) &&\n    Number.isInteger(e.contact_id) && e.contact_id > 0 &&\n    CATS.includes(e.category) && Number.isInteger(e.points) && e.points >= 0 && e.points <= 25 &&\n    typeof e.occurred_at === 'string' && !Number.isNaN(Date.parse(e.occurred_at)) &&\n    SOURCES.includes(e.source) && typeof e.ref === 'string' && e.ref.length <= 80;\n  if (!ok) return [{ json: { __invalid: 'Événement invalide (clé, contact, catégorie, points, date, source ou ref)' } }];\n  if (seen.has(e.event_key)) continue; // doublon dans le même lot\n  seen.add(e.event_key);\n  out.push({ json: { event_key: e.event_key, contact_id: e.contact_id, category: e.category, points: e.points,\n    occurred_at: new Date(e.occurred_at).toISOString(), source: e.source, ref: e.ref } });\n}\nreturn out;"
       },
-      "id": "ab0622ea-1665-40a7-a6c2-4aed0569d209",
+      "id": "9e1378a6-bb14-4890-aeff-0d0b257ec9ad",
       "name": "Valider les événements",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -74,7 +80,7 @@
           },
           "conditions": [
             {
-              "id": "53e287ba-0fd9-4999-b4ee-d6f2f53517eb",
+              "id": "eae975fb-93b0-453d-8a18-a01a8f2bcce1",
               "leftValue": "={{ $json.__invalid }}",
               "rightValue": "",
               "operator": {
@@ -88,7 +94,7 @@
         },
         "options": {}
       },
-      "id": "574843b2-4535-4b94-94d8-494d62626fc3",
+      "id": "38d7a5c2-e533-420b-80ea-3af29f63f84a",
       "name": "Lot valide ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -105,7 +111,7 @@
           "responseCode": 400
         }
       },
-      "id": "fb00d143-c5e3-487b-a891-f2b120748174",
+      "id": "0979cfb7-25e9-4e4e-92e1-5043b9dcaea5",
       "name": "Refuser le lot (400)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -132,7 +138,7 @@
           ]
         }
       },
-      "id": "4af549a4-c6ae-45a5-8f2e-6dd11d05b7d7",
+      "id": "923fde28-2943-4dd8-8cca-e75c9a420826",
       "name": "Nouvel événement ?",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
@@ -158,7 +164,7 @@
         },
         "options": {}
       },
-      "id": "7d82ec10-0577-4b11-904e-aeb166349167",
+      "id": "54d0d28f-1759-4c56-b0af-c58ad4582069",
       "name": "Journaliser l'événement",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
@@ -171,7 +177,7 @@
       "parameters": {
         "jsCode": "// Contacts du lot. Ordre d'exécution v1 : la branche du dessus (journalisation)\n// est terminée avant celle-ci, l'historique relu inclut donc les nouveaux événements.\nconst ids = [...new Set($('Valider les événements').all().map((i) => i.json.contact_id))];\nreturn ids.map((contact_id) => ({ json: { contact_id } }));"
       },
-      "id": "bfc6f46d-fce3-4b5d-a3fe-971705892545",
+      "id": "dcbfbad5-265e-4c1e-921a-3ea8e5646cfc",
       "name": "Contacts du lot",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -201,7 +207,7 @@
         },
         "returnAll": true
       },
-      "id": "ccc89501-1240-4b98-b169-5ad8928ae6ac",
+      "id": "58c0a242-b5d2-4705-ae51-197e0d0d29fe",
       "name": "Lire l'historique du contact",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
@@ -215,7 +221,7 @@
       "parameters": {
         "jsCode": "// Historique complet des contacts → Vercel recalcule le score (lib/scoring/behavior.ts).\nlet inserted = 0;\ntry { inserted = $(\"Journaliser l'événement\").all().filter((i) => i.json.event_key).length; } catch (e) { inserted = 0; }\nconst rows = $input.all().map((i) => i.json).filter((r) => r && r.event_key).map((r) => ({ event_key: r.event_key, contact_id: r.contact_id, category: r.category, points: r.points, occurred_at: r.occurred_at }));\nreturn [{ json: { ok: true, inserted, rows } }];"
       },
-      "id": "00888aa6-06a1-47d3-87f3-ec069adad304",
+      "id": "9e225d30-0201-4466-bc72-195982613d60",
       "name": "Préparer la réponse",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -230,7 +236,7 @@
         "responseBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "afd25e49-ed07-4a1e-8b06-10e6fc5bdde2",
+      "id": "ab00576e-20f7-45b1-ad58-344107828c1d",
       "name": "Répondre à Vercel",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
