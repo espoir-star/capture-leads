@@ -15,6 +15,7 @@ import { trackLead } from "@/lib/analytics";
 import { identifyBrevoContact } from "@/lib/tracking/brevoTracker";
 import { currentTouch, readFirstTouch } from "@/lib/tracking/firstTouch";
 import { suggestionEmail } from "@/lib/validation/emailSuggestion";
+import { parseCaptureAcknowledgement } from "@/lib/lead/captureResponse";
 
 interface Props {
   slug: string;
@@ -100,6 +101,14 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
     setErrors({});
     setEnvoi(true);
 
+    // Une tentative échouée ne doit jamais réutiliser la preuve d'une capture précédente.
+    try {
+      sessionStorage.removeItem(LEAD_REF_KEY + slug);
+      sessionStorage.removeItem(OPPOSITION_KEY + slug);
+    } catch {
+      /* stockage indisponible : la capture peut continuer */
+    }
+
     const form = new FormData(e.currentTarget);
     const email = String(form.get("email") ?? "").trim();
 
@@ -128,9 +137,12 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
       });
 
       const data = await res.json().catch(() => null);
-      if (!res.ok) {
+      const confirmation = parseCaptureAcknowledgement(res.ok, data);
+      if (!confirmation) {
         const field = data?.field as Field | undefined;
-        const message = data?.message ?? "Une erreur est survenue. Réessayez.";
+        const message = typeof data?.message === "string"
+          ? data.message
+          : "Votre inscription n’a pas pu être confirmée. Réessayez ou contactez Althoce si le problème persiste.";
         if (field && ["prenom", "nom", "email", "tel", "besoin", "horizon"].includes(field)) {
           setErrors({ [field]: message });
           document.getElementById(field)?.focus();
@@ -144,14 +156,18 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
       }
 
       try {
-        if (data?.leadRef) sessionStorage.setItem(LEAD_REF_KEY + slug, data.leadRef);
-        if (data?.marketing === "opposed") sessionStorage.setItem(OPPOSITION_KEY + slug, "1");
+        sessionStorage.setItem(LEAD_REF_KEY + slug, confirmation.leadRef);
+        if (confirmation.marketing === "opposed") sessionStorage.setItem(OPPOSITION_KEY + slug, "1");
         else sessionStorage.removeItem(OPPOSITION_KEY + slug);
       } catch {
         /* stockage indisponible : mesure et message de confirmation non affichés */
       }
-      identifyBrevoContact(email.toLowerCase());
-      trackLead("guide", slug);
+      try {
+        identifyBrevoContact(email.toLowerCase());
+        trackLead("guide", slug);
+      } catch {
+        /* Une panne analytics ne transforme jamais une capture confirmée en échec. */
+      }
       router.push(redirectTo ?? `/r/${slug}/merci`);
     } catch {
       setErreur("Connexion impossible. Vérifiez votre réseau et réessayez.");
