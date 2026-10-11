@@ -68,8 +68,6 @@ export async function scoreClickCandidates(cands: ClickCandidate[], sentAt?: Map
   return report;
 }
 
-const parisDay = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date(ms));
-
 interface StatEvent {
   email?: string;
   date?: string;
@@ -79,8 +77,13 @@ interface StatEvent {
   templateId?: number;
 }
 
-async function statEvents(event: "clicks" | "requests", now: Date): Promise<StatEvent[]> {
-  const q = new URLSearchParams({ event, startDate: parisDay(now.getTime() - 86_400_000), endDate: parisDay(now.getTime()), limit: "2500", sort: "desc" });
+/**
+ * Fenêtre « days=2 » (aujourd'hui et hier) plutôt que startDate/endDate :
+ * Brevo refuse (400) une date postérieure au jour UTC courant, or entre 00 h et
+ * 02 h à Paris le jour parisien est déjà le lendemain (incident du 12/10/2026).
+ */
+async function statEvents(event: "clicks" | "requests"): Promise<StatEvent[]> {
+  const q = new URLSearchParams({ event, days: "2", limit: "2500", sort: "desc" });
   const res = await brevoRequest<{ events?: StatEvent[] }>(`/smtp/statistics/events?${q}`, { method: "GET", retries: 2 });
   if (!res.ok) throw new Error(`Journal des événements Brevo indisponible (${res.status})`);
   return res.data?.events ?? [];
@@ -92,8 +95,8 @@ async function statEvents(event: "clicks" | "requests", now: Date): Promise<Stat
  * Les clics déjà journalisés sont ignorés par la clé unique.
  */
 export async function reconcileTransactionalClicks(now: Date = new Date()): Promise<ClickReport> {
-  const clicks = await statEvents("clicks", now);
-  const sends = await statEvents("requests", now);
+  const clicks = await statEvents("clicks");
+  const sends = await statEvents("requests");
   const sentAt = new Map<string, string>();
   for (const s of sends) if (s.messageId && s.date) sentAt.set(s.messageId, new Date(s.date).toISOString());
   const cands: ClickCandidate[] = [];

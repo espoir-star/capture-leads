@@ -238,6 +238,15 @@ export function startMockBrevo(port: number) {
       return send(res, 201, { messageId: email.messageId });
     }
     if (url.pathname === "/v3/smtp/statistics/events" && req.method === "GET") {
+      // Contrat réel : une date au-delà du jour UTC courant est refusée (400), quel que soit le fuseau de l'appelant.
+      const utcToday = new Date(clock()).toISOString().slice(0, 10);
+      for (const k of ["startDate", "endDate"]) {
+        const v = url.searchParams.get(k);
+        if (v && v > utcToday) return send(res, 400, { code: "invalid_parameter", message: "Start/End date should not be greater than current date" });
+      }
+      if (url.searchParams.get("days") && (url.searchParams.get("startDate") || url.searchParams.get("endDate"))) {
+        return send(res, 400, { code: "invalid_parameter", message: "days is not compatible with startDate/endDate" });
+      }
       const event = url.searchParams.get("event");
       return send(res, 200, { events: state.statsEvents.filter((e) => !event || e.event === event) });
     }
