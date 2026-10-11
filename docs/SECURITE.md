@@ -65,7 +65,7 @@ Tests réels :
 | Brevo, adresse QA : 5 appels simultanés | 1 email (1 envoyé, 2 refusés comme doublons, 2 « issue incertaine », non renvoyés) |
 | Brevo : délai d'apparition d'un envoi dans le journal | 51 s |
 | Brevo : reprise à +31 min (idempotence expirée, passage de minuit) | email retrouvé au journal, **rien renvoyé** |
-| Brevo : reprise à +2 h | voir § complément ci-dessous |
+| Brevo : reprise à +2 h 22 | email retrouvé au journal, **rien renvoyé** ; décompte final au journal Brevo et dans la boîte de réception : 1 email par clé |
 | n8n, credential jetable (supprimé) : sans jeton / jeton faux / sans « Bearer » | 403 / 403 / 403 ; mauvaise méthode 404 ; JSON cassé 422 ; lot invalide 400 |
 | n8n : journal (11/11) et entretien (5/5) | OK, données et workflows de test supprimés |
 | Production actuelle : webhook Brevo sans jeton / jeton faux / GET | 401 / 401 / 405 |
