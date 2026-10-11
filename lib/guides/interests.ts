@@ -1,31 +1,27 @@
-/** Synthèse des ressources associées : listes historiques et demandes validées.
- * Un rattachement à une liste ne prouve jamais une lecture ni sa date.
- * Les centres d'intérêt ne remplacent pas le métier déclaré.
+/** Ressources associées : listes historiques, dernière ressource et demandes validées.
+ * Un rattachement ne prouve pas une lecture ; les intérêts ne remplacent pas le métier.
  */
 import { LEAD_MAGNETS } from "@/config/leadMagnets";
 import { getRessource } from "@/lib/ressources";
-
 export interface GuideInterestContact { listIds?: readonly number[]; attributes: Record<string, unknown> }
 export interface GuideInterest {
   slug: string; title: string; sector: string | null;
   evidence: ("guide_list" | "latest_resource" | "tracked_request")[];
 }
 export interface GuideInterestSummary {
-  guides: GuideInterest[]; distinctCount: number; multiGuide: boolean; sectors: string[]; latestSlug?: string;
-  /** Les dates des anciennes listes restent inconnues même si des demandes récentes sont suivies. */
-  datesKnown: false;
+  guides: GuideInterest[]; distinctCount: number; multiGuide: boolean; sectors: string[]; latestSlug?: string; datesKnown: false;
 }
 const plain = (s: string) => s.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-
 export function summarizeGuideInterests(contact: GuideInterestContact): GuideInterestSummary {
   const listIds = new Set((contact.listIds ?? []).filter(Number.isInteger));
-  let latest = typeof contact.attributes.RESSOURCE === "string" ? contact.attributes.RESSOURCE : "";
+  const latestResource = typeof contact.attributes.RESSOURCE === "string" ? contact.attributes.RESSOURCE : "";
+  let latestTracked = "";
   let latestAt = "";
   const guides: GuideInterest[] = [];
   for (const lm of Object.values(LEAD_MAGNETS)) {
     const evidence: GuideInterest["evidence"] = [];
     if (listIds.has(lm.brevoListId)) evidence.push("guide_list");
-    if (latest === lm.slug) evidence.push("latest_resource");
+    if (latestResource === lm.slug) evidence.push("latest_resource");
     const raw = contact.attributes[`MG_REQ_${lm.brevoListId}`];
     if (typeof raw === "string" && raw.length < 4000) {
       try {
@@ -33,16 +29,20 @@ export function summarizeGuideInterests(contact: GuideInterestContact): GuideInt
         if (r?.v === 1 && r.slug === lm.slug && typeof r.requestedAt === "string" && Number.isFinite(Date.parse(r.requestedAt))) {
           evidence.push("tracked_request");
           const at = new Date(r.requestedAt).toISOString();
-          if (at > latestAt) { latestAt = at; latest = lm.slug; }
+          if (at > latestAt) { latestAt = at; latestTracked = lm.slug; }
         }
-      } catch { /* Ne jamais extrapoler depuis une donnée malformée. */ }
+      } catch { /* Aucune extrapolation depuis une donnée malformée. */ }
     }
     if (!evidence.length) continue;
     const resource = getRessource(lm.slug);
     const title = plain(resource?.resourceCard?.titre ?? resource?.titre ?? lm.brevoListName);
     guides.push({ slug: lm.slug, title, sector: lm.vertical, evidence });
   }
-  const latestSlug = guides.some((g) => g.slug === latest) ? latest : undefined;
+  const legacyLatest = guides.find((g) => g.slug === latestResource);
+  // Si la dernière ressource vient d'un ancien parcours sans date, ne pas lui
+  // substituer arbitrairement une autre ressource simplement parce qu'elle est datée.
+  const latestSlug = legacyLatest && !legacyLatest.evidence.includes("tracked_request")
+    ? legacyLatest.slug : latestTracked || legacyLatest?.slug;
   const sectors = [...new Set(guides.map((g) => g.sector).filter((v): v is string => !!v && v !== "GENERAL"))].sort();
   return { guides, distinctCount: guides.length, multiGuide: guides.length >= 2, sectors, ...(latestSlug && { latestSlug }), datesKnown: false };
 }
