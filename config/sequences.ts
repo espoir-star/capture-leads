@@ -1,87 +1,54 @@
 /**
- * ═══════════════════════════════════════════════════════════════
- *  SÉQUENCES EMAIL — moteur Althoce (Vercel décide, n8n attend)
- * ═══════════════════════════════════════════════════════════════
- *
- *  Une séquence = une LIVRAISON immédiate (transactionnelle, envoyée par
- *  Vercel : le guide part même si n8n est indisponible) + des ÉTAPES
- *  différées. Un SEUL workflow n8n générique (n8n/althoce-sequences.json)
- *  attend la date de chaque étape et appelle /api/sequences/step : il ne
- *  connaît ni les modèles, ni les délais, ni les règles. Ajouter un guide
- *  = une entrée ici, jamais un nouveau workflow.
- *
- *  Règles d'envoi (lib/sequences/plan.ts) :
- *    - transactional : livraison, confirmation et rappels pratiques d'un
- *      webinar → envoyés à la personne qui les a demandés, même opposée au
- *      marketing (jamais à une adresse invalide ou en bounce) ;
- *    - marketing : relances, suivi commercial → seulement si
- *      mayReceiveMarketing() (statut CONSENT / B2B_ELIGIBLE, non bloqué) et
- *      si le contact n'est pas déjà en cycle commercial (STOP_*).
- *
- *  Bascule par guide : ALTHOCE_SEQUENCE_GUIDES (variable Vercel, slugs
- *  séparés par des virgules). Hors de cette liste, le guide reste sur son
- *  automation Brevo historique. Modèles : config/emailTemplates.ts
- *  (aucun ID fictif ; une séquence dont un modèle manque ne s'active pas).
+ * SÉQUENCES EMAIL — Vercel décide, le workflow n8n commun attend.
+ * Une identité par ressource isole les clés anti-doublons sans dupliquer les
+ * modèles Brevo ni les workflows. Les identités historiques restent lisibles.
  */
-
 import { templateId, type EmailTemplateKey } from "@/config/emailTemplates";
 import type { LifecycleStage } from "@/config/taxonomy";
 
 export type StepCategory = "transactional" | "marketing";
-
 export interface SequenceStep {
-  /** Identifiant stable : clé d'idempotence, événements Brevo, n8n */
   id: string;
   template: EmailTemplateKey;
   category: StepCategory;
-  /** Heures après l'ancre ; négatif = avant (rappels webinar) */
   offsetHours: number;
-  /** enrollment = inscription ; event = début du webinar */
   anchor: "enrollment" | "event";
-  /** Étape envoyée seulement si la ressource fournit ce lien (ex. replay publié) */
   requires?: "replayUrl";
 }
-
 export interface SequenceConfig {
   id: string;
   label: string;
-  /** Envoi immédiat, transactionnel (guide demandé / confirmation d'inscription) */
   delivery: EmailTemplateKey;
   steps: SequenceStep[];
 }
-
-/** Contact déjà en cycle commercial : plus de relance marketing automatique */
 export const STOP_LIFECYCLE_STAGES: readonly LifecycleStage[] = ["MEETING_BOOKED", "OPPORTUNITY", "CLIENT", "LOST"];
-/** Attributs Brevo historiques de prise de RDV (renseignés par le setter) */
 export const MEETING_ATTRIBUTES = ["TYPE_RDV", "ETAT_RDV"] as const;
-
-/** Une étape prévue il y a plus longtemps que ce délai n'est plus envoyée (ex. J-1 d'un webinar déjà passé) */
 export const STEP_STALE_AFTER_HOURS = 12;
 
+function genericGuide(id: string, label: string): SequenceConfig {
+  return {
+    id, label, delivery: "generique.delivery",
+    steps: [{ id: "relance-j2", template: "generique.relance-j2", category: "marketing", offsetHours: 48, anchor: "enrollment" }],
+  };
+}
+
 export const SEQUENCES = {
-  /** Guide pilote : copie fidèle des emails #9 / #8 de l'automation historique #4 */
   "guide-12-cas-ec-v1": {
-    id: "guide-12-cas-ec-v1",
-    label: "12 cas d'usage experts-comptables",
-    delivery: "guide-12-cas-ec.delivery",
+    id: "guide-12-cas-ec-v1", label: "12 cas d'usage experts-comptables", delivery: "guide-12-cas-ec.delivery",
     steps: [{ id: "relance-j2", template: "guide-12-cas-ec.relance-j2", category: "marketing", offsetHours: 48, anchor: "enrollment" }],
   },
-  /** Nouveaux guides : modèles génériques paramétrés (titre et lien depuis lib/ressources.ts) */
-  "guide-generique-v1": {
-    id: "guide-generique-v1",
-    label: "Guide (modèles génériques)",
-    delivery: "generique.delivery",
-    steps: [{ id: "relance-j2", template: "generique.relance-j2", category: "marketing", offsetHours: 48, anchor: "enrollment" }],
-  },
-  /**
-   * Webinar : confirmation, rappels J-1 / H-1 et replay = messages pratiques
-   * liés à l'inscription (transactionnels) ; suivi commercial = marketing.
-   * Inactif tant que ses modèles n'existent pas dans Brevo.
-   */
+  // Compatibilité : ne pas supprimer cette identité, des inscriptions signées peuvent encore la porter.
+  "guide-generique-v1": genericGuide("guide-generique-v1", "Guide (ancienne identité partagée)"),
+  "guide-claude-pennylane-v1": genericGuide("guide-claude-pennylane-v1", "Claude × Pennylane"),
+  "guide-claude-meta-ads-v1": genericGuide("guide-claude-meta-ads-v1", "Claude × Meta Ads"),
+  "guide-copilot-8-cas-v1": genericGuide("guide-copilot-8-cas-v1", "Copilot : 8 cas d'usage"),
+  "guide-claude-droit-v1": genericGuide("guide-claude-droit-v1", "Claude pour le droit"),
+  "guide-claude-finance-skills-v1": genericGuide("guide-claude-finance-skills-v1", "12 skills Claude finance"),
+  "guide-claude-data-gouv-v1": genericGuide("guide-claude-data-gouv-v1", "Claude × data.gouv"),
+  "guide-agents-direction-financiere-v1": genericGuide("guide-agents-direction-financiere-v1", "12 agents IA direction financière"),
+  "guide-7-chantiers-cabinet-v1": genericGuide("guide-7-chantiers-cabinet-v1", "7 chantiers IA cabinet"),
   "webinar-standard-v1": {
-    id: "webinar-standard-v1",
-    label: "Webinar (parcours standard)",
-    delivery: "webinar.confirmation",
+    id: "webinar-standard-v1", label: "Webinar (parcours standard)", delivery: "webinar.confirmation",
     steps: [
       { id: "rappel-j-1", template: "webinar.j-1", category: "transactional", offsetHours: -24, anchor: "event" },
       { id: "rappel-h-1", template: "webinar.h-1", category: "transactional", offsetHours: -1, anchor: "event" },
@@ -92,12 +59,9 @@ export const SEQUENCES = {
 } satisfies Record<string, SequenceConfig>;
 
 export type SequenceId = keyof typeof SEQUENCES;
-
 export function getSequence(id: string): SequenceConfig | undefined {
   return Object.prototype.hasOwnProperty.call(SEQUENCES, id) ? SEQUENCES[id as SequenceId] : undefined;
 }
-
-/** Tous les modèles de la séquence existent dans Brevo (IDs réels renseignés) */
 export function sequenceReady(seq: SequenceConfig): boolean {
   return templateId(seq.delivery) !== null && seq.steps.every((s) => templateId(s.template) !== null);
 }
