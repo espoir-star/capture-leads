@@ -1,13 +1,45 @@
 # n8n : sécurité, sauvegarde, mise à jour et restauration
 
-Instance : `https://n8n.srv1242605.hstgr.cloud` (VPS Hostinger). État relevé le 10/10/2026. **Aucune mise à jour n'a été appliquée** : elle attend votre accord.
+Instance : `https://n8n.srv1242605.hstgr.cloud` (VPS Hostinger KVM 2, Paris). Diagnostic du 10/10/2026.
+
+## ✅ Mise à jour effectuée le 11/10/2026 (0 h 52 → 1 h 03, avec votre accord)
+
+| Étape | Résultat |
+| --- | --- |
+| Snapshot hPanel | `ct_snapshot_create` réussi à 0 h 51 (VPS complet : n8n **et** althoce-crm) |
+| Export logique (dans le volume) | 31 workflows, 6 credentials (chiffrés) → `/home/node/.n8n/sauvegarde-2026-10-11/` |
+| Archive du volume `n8n_data` (n8n arrêté) | `/root/sauvegardes/n8n_data-2026-10-11-v2.1.5.tgz` (base SQLite, clé de chiffrement, binaires) |
+| Configuration d'origine | `/root/sauvegardes/docker-compose.yml.avant-2.42.6` ; ancienne image étiquetée `docker.n8n.io/n8nio/n8n:2.1.5-avant-maj` |
+| Image | `/docker/n8n/docker-compose.yml` : `docker.n8n.io/n8nio/n8n` (non figée) → **`:2.42.6` figée** |
+| Démarrage | « Recorded version change → 2.42.6 », migrations OK ; coupure ≈ 2 min (n8n seul ; traefik et althoce-crm non touchés) |
+| Contrôles | API 200, 31 workflows sur 31, les 2 mêmes actifs, webhook du formulaire du site toujours enregistré, `/healthz` ok, credential Google Sheets déchiffré (connecté), éditeur « Version 2.42.6 », audit sans « Outdated instance » |
+| Avis de sécurité restants sur 2.42.6 | aucun corrigible ; seul reste l'avis « Execute Command » (par conception, nœud désactivé par défaut en 2.x) |
+
+**Retour arrière n8n seul** (sans toucher au CRM, contrairement au snapshot) :
+```bash
+cd /docker/n8n && docker compose stop n8n
+docker run --rm -v n8n_data:/data -v /root/sauvegardes:/backup alpine sh -c "rm -rf /data/* /data/.[!.]* 2>/dev/null; tar xzf /backup/n8n_data-2026-10-11-v2.1.5.tgz -C /data"
+cp /root/sauvegardes/docker-compose.yml.avant-2.42.6 docker-compose.yml
+sed -i -E 's#(image: *docker\.n8n\.io/n8nio/n8n)[[:space:]]*$#\1:2.1.5-avant-maj#' docker-compose.yml
+docker compose up -d n8n
+```
+
+À noter :
+- `althoce-crm` tourne sur le même VPS (`/opt/althoce-crm`). Une restauration du snapshot le ramènerait aussi au 11/10 à 0 h 51.
+- Ubuntu signale 66 mises à jour système et un redémarrage requis : hors périmètre, à planifier séparément.
+- Aucun nœud communautaire n'est installé, alors que « Shorts - Post on Socials » (inactif) utilise Blotato : l'installer seulement si ce workflow sert.
+- Avertissements 3.0 au démarrage : `WEBHOOK_URL` → `N8N_WEBHOOK_URL`, mode des task runners, timeouts. À traiter avec *Settings → Migration Report* avant la 3.0.
+
+---
+
+Diagnostic initial (10/10/2026) :
 
 ## 1. Diagnostic
 
 | Point | Constat |
 | --- | --- |
 | Version | **2.1.5** (décembre 2025) |
-| Avis de sécurité officiels touchant 2.1.5 | **182** : 13 critiques, 86 élevés, 81 moyens, 2 faibles ; **38 exploitables sans authentification** (source : avis GitHub de n8n-io/n8n, recalculés version par version) |
+| Avis de sécurité officiels touchant 2.1.5 | **plus de 180** (13 à 17 critiques selon la lecture des plages de versions, une quarantaine exploitables sans authentification) — source : avis GitHub de n8n-io/n8n |
 | Version minimale corrigeant tous ces avis | 2.41.4 |
 | Version cible recommandée | **2.42.6** (étiquette Docker `stable` = `latest` au 10/10, même empreinte `sha256:526daa38b68e`) |
 | Hébergement | VPS Hostinger, modèle n8n (Docker Compose + Traefik : en-têtes HSTS `max-age=315360000; includeSubDomains; preload` caractéristiques) — à confirmer par `docker compose ls` |

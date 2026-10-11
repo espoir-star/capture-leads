@@ -10,8 +10,8 @@
         "height": 220,
         "width": 620
       },
-      "id": "9ed0b04b-3cf2-4186-86e4-fa4b09089f11",
-      "name": "Note c33f",
+      "id": "a42466f9-55eb-4d47-bf5d-b12c5afabbd2",
+      "name": "Note f51f",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -21,7 +21,7 @@
     },
     {
       "parameters": {},
-      "id": "d9232406-5878-4e7b-8c35-02b83553031b",
+      "id": "3fb4781f-88cc-485e-a8e7-f97a468bb228",
       "name": "Capter l'erreur",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
@@ -34,7 +34,7 @@
       "parameters": {
         "jsCode": "// Données de l'Error Trigger → message d'alerte (aucune donnée personnelle de prospect).\nconst e = $json.execution ?? {};\nreturn [{ json: {\n  workflow: $json.workflow?.name ?? 'inconnu',\n  executionId: e.id ?? '',\n  node: e.lastNodeExecuted ?? '',\n  message: e.error?.message ?? 'erreur inconnue',\n  url: e.url ?? '',\n} }];"
       },
-      "id": "7262feb9-2708-4f09-84c7-749af3e0accd",
+      "id": "36891e7b-f057-4ac5-b614-b1aef4ccde6d",
       "name": "Préparer l'alerte",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -56,7 +56,7 @@
           "timeout": 20000
         }
       },
-      "id": "fad97db4-4236-4fda-964f-c39ee9aee3cf",
+      "id": "215974a2-35a7-43e3-9321-de952e1e93e4",
       "name": "Envoyer l'alerte (Vercel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -66,7 +66,13 @@
       ],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Fvh73Wb5raBHpxBa",
+          "name": "Althoce · n8n → Vercel (Bearer)"
+        }
+      }
     }
   ],
   "connections": {
