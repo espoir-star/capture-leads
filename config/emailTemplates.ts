@@ -25,13 +25,13 @@ export interface EmailTemplateDef {
 export const EMAIL_TEMPLATES = {
   "guide-12-cas-ec.delivery": {
     name: "SEQ · 12 cas EC · Livraison",
-    subject: "Guide - 12 cas d'usages Claude Expert-Comptable",
+    subject: "Votre guide Claude pour les experts-comptables",
     file: "emails/sequences/guide-12-cas-ec/delivery.html",
     id: 35,
   },
   "guide-12-cas-ec.relance-j2": {
     name: "SEQ · 12 cas EC · Relance J+2",
-    subject: "Tu as eu le temps de regarder le guide ?",
+    subject: "Quel premier usage IA pour votre cabinet ?",
     file: "emails/sequences/guide-12-cas-ec/relance-j2.html",
     id: 36,
   },
@@ -43,7 +43,7 @@ export const EMAIL_TEMPLATES = {
   },
   "generique.relance-j2": {
     name: "SEQ · Générique · Relance J+2",
-    subject: "Avez-vous pu ouvrir le guide ?",
+    subject: "Votre guide IA : par où commencer ?",
     file: "emails/sequences/generique/relance-j2.html",
     id: 38,
   },
