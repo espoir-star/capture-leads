@@ -51,26 +51,38 @@ async function syncMeetings(now: Date) {
   await applyBehaviorScores(r.rows, now);
   return { checked, events: found.length, inserted: r.inserted };
 }
+/**
+ * Chaque tâche est isolée : une panne du scoring (journal n8n, RDV, clics) ne
+ * bloque jamais la reprise des livraisons de guides, et inversement. Ordre :
+ * livraisons d'abord, scoring ensuite. Une tâche en échec rend la réponse 502
+ * (n8n alerte) mais les autres ont été exécutées et leur rapport est renvoyé.
+ */
 export async function POST(req: NextRequest) {
   if (!process.env.SEQUENCE_API_SECRET?.trim()) return new NextResponse(null, { status: 404 });
   if (!bearerMatches(req.headers.get("authorization"), process.env.SEQUENCE_API_SECRET)) return new NextResponse(null, { status: 401 });
   const now = new Date();
   const started = Date.now();
-  try {
-    const quota = await checkQuota(now);
-    const deliveries = await retryPendingDeliveries(now);
-    const meetings = ledgerConfigured() ? await syncMeetings(now) : "journal_non_configure";
-    const clicks = ledgerConfigured() ? await reconcileTransactionalClicks(now) : "journal_non_configure";
-    const budgetMs = Math.min(25_000, Math.max(0, 42_000 - (Date.now() - started)));
-    const multiGuides = budgetMs >= 5000
-      ? await maintainMultiGuides(now, { budgetMs, maxJobs: 6 })
-      : { deferred: true, reason: "maintenance_budget" };
-    if (("failed" in multiGuides && multiGuides.failed > 0) || ("budgetExceeded" in multiGuides && multiGuides.budgetExceeded)) {
-      console.warn(JSON.stringify({ type: "multi_guides_maintenance_incomplete", report: multiGuides }));
+  const failed: string[] = [];
+  const task = async <T>(name: string, fn: () => Promise<T>): Promise<T | { error: true }> => {
+    try {
+      return await fn();
+    } catch (e) {
+      failed.push(name);
+      console.error(JSON.stringify({ type: "maintenance_task_failed", task: name, message: (e instanceof Error ? e.message : String(e)).slice(0, 200) }));
+      return { error: true };
     }
-    return NextResponse.json({ ok: true, quota, deliveries, meetings, clicks, multiGuides });
-  } catch (e) {
-    console.error("Maintenance marketing :", e instanceof Error ? e.message : e);
-    return NextResponse.json({ ok: false }, { status: 502 });
+  };
+  const quota = await task("quota", () => checkQuota(now));
+  const deliveries = await task("deliveries", () => retryPendingDeliveries(now));
+  const budgetMs = Math.min(25_000, Math.max(0, 42_000 - (Date.now() - started)));
+  const multiGuides = budgetMs >= 5000
+    ? await task("multiGuides", () => maintainMultiGuides(now, { budgetMs, maxJobs: 6 }))
+    : { deferred: true, reason: "maintenance_budget" };
+  if (("failed" in multiGuides && multiGuides.failed > 0) || ("budgetExceeded" in multiGuides && multiGuides.budgetExceeded)) {
+    console.warn(JSON.stringify({ type: "multi_guides_maintenance_incomplete", report: multiGuides }));
   }
+  const meetings = ledgerConfigured() ? await task("meetings", () => syncMeetings(now)) : "journal_non_configure";
+  const clicks = ledgerConfigured() ? await task("clicks", () => reconcileTransactionalClicks(now)) : "journal_non_configure";
+  const report = { ok: failed.length === 0, failed, quota, deliveries, meetings, clicks, multiGuides };
+  return NextResponse.json(report, { status: failed.length ? 502 : 200 });
 }

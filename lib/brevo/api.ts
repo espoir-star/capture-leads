@@ -17,6 +17,7 @@ export type AttributeValue = string | number | boolean;
 
 export interface BrevoContact {
   id: number;
+  /** Absente à l'exécution pour une fiche sans adresse (SMS seul) : la vérifier dans les parcours de liste. */
   email: string;
   emailBlacklisted: boolean;
   smsBlacklisted?: boolean;
