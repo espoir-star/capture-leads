@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getRessource, getAllSlugs } from "@/lib/ressources";
 import GuideLink from "@/components/GuideLink";
 import OppositionNotice from "@/components/OppositionNotice";
+import DeliveryStatus from "@/components/DeliveryStatus";
 
 const CAL_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
 
@@ -24,11 +25,11 @@ export default async function PageMerci({ params }: Props) {
   const r = getRessource(slug);
   if (!r) notFound();
 
-  const ctaTitre = r.merci?.ctaTitre ?? "On l'applique ensemble à votre cas ?";
+  const ctaTitre = r.merci?.ctaTitre ?? "Souhaitez-vous l'appliquer à votre situation ?";
   const ctaTexte =
     r.merci?.ctaTexte !== undefined
       ? r.merci.ctaTexte
-      : "30 minutes pour regarder votre situation et voir ce que l'IA peut automatiser chez vous. Sans engagement.";
+      : "Un échange de 30 minutes pour examiner votre organisation et identifier ce que l'IA peut concrètement prendre en charge. Sans engagement.";
 
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-12 overflow-hidden">
@@ -38,27 +39,22 @@ export default async function PageMerci({ params }: Props) {
       />
       <div className="relative w-full max-w-xl text-center">
         <span className="inline-block rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-xs font-semibold tracking-widest text-accent">
-          ✓ INSCRIPTION CONFIRMÉE
+          DEMANDE ENREGISTRÉE
         </span>
 
         <h1 className="mt-6 font-display text-2xl sm:text-4xl font-bold leading-snug sm:leading-tight text-balance">
-          {r.merci ? (
-            r.merci.titre
-          ) : (
+          {r.merci?.titre ?? (
             <>
-              Votre guide est <span className="text-accent">prêt</span> 🎉
+              Votre guide est <span className="text-accent">prêt</span>
             </>
           )}
         </h1>
 
         <p className="mt-4 text-secondaire leading-relaxed">
-          {r.merci?.texte ?? (
-            <>
-              Vous le recevez aussi par email dans quelques instants
-              (vérifiez vos spams si besoin).
-            </>
-          )}
+          {r.merci?.texte ?? "Vous pouvez le consulter dès maintenant ci‑dessous."}
         </p>
+        {/* État réel de l'envoi (jamais de délai promis) ; l'accès direct reste la référence. */}
+        <DeliveryStatus slug={r.slug} />
 
         <OppositionNotice slug={r.slug} />
 
@@ -95,7 +91,7 @@ export default async function PageMerci({ params }: Props) {
         </div>
 
         <p className="mt-8 text-xs text-secondaire">
-          Althoce — Agence d&apos;automatisation IA, Bordeaux
+          Althoce — cabinet de conseil en intelligence artificielle : audit IA, formation, intégration
         </p>
       </div>
     </main>

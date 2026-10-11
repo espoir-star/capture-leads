@@ -775,6 +775,17 @@ async function main() {
     assert.ok(at - Date.now() > 47 * 3_600_000, "relance à J+2 réel, pas accélérée");
   });
 
+  await scenario("M1 · page merci : état réel de l'envoi via leadRef (POST), sans donnée personnelle ; jeton falsifié refusé", async () => {
+    const r = await post("/api/lead", lead());
+    assert.equal(r.status, 200);
+    await until((x) => x.emails.length === 1 && x.contacts[0]?.attributes.GUIDE_DELIVERY_STATUS === "SENT", "livraison");
+    const st = await post("/api/lead/status", { leadRef: r.body.leadRef });
+    assert.equal(st.status, 200);
+    assert.deepEqual(st.body, { state: "accepted" });
+    assert.deepEqual((await post("/api/lead/status", { leadRef: `${r.body.leadRef}x` })).body, { state: "unknown" });
+    assert.equal((await post("/api/lead/status", "pas du json")).status, 400);
+  });
+
   await scenario("INC1810 · adresse neuve, deux guides (journal réel « {} ») + fiche sans email : livrés, maintenance OK", async () => {
     await seed({ email: null, attributes: { SMS: "33600000000" } } as unknown as Partial<MockContact>);
     const qa = "qa-multi.e2e@cabinet.fr";
