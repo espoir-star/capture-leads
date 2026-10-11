@@ -72,8 +72,7 @@ export const MEETING_CONFIRMED: Readonly<Record<string, readonly string[]>> = {
  */
 export const BOT_CLICK_SECONDS = 15;
 
-/** Statut d'appel qui bloque l'alerte « lead chaud » (le score reste calculé) */
-export const NO_CALL_STATUSES: readonly string[] = ["Ne plus appeler"];
+/* Statuts bloquant l'alerte « lead chaud » : config/commercialStates.ts (HOT_ALERT_ALLOWED). */
 
 /** Tags d'emails internes jamais scorés (alertes envoyées à l'équipe) */
 export const INTERNAL_EMAIL_TAGS: readonly string[] = ["alerte-sequences", "alerte-lead-chaud", "alerte-quota"];

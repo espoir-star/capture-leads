@@ -39,6 +39,7 @@ export const NEW_ATTRIBUTES: NewAttribute[] = [
   { name: "SUBSECTOR", type: "text", description: "Sous-secteur (EXPERTISE_COMPTABLE, DAF_FINANCE…)" },
   { name: "BESOIN_PRIORITAIRE", type: "text", description: "Objectif IA déclaré au formulaire" },
   { name: "HORIZON_PROJET", type: "text", description: "Horizon projet déclaré au formulaire" },
+  { name: "INTENT_UPDATED_AT", type: "text", description: "Date ISO UTC de la dernière déclaration besoin/horizon (capture uniquement, jamais clic/score/CRM)" },
   { name: "UTM_CONTENT", type: "text", description: "Identifiant du contenu source (first touch)" },
   { name: "SOURCE_CONTENT_URL", type: "text", description: "URL du post source si connue (first touch)" },
   { name: "LIFECYCLE_STAGE", type: "text", description: "SUBSCRIBER → … → CLIENT / LOST" },

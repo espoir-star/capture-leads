@@ -27,14 +27,14 @@ import {
   IGNORED_URL_PATTERNS,
   INTERNAL_EMAIL_TAGS,
   MEETING_CONFIRMED,
-  NO_CALL_STATUSES,
   OFFER_URL_PREFIXES,
   SCORE_CAP,
   type BehaviorCategory,
 } from "@/config/scoring";
 import type { EmailStatus } from "@/config/taxonomy";
 import { isEmailMarketable, MAX_FORM_SCORE, nextLifecycleStage, toScore } from "@/lib/scoring";
-import { inCommercialCycle } from "@/lib/sequences/plan";
+import { HOT_ALERT_ALLOWED } from "@/config/commercialStates";
+import { readCommercialState } from "@/lib/sequences/commercial";
 import { deriveKey } from "@/lib/security/secret";
 
 export type LedgerSource = "brevo_transactional" | "brevo_marketing" | "capture" | "webinar" | "crm";
@@ -316,8 +316,7 @@ export function planScoreUpdate(
     isEmptyValue(attributes.HOT_ALERT_SENT_AT) &&
     PRE_SALES_STAGES.includes(current ?? "") &&
     isEmailMarketable(emailStatus) &&
-    !NO_CALL_STATUSES.includes(String(attributes.STATUT_APPEL ?? "").trim()) &&
-    !inCommercialCycle({ attributes: attributes as Record<string, AttributeValue> });
+    HOT_ALERT_ALLOWED.has(readCommercialState(attributes).state);
 
   return { attributes: a, previousScore, score, formScore, behavior, hotAlert };
 }

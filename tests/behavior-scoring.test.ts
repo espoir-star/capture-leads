@@ -239,3 +239,10 @@ test("seuil HOT exact : 24 → pas d'alerte ; 25 → HOT_LEAD et alerte", () => 
   assert.equal(at25.hotAlert, true);
   assert.equal(at25.attributes.LIFECYCLE_STAGE, "HOT_LEAD");
 });
+
+test("intention : un clic ou un recalcul de score ne date jamais une nouvelle déclaration de projet", () => {
+  const p = planScoreUpdate({ LEAD_SCORE: 12, FORM_SCORE: 12, LIFECYCLE_STAGE: "LEAD", INTENT_UPDATED_AT: "2026-09-01T08:00:00.000Z" }, { behavior: 15, lastClickAt: "2026-10-03T08:00:00Z" }, NOW);
+  assert.equal("INTENT_UPDATED_AT" in p.attributes, false);
+  assert.equal("HORIZON_PROJET" in p.attributes, false);
+  assert.equal("BESOIN_PRIORITAIRE" in p.attributes, false);
+});

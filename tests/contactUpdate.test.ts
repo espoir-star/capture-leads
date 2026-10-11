@@ -45,6 +45,7 @@ test("scénario pilote : nouveau contact (test 65)", () => {
     SUBSECTOR: "EXPERTISE_COMPTABLE",
     BESOIN_PRIORITAIRE: "DEPLOYER_AGENT_IA",
     HORIZON_PROJET: "MOINS_3_MOIS",
+    INTENT_UPDATED_AT: "2026-10-08T09:00:00.000Z",
     UTM_SOURCE: "linkedin",
     UTM_MEDIUM: "organic",
     UTM_CAMPAIGN: "guide_experts_comptables",
@@ -219,4 +220,15 @@ test("jeton de confirmation écrit une seule fois (lien stable)", () => {
     "EMAIL_CONFIRM_TOKEN" in buildContactUpdate(contact({ EMAIL_CONFIRM_TOKEN: "v1.old" }), data({ confirmToken: "v1.new" })).attributes,
     false
   );
+});
+
+test("intention : chaque capture date sa déclaration (ISO UTC), y compris PAS_DE_PROJET ; le score garde son maximum", () => {
+  const before = contact({ FORM_SCORE: 15, LEAD_SCORE: 15, HORIZON_PROJET: "IMMEDIAT", BESOIN_PRIORITAIRE: "DEPLOYER_AGENT_IA", INTENT_UPDATED_AT: "2026-09-01T08:00:00.000Z" });
+  const later = new Date("2026-10-12T07:30:00Z");
+  const u = buildContactUpdate(before, data({ horizon: "PAS_DE_PROJET", besoin: "VEILLE_IA", now: later }));
+  assert.equal(u.attributes.HORIZON_PROJET, "PAS_DE_PROJET", "intention actuelle rectifiée");
+  assert.equal(u.attributes.BESOIN_PRIORITAIRE, "VEILLE_IA");
+  assert.equal(u.attributes.INTENT_UPDATED_AT, "2026-10-12T07:30:00.000Z");
+  assert.equal("FORM_SCORE" in u.attributes, false, "FORM_SCORE garde le maximum historique (15)");
+  assert.equal(u.attributes.LEAD_SCORE, 15, "pas de baisse artificielle du score");
 });
