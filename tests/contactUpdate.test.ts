@@ -110,10 +110,26 @@ test("sous-secteur complété si même verticale et vide", () => {
   assert.equal("SUBSECTOR" in u2.attributes, false);
 });
 
-test("liste ambiguë : aucune verticale déduite", () => {
-  const u = buildContactUpdate(null, data({ source: LEAD_MAGNETS["claude-data-gouv-20-prompts"] }));
+test("guide sans verticale : aucune verticale déduite", () => {
+  const sansMetier = { ...LEAD_MAGNETS["claude-data-gouv-20-prompts"], vertical: null, subsector: null };
+  const u = buildContactUpdate(null, data({ source: sansMetier }));
   assert.equal("VERTICAL" in u.attributes, false);
   assert.equal("SUBSECTOR" in u.attributes, false);
+  assert.equal(u.marketingStatus, "TO_REVIEW", "pas d'éligibilité inventée");
+});
+
+test("métiers fixés le 12/10/2026 : data.gouv finance, 7 chantiers comptable, Copilot général", () => {
+  const dataGouv = buildContactUpdate(null, data({ source: LEAD_MAGNETS["claude-data-gouv-20-prompts"] }));
+  assert.equal(dataGouv.attributes.VERTICAL, "FINANCE");
+  assert.equal("SUBSECTOR" in dataGouv.attributes, false);
+  assert.equal(dataGouv.marketingStatus, "B2B_ELIGIBLE");
+  const chantiers = buildContactUpdate(null, data({ source: LEAD_MAGNETS["7-chantiers-ia-cabinet"] }));
+  assert.equal(chantiers.attributes.VERTICAL, "FINANCE");
+  assert.equal(chantiers.attributes.SUBSECTOR, "EXPERTISE_COMPTABLE");
+  assert.equal(chantiers.marketingStatus, "B2B_ELIGIBLE");
+  const copilot = buildContactUpdate(null, data({ source: LEAD_MAGNETS["copilot-8-cas-usage"] }));
+  assert.equal(copilot.attributes.VERTICAL, "GENERAL");
+  assert.equal(copilot.marketingStatus, "TO_REVIEW", "guide général : pas de relance commerciale sans autre signal métier");
 });
 
 test("EMAIL_STATUS : VERIFIED et BOUNCED conservés, sinon PENDING", () => {
