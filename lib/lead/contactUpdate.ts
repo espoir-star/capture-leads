@@ -113,9 +113,19 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
   /* Lien de confirmation d'adresse (inséré dans l'email de bienvenue Brevo) */
   setIfEmpty("EMAIL_CONFIRM_TOKEN", data.confirmToken);
 
-  /* Intention déclarée */
+  /* Intention déclarée : dernières réponses + date de CETTE déclaration (ISO UTC).
+   * INTENT_UPDATED_AT n'est écrit QUE par une capture validée (y compris
+   * PAS_DE_PROJET) : jamais par un clic, un recalcul de score ou un retour CRM.
+   * FORM_SCORE/LEAD_SCORE gardent leur maximum historique : cette date permet
+   * au CRM de distinguer un projet actuel d'un ancien score élevé. */
   a.BESOIN_PRIORITAIRE = data.besoin;
   a.HORIZON_PROJET = data.horizon;
+  a.INTENT_UPDATED_AT = data.now.toISOString();
+  const previousActivity = Date.parse(String(ex.LAST_QUALIFYING_ACTIVITY_AT ?? ""));
+  if (!Number.isFinite(previousActivity) || data.now.getTime() > previousActivity) {
+    a.LAST_QUALIFYING_ACTIVITY_AT = data.now.toISOString();
+    a.LAST_QUALIFYING_ACTIVITY_TYPE = data.kind === "webinar" ? "WEBINAR_REGISTERED" : "GUIDE_REQUEST";
+  }
 
   /* First touch : bloc UTM écrit seulement si le contact n'en a aucun */
   const hasExistingUtm = FIRST_TOUCH_ATTRIBUTES.some((k) => !isEmptyValue(ex[k]));

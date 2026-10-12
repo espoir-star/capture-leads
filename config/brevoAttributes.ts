@@ -30,15 +30,30 @@ export const EXISTING_ATTRIBUTES = [
 
 export interface NewAttribute {
   name: string;
-  type: "text" | "float" | "date";
+  type: "text" | "float" | "date" | "boolean";
   description: string;
 }
 
+/** Shared with CRM WRITE_TYPES; additive schema only, never replace a type. */
+export const CRM_ATTRIBUTES: NewAttribute[] = [
+  { name: "CRM_CONTACT_ID", type: "text", description: "Identifiant de la fiche CRM" },
+  { name: "CRM_SALES_STATUS", type: "text", description: "Projection commerciale CRM (contrat INTEGRATION_CRM.md)" },
+  { name: "CRM_SALES_UPDATED_AT", type: "text", description: "Date ISO UTC de l'action commerciale" },
+  { name: "CRM_SALES_VERSION", type: "float", description: "Version strictement croissante par liaison" },
+  { name: "CRM_SALES_EVENT_ID", type: "text", description: "Identifiant de l'événement CRM rejouable" },
+  ...["CRM_DO_NOT_CALL", "CRM_EMAIL_OPPOSED", "CRM_GLOBAL_OPPOSED"].map((name): NewAttribute =>
+    ({ name, type: "boolean", description: "Restriction monotone ; jamais effacée par une synchronisation" })),
+];
 export const NEW_ATTRIBUTES: NewAttribute[] = [
+  ...CRM_ATTRIBUTES,
+  { name: "IS_QA", type: "boolean", description: "Contact de recette exclu de la file commerciale réelle" },
+  { name: "LAST_QUALIFYING_ACTIVITY_AT", type: "text", description: "Date ISO UTC du dernier événement qualifiant prouvé" },
+  { name: "LAST_QUALIFYING_ACTIVITY_TYPE", type: "text", description: "Type d'événement, indépendant de modifiedAt et des ouvertures" },
   { name: "VERTICAL", type: "text", description: "Verticale métier (FINANCE, MARKETING…)" },
   { name: "SUBSECTOR", type: "text", description: "Sous-secteur (EXPERTISE_COMPTABLE, DAF_FINANCE…)" },
   { name: "BESOIN_PRIORITAIRE", type: "text", description: "Objectif IA déclaré au formulaire" },
   { name: "HORIZON_PROJET", type: "text", description: "Horizon projet déclaré au formulaire" },
+  { name: "INTENT_UPDATED_AT", type: "text", description: "Date ISO UTC de la dernière déclaration besoin/horizon (capture uniquement, jamais clic/score/CRM)" },
   { name: "UTM_CONTENT", type: "text", description: "Identifiant du contenu source (first touch)" },
   { name: "SOURCE_CONTENT_URL", type: "text", description: "URL du post source si connue (first touch)" },
   { name: "LIFECYCLE_STAGE", type: "text", description: "SUBSCRIBER → … → CLIENT / LOST" },

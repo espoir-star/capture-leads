@@ -26,15 +26,14 @@ import {
   HOT_LEAD_THRESHOLD,
   IGNORED_URL_PATTERNS,
   INTERNAL_EMAIL_TAGS,
-  MEETING_CONFIRMED,
-  NO_CALL_STATUSES,
   OFFER_URL_PREFIXES,
   SCORE_CAP,
   type BehaviorCategory,
 } from "@/config/scoring";
 import type { EmailStatus } from "@/config/taxonomy";
 import { isEmailMarketable, MAX_FORM_SCORE, nextLifecycleStage, toScore } from "@/lib/scoring";
-import { inCommercialCycle } from "@/lib/sequences/plan";
+import { HOT_ALERT_ALLOWED } from "@/config/commercialStates";
+import { readCommercialState } from "@/lib/sequences/commercial";
 import { deriveKey } from "@/lib/security/secret";
 
 export type LedgerSource = "brevo_transactional" | "brevo_marketing" | "capture" | "webinar" | "crm";
@@ -100,6 +99,7 @@ export interface ClickCandidate {
   messageId?: string;
   /** heure d'envoi si connue (campagnes : ts_sent) */
   sentAt?: string;
+  timeProven?: boolean;
 }
 
 /** Clic trop proche de l'envoi pour être humain (BOT_CLICK_SECONDS). Heure d'envoi inconnue → compté. */
@@ -153,19 +153,20 @@ export function clickCandidate(raw: unknown, now: Date): ClickCandidate | null {
   const category = classifyClick(str(o.URL) || str(o.link));
   if (!category) return null;
   const occurred_at = eventDate(o, now);
+  const timeProven = ["ts_event", "ts_epoch", "ts"].some((k) => Number.isFinite(Number(o[k])) && Number(o[k]) > 0);
 
   const campId = str(o.camp_id);
   if (campId) {
     const sent = Number(o.ts_sent);
     return {
-      email, category, keyParts: ["m", campId, email], occurred_at, source: "brevo_marketing", ref: `campagne:${campId}`,
+      email, category, keyParts: ["m", campId, email], occurred_at, timeProven, source: "brevo_marketing", ref: `campagne:${campId}`,
       ...(Number.isFinite(sent) && sent > 0 && { sentAt: new Date(sent * 1000).toISOString() }),
     };
   }
   const messageId = str(o["message-id"]) || str(o.messageId);
   if (messageId) {
     const tpl = str(o.template_id) || str(o.templateId);
-    return { email, category, keyParts: ["t", messageId], occurred_at, source: "brevo_transactional", ref: tpl ? `modele:${tpl}` : "transactionnel", messageId };
+    return { email, category, keyParts: ["t", messageId], occurred_at, timeProven, source: "brevo_transactional", ref: tpl ? `modele:${tpl}` : "transactionnel", messageId };
   }
   return null;
 }
@@ -178,7 +179,7 @@ export function toLedgerEvent(c: ClickCandidate, contactId: number): LedgerEvent
     points: BEHAVIOR_POINTS[c.category],
     occurred_at: c.occurred_at,
     source: c.source,
-    ref: c.ref,
+    ref: c.timeProven && c.sentAt && Date.parse(c.occurred_at) - Date.parse(c.sentAt) >= BOT_CLICK_SECONDS * 1000 ? `human-validated:${c.ref}` : c.ref,
   };
 }
 
@@ -203,7 +204,7 @@ export function makeEvent(
 
 /** RDV confirmé d'après les attributs commerciaux (MEETING_CONFIRMED) */
 export function hasConfirmedMeeting(attributes: Record<string, AttributeValue | undefined>): boolean {
-  return Object.entries(MEETING_CONFIRMED).some(([attr, values]) => values.includes(String(attributes[attr] ?? "").trim()));
+  return readCommercialState(attributes).state === "MEETING_CONFIRMED";
 }
 
 /* ── Journal → agrégat ────────────────────────────────────────────────── */
@@ -214,6 +215,7 @@ export interface LedgerRow {
   category: unknown;
   points: unknown;
   occurred_at: unknown;
+  ref?: unknown;
 }
 
 export interface BehaviorAggregate {
@@ -222,6 +224,8 @@ export interface BehaviorAggregate {
   events: number;
   lastClickAt?: string;
   lastEngagementAt?: string;
+  lastQualifyingAt?: string;
+  lastQualifyingType?: string;
 }
 
 const isoOf = (v: unknown): string | undefined => {
@@ -248,6 +252,14 @@ export function aggregateLedger(rows: readonly LedgerRow[]): BehaviorAggregate[]
     agg.events += 1;
     if (at && (!agg.lastEngagementAt || at > agg.lastEngagementAt)) agg.lastEngagementAt = at;
     if (at && CLICK_CATEGORIES.has(category) && (!agg.lastClickAt || at > agg.lastClickAt)) agg.lastClickAt = at;
+    // Only validated ledger events qualify. CRM writes and opens are never ledger events.
+    const qualifying = !CLICK_CATEGORIES.has(category) || String(r.ref ?? "").startsWith("human-validated:");
+    if (qualifying && at && points > 0 && (!agg.lastQualifyingAt || at > agg.lastQualifyingAt)) {
+      agg.lastQualifyingAt = at;
+      agg.lastQualifyingType = ({ content_click: "HUMAN_CONTENT_CLICK", guide_click: "HUMAN_GUIDE_CLICK",
+        offer_click: "HUMAN_OFFER_CLICK", webinar_registered: "WEBINAR_REGISTERED",
+        webinar_attended: "WEBINAR_ATTENDED", meeting_booked: "MEETING_CONFIRMED" })[category];
+    }
     by.set(contactId, agg);
   }
   return [...by.values()];
@@ -278,7 +290,7 @@ export const brevoDate = (iso: string) => iso.slice(0, 10);
  */
 export function planScoreUpdate(
   attributes: Record<string, AttributeValue | undefined>,
-  agg: Pick<BehaviorAggregate, "behavior" | "lastClickAt" | "lastEngagementAt">,
+  agg: Pick<BehaviorAggregate, "behavior" | "lastClickAt" | "lastEngagementAt" | "lastQualifyingAt" | "lastQualifyingType">,
   now: Date
 ): ScorePlan {
   const a: Record<string, AttributeValue> = {};
@@ -302,6 +314,13 @@ export function planScoreUpdate(
   };
   later("LAST_EMAIL_CLICK_AT", agg.lastClickAt);
   later("LAST_ENGAGEMENT_AT", agg.lastEngagementAt);
+  const previousQualifying = Date.parse(String(attributes.LAST_QUALIFYING_ACTIVITY_AT ?? ""));
+  const latestQualifying = Date.parse(agg.lastQualifyingAt ?? "");
+  if (agg.lastQualifyingType && Number.isFinite(latestQualifying) && latestQualifying <= now.getTime() &&
+      (!Number.isFinite(previousQualifying) || latestQualifying > previousQualifying)) {
+    a.LAST_QUALIFYING_ACTIVITY_AT = new Date(latestQualifying).toISOString();
+    a.LAST_QUALIFYING_ACTIVITY_TYPE = agg.lastQualifyingType;
+  }
 
   // Seule promotion possible : HOT_LEAD (jamais de rétrogradation, étapes commerciales intouchées)
   const emailStatus = String(attributes.EMAIL_STATUS ?? "");
@@ -316,8 +335,7 @@ export function planScoreUpdate(
     isEmptyValue(attributes.HOT_ALERT_SENT_AT) &&
     PRE_SALES_STAGES.includes(current ?? "") &&
     isEmailMarketable(emailStatus) &&
-    !NO_CALL_STATUSES.includes(String(attributes.STATUT_APPEL ?? "").trim()) &&
-    !inCommercialCycle({ attributes: attributes as Record<string, AttributeValue> });
+    HOT_ALERT_ALLOWED.has(readCommercialState(attributes).state);
 
   return { attributes: a, previousScore, score, formScore, behavior, hotAlert };
 }

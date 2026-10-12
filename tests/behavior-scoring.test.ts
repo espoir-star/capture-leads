@@ -6,6 +6,7 @@ import {
   classifyClick,
   clickCandidate,
   EVENT_KEY_RE,
+  eventKey,
   hasConfirmedMeeting,
   isLikelyBotClick,
   makeEvent,
@@ -112,9 +113,9 @@ test("événements webinar / RDV : une clé par webinar et par contact, un seul 
 });
 
 test("RDV confirmé : valeurs commerciales relevées dans Brevo", () => {
-  assert.equal(hasConfirmedMeeting({ ETAT_RDV: "Prévu" }), true);
-  assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "RDV planifié" }), true);
-  assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "RDV booke" }), true);
+  assert.equal(hasConfirmedMeeting({ ETAT_RDV: "Prévu" }), false);
+  assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "RDV planifié" }), false);
+  assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "RDV booke" }), false);
   assert.equal(hasConfirmedMeeting({ LIFECYCLE_STAGE: "MEETING_BOOKED" }), true);
   assert.equal(hasConfirmedMeeting({ ETAT_RDV: "À préciser" }), false);
   assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "À appeler" }), false);
@@ -238,4 +239,26 @@ test("seuil HOT exact : 24 → pas d'alerte ; 25 → HOT_LEAD et alerte", () => 
   assert.equal(at25.score, 25);
   assert.equal(at25.hotAlert, true);
   assert.equal(at25.attributes.LIFECYCLE_STAGE, "HOT_LEAD");
+});
+
+test("intention : un clic ou un recalcul de score ne date jamais une nouvelle déclaration de projet", () => {
+  const p = planScoreUpdate({ LEAD_SCORE: 12, FORM_SCORE: 12, LIFECYCLE_STAGE: "LEAD", INTENT_UPDATED_AT: "2026-09-01T08:00:00.000Z" }, { behavior: 15, lastClickAt: "2026-10-03T08:00:00Z" }, NOW);
+  assert.equal("INTENT_UPDATED_AT" in p.attributes, false);
+  assert.equal("HORIZON_PROJET" in p.attributes, false);
+  assert.equal("BESOIN_PRIORITAIRE" in p.attributes, false);
+});
+
+test("CRM : clic sans preuve temporelle et ouverture ne fournissent aucune récence qualifiante", () => {
+  const rows = [
+    { event_key: eventKey("content_click", ["unknown-time"]), contact_id: 1, category: "content_click", points: 5, occurred_at: NOW.toISOString(), ref: "transactionnel" },
+    { event_key: eventKey("content_click", ["open"]), contact_id: 1, category: "open", points: 5, occurred_at: NOW.toISOString() },
+  ];
+  const agg = aggregateLedger(rows)[0];
+  assert.equal(agg.lastQualifyingAt, undefined);
+  const valid = aggregateLedger([{ ...rows[0], ref: "human-validated:transactionnel" }])[0];
+  assert.equal(valid.lastQualifyingType, "HUMAN_CONTENT_CLICK");
+  const plan = planScoreUpdate({}, valid, NOW);
+  assert.equal(plan.attributes.LAST_QUALIFYING_ACTIVITY_AT, NOW.toISOString());
+  assert.equal(plan.attributes.INTENT_UPDATED_AT, undefined);
+  assert.equal(planScoreUpdate({ LAST_QUALIFYING_ACTIVITY_AT: new Date(NOW.getTime() + 1000).toISOString() }, valid, NOW).attributes.LAST_QUALIFYING_ACTIVITY_AT, undefined);
 });

@@ -5,13 +5,9 @@
 
 import type { BrevoContact } from "@/lib/brevo/api";
 import { mayReceiveMarketing } from "@/lib/marketing/status";
-import {
-  MEETING_ATTRIBUTES,
-  STEP_STALE_AFTER_HOURS,
-  STOP_LIFECYCLE_STAGES,
-  type SequenceConfig,
-  type SequenceStep,
-} from "@/config/sequences";
+import { STEP_STALE_AFTER_HOURS, type SequenceConfig, type SequenceStep } from "@/config/sequences";
+import { GUIDE_FOLLOWUP_ALLOWED } from "@/config/commercialStates";
+import { readCommercialState } from "@/lib/sequences/commercial";
 import type { Enrollment } from "@/lib/sequences/enrollment";
 
 const HOUR = 3_600_000;
@@ -53,10 +49,14 @@ export type StepDecision =
 
 const UNUSABLE = ["INVALID", "DISPOSABLE", "BOUNCED"];
 
+/**
+ * Prise en charge commerciale (ou refus) : les relances marketing des guides
+ * sont suspendues. Seuls « aucune donnée » et « fiche importée à traiter »
+ * laissent passer la relance (config/commercialStates.ts). Une valeur inconnue
+ * suspend par prudence. La livraison d'un guide demandé n'est pas concernée.
+ */
 export function inCommercialCycle(contact: Pick<BrevoContact, "attributes">): boolean {
-  const a = contact.attributes;
-  if ((STOP_LIFECYCLE_STAGES as readonly string[]).includes(String(a.LIFECYCLE_STAGE ?? ""))) return true;
-  return MEETING_ATTRIBUTES.some((k) => String(a[k] ?? "").trim() !== "");
+  return !GUIDE_FOLLOWUP_ALLOWED.has(readCommercialState(contact.attributes).state);
 }
 
 /**
