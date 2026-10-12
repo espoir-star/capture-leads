@@ -63,7 +63,8 @@ test("preuves négatives seulement : bounce Brevo, jetable, domaine sans récept
 test("jamais d'écrasement, provenance ambiguë ou conflictuelle laissée vide", () => {
   const filled = contact({ VERTICAL: "LEGAL", EMAIL_STATUS: "VERIFIED", PHONE_STATUS: "VERIFIED", LIFECYCLE_STAGE: "CLIENT", MARKETING_STATUS: "CONSENT" });
   assert.deepEqual(planContactBackfill(filled, ctx()).set, {});
-  assert.equal("VERTICAL" in planContactBackfill(contact({}, [14]), ctx()).set, false, "liste data.gouv ambiguë");
+  assert.equal(planContactBackfill(contact({}, [14]), ctx()).set.VERTICAL, "FINANCE", "liste data.gouv : FINANCE fixée le 12/10/2026");
+  assert.equal("SUBSECTOR" in planContactBackfill(contact({}, [14]), ctx()).set, false, "sous-secteur non précisé : jamais inventé");
   const conflict = planContactBackfill(contact({}, [10, 12]), ctx());
   assert.equal("VERTICAL" in conflict.set, false);
   assert.equal(conflict.conflicts.length, 1);
