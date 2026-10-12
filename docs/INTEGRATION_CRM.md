@@ -2,7 +2,7 @@
 
 Version contractuelle **1.1 — 12 octobre 2026**. Fichier identique dans le CRM (`docs/integrations/brevo-crm-v1.md`) et les guides (`docs/INTEGRATION_CRM.md`).
 
-Le contrat décrit le fonctionnement attendu du code ; il ne prouve pas son activation. Voir le rapport `brevo-crm-finalisation-2026-10-12.md` côté CRM pour les versions, contrôles et limites observées. La production CRM contrôlée le 12 octobre n'a encore ni migration 0074, ni clé serveur Brevo, ni timer Brevo ; aucun checkpoint n'a été supprimé ou réinitialisé. Les cinq contacts Brevo #1833–1837 sont absents du CRM au rapprochement en lecture seule. Aucun import historique n'est relancé.
+Le contrat décrit le fonctionnement attendu du code ; il ne prouve pas son activation. Voir le rapport `brevo-crm-finalisation-2026-10-12.md` côté CRM pour les versions, contrôles et limites observées. Au début de l’audit du 12 octobre, la production CRM n’avait ni migration 0074, ni clé serveur Brevo, ni timer Brevo ; aucun checkpoint n'a été supprimé ou réinitialisé. Les cinq contacts Brevo #1833–1837 sont absents du CRM au rapprochement en lecture seule. Aucun import historique n'est relancé.
 
 ## 1. Inventaire et frontière
 
@@ -12,7 +12,7 @@ Le contrat décrit le fonctionnement attendu du code ; il ne prouve pas son acti
 - Rôles existants : administrateur, team lead, commercial, prospecteur, développeur, formateur. MFA obligatoire. Les deux derniers n'accèdent pas au contexte marketing/commercial Brevo.
 - Jobs existants : commandes Django exécutées par services/timers systemd. Le connecteur HTTP générique `IntakeChannel` n'est pas un adaptateur Brevo et n'est pas utilisé ici.
 - Ancienne base : retrait déjà effectué de 1 095 dossiers encore en prospection, avec conservation des dossiers commerciaux. Cette V1 ne restaure aucun dossier archivé.
-- Nouveau dépôt Git local créé **dans le CRM uniquement**, avec commit de référence puis branche dédiée. Aucun changement dans `espoir-star/capture-leads`, ses déploiements, ses modèles #41–44 ou ses workflows n8n.
+- Deux branches de finalisation coordonnées : CRM `feat/brevo-crm-finalisation` et PR #14 des guides `feat/raccordement-crm`, remise sur le main courant sans force-push. Le checkout utilisateur des guides, les modèles #41–44 et les workflows n8n sont préservés.
 
 ## 2. Un seul propriétaire de synchronisation
 
@@ -59,7 +59,7 @@ Tous les champs ci-dessous appartiennent à Brevo / capture / scoring, sauf les 
 | `LIFECYCLE_STAGE`, `STATUT_APPEL`, `ETAPE_COMMERCIALE`, `ETAT_RDV`, `TYPE_RDV`, `NOM_SETTER` | texte | Enrichissement et prévention d'une nouvelle prospection déjà engagée |
 | `DATE_APPEL` | texte | Historique lu, sans transformer une date en heure inventée |
 | `emailBlacklisted`, `smsBlacklisted` | booléens natifs | Blocage email / portée SMS ambiguë à revoir, jamais contournés |
-| `IS_QA`, `SPAM_CONFIRMED`, `BOT_CONFIRMED` | booléens proposés, absents du schéma actuel | Exclusion des vraies files de travail |
+| `IS_QA`, `SPAM_CONFIRMED`, `BOT_CONFIRMED` | booléens ; IS_QA créé le 12 octobre, les deux autres optionnels | Exclusion des vraies files de travail |
 | `CALLBACK_REQUESTED` | booléen proposé, absent du schéma actuel | Demande explicite uniquement ; ne lève aucun refus |
 
 `MG_REQ_*` est un texte JSON. Forme réelle observée : `{v, slug, sequenceId, requestedAt, firstTrackedAt, queued, followupAt, scale, source}` ; `source` contient les UTM de la demande. Le CRM conserve seulement `slug`, `requestedAt` (ou l'ancien `at`) et la provenance autorisée, y compris le `source` imbriqué. Il ignore l'orchestration des séquences et toute clé inconnue. Les dates inconnues restent inconnues. `requestedAt` date une demande de guide : il ne prouve pas à lui seul que le besoin/horizon actuel a été redéclaré à cet instant.
@@ -76,7 +76,7 @@ Les catégories Brevo peuvent être retournées sous forme d'IDs : `GET /contact
 
 Types qualifiants : `HUMAN_CONTENT_CLICK`, `HUMAN_GUIDE_CLICK`, `HUMAN_OFFER_CLICK`, `GUIDE_REQUEST`, `WEBINAR_REGISTERED`, `WEBINAR_ATTENDED`, `MEETING_CONFIRMED`.
 
-Ces trois attributs sont **absents du schéma relu le 12 octobre 2026**. Leur création additive et leur type doivent être confirmés avant publication du code qui les écrit. Le couple activité doit être écrit ensemble, après les contrôles anti-robot et de déduplication du moteur existant. Une ouverture, un import, un recalcul de score ou une écriture du CRM ne doit pas mettre à jour ces champs.
+Ces trois attributs étaient absents au début de l’audit. Ils ont été créés le 12 octobre 2026, avec les huit champs CRM et IS_QA ; la relecture API confirme les douze types attendus avant publication du code. Aucun champ de scoring existant n’a été changé. Le couple activité doit être écrit ensemble, après les contrôles anti-robot et de déduplication du moteur existant. Une ouverture, un import, un recalcul de score ou une écriture du CRM ne doit pas mettre à jour ces champs.
 
 Le champ existant `LAST_EMAIL_CLICK_AT` est actuellement de type Date : il n'apporte pas l'heure requise. Ne pas changer son type ni inventer une heure sur l'historique. Un éventuel timestamp de clic n'est utilisable comme preuve qu'après vérification explicite qu'il exclut robots/clics techniques ; l'option `BREVO_TRUST_FILTERED_CLICKS` vaut `0` par défaut. `LAST_ENGAGEMENT_AT` est affichable en contexte mais n'est pas une preuve faute de type. Le CRM n'utilise jamais `modifiedAt` comme date de nouveau projet.
 
