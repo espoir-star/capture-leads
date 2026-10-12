@@ -822,6 +822,18 @@ async function main() {
     assert.ok(at >= before + 24 * 60_000 - 5_000, "relance 24 min (J+2 accéléré) APRÈS la livraison tardive, pas tout de suite");
   });
 
+  await scenario("L1 · lien court /l/ec1 → page 12 cas avec ses UTM (302) ; code inconnu → accueil", async () => {
+    const r = await fetch(`${APP}/l/ec1`, { redirect: "manual" });
+    assert.equal(r.status, 302);
+    const loc = new URL(r.headers.get("location")!, APP);
+    assert.equal(loc.pathname, "/r/12-cas-usage-experts-comptables");
+    assert.equal(loc.searchParams.get("utm_source"), "linkedin");
+    assert.equal(loc.searchParams.get("utm_content"), "LI_EC_20261012_01");
+    const u = await fetch(`${APP}/l/nexistepas`, { redirect: "manual" });
+    assert.equal(u.status, 302);
+    assert.equal(new URL(u.headers.get("location")!, APP).pathname, "/");
+  });
+
   await scenario("Brevo en panne : message clair, réessai possible", async () => {
     mock.close();
     await sleep(200);
