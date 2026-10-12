@@ -3,8 +3,8 @@
  * EXPLICITEMENT. Valeurs relevées dans Brevo le 12/10/2026 (1 796 contacts).
  * Une valeur non reconnue n'est jamais interprétée : état UNKNOWN (prudence).
  *
- * Le contrat Codex (docs/integrations/brevo-crm-v1.md) pourra ajouter des
- * champs CRM_* : les raccorder ICI après relecture du contrat, pas avant.
+ * Contrat commun : docs/INTEGRATION_CRM.md. Les projections CRM versionnées
+ * priment sur les anciens libellés, sauf les refus qui restent prioritaires.
  */
 
 export type CommercialState =
@@ -18,6 +18,7 @@ export type CommercialState =
   | "OPPORTUNITY" // négociation, devis, closing
   | "DEFERRED" // projet reporté, suivi commercial
   | "CLIENT"
+  | "ARCHIVED"
   | "LOST"
   | "DISQUALIFIED" // non qualifié par l'équipe
   | "DO_NOT_CALL" // refus d'être appelé : aucune sollicitation contraire
@@ -38,13 +39,14 @@ export const COMMERCIAL_VALUE_MAP: Readonly<Record<string, Readonly<Record<strin
     "a rappeler": "ATTEMPTED",
     "a relancer": "ATTEMPTED",
     contacte: "REACHED",
-    "rdv planifie": "MEETING_CONFIRMED",
-    "rdv booke": "MEETING_CONFIRMED",
+    "rdv planifie": "MEETING_TBD",
+    "rdv booke": "MEETING_TBD",
     "ne plus appeler": "DO_NOT_CALL",
     "non qualifie": "DISQUALIFIED",
   },
   ETAT_RDV: {
-    prevu: "MEETING_CONFIRMED",
+    prevu: "MEETING_TBD",
+    confirme: "MEETING_CONFIRMED",
     "a preciser": "MEETING_TBD",
     annule: "MEETING_CANCELLED",
     reporte: "MEETING_CANCELLED",
@@ -74,11 +76,12 @@ export const COMMERCIAL_VALUE_MAP: Readonly<Record<string, Readonly<Record<strin
 export const COMMERCIAL_PRECEDENCE: readonly CommercialState[] = [
   "DO_NOT_CALL",
   "CLIENT",
+  "ARCHIVED",
   "LOST",
   "OPPORTUNITY",
+  "MEETING_CANCELLED",
   "MEETING_CONFIRMED",
   "MEETING_TBD",
-  "MEETING_CANCELLED",
   "DISQUALIFIED",
   "DEFERRED",
   "REACHED",
@@ -91,7 +94,7 @@ export const COMMERCIAL_PRECEDENCE: readonly CommercialState[] = [
 /**
  * Relance marketing des guides autorisée seulement AVANT toute prise en charge
  * réelle (aucune donnée, ou fiche importée à traiter). La livraison d'un guide
- * explicitement demandé n'en dépend jamais. À VALIDER avec le contrat Codex.
+ * explicitement demandé n'en dépend jamais. Voir le contrat commun.
  */
 export const GUIDE_FOLLOWUP_ALLOWED: ReadonlySet<CommercialState> = new Set(["NONE", "IMPORTED"]);
 
@@ -99,3 +102,13 @@ export const GUIDE_FOLLOWUP_ALLOWED: ReadonlySet<CommercialState> = new Set(["NO
 export const HOT_ALERT_ALLOWED: ReadonlySet<CommercialState> = new Set(["NONE", "IMPORTED"]);
 
 export { norm as normalizeCommercialValue };
+
+/** Valeurs exactes émises par le CRM ; MEETING_BOOKED reste un alias de transition non confirmé. */
+export const CRM_SALES_STATES: Readonly<Record<string, CommercialState>> = {
+  RECEIVED: "IMPORTED", ASSIGNED: "IMPORTED", TAKEN_IN_CHARGE: "ATTEMPTED",
+  NO_ANSWER: "ATTEMPTED", CONTACTED: "REACHED", MEETING_PENDING: "MEETING_TBD",
+  MEETING_BOOKED: "MEETING_TBD", MEETING_CONFIRMED: "MEETING_CONFIRMED",
+  MEETING_CANCELLED: "MEETING_CANCELLED", OPPORTUNITY: "OPPORTUNITY", CLIENT: "CLIENT",
+  LOST: "LOST", DISQUALIFIED: "DISQUALIFIED", ARCHIVED: "ARCHIVED",
+  DO_NOT_CALL: "DO_NOT_CALL", OPPOSED: "DO_NOT_CALL",
+};

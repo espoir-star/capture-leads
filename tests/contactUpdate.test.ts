@@ -46,6 +46,8 @@ test("scénario pilote : nouveau contact (test 65)", () => {
     BESOIN_PRIORITAIRE: "DEPLOYER_AGENT_IA",
     HORIZON_PROJET: "MOINS_3_MOIS",
     INTENT_UPDATED_AT: "2026-10-08T09:00:00.000Z",
+    LAST_QUALIFYING_ACTIVITY_AT: "2026-10-08T09:00:00.000Z",
+    LAST_QUALIFYING_ACTIVITY_TYPE: "GUIDE_REQUEST",
     UTM_SOURCE: "linkedin",
     UTM_MEDIUM: "organic",
     UTM_CAMPAIGN: "guide_experts_comptables",

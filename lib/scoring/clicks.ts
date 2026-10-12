@@ -48,7 +48,7 @@ export async function scoreClickCandidates(cands: ClickCandidate[], sentAt?: Map
   for (const c of human) {
     if (!ids.has(c.email)) ids.set(c.email, (await getContactByEmail(c.email))?.id ?? null);
     const id = ids.get(c.email);
-    if (id) events.push(toLedgerEvent(c, id));
+    if (id) events.push(toLedgerEvent({ ...c, sentAt: c.sentAt ?? (c.messageId ? known.get(c.messageId) : undefined) }, id));
     else report.unknownContacts++;
   }
   if (!events.length) return report;

@@ -60,8 +60,8 @@ export const IGNORED_URL_PATTERNS: readonly RegExp[] = [
  * commerciale (valeurs relevées dans Brevo le 10/10/2026). À VALIDER.
  */
 export const MEETING_CONFIRMED: Readonly<Record<string, readonly string[]>> = {
-  ETAT_RDV: ["Prévu"],
-  STATUT_APPEL: ["RDV planifié", "RDV booke"],
+  ETAT_RDV: ["Confirmé"],
+  CRM_SALES_STATUS: ["MEETING_CONFIRMED"],
   LIFECYCLE_STAGE: ["MEETING_BOOKED"],
 };
 

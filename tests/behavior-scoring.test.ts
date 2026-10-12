@@ -6,6 +6,7 @@ import {
   classifyClick,
   clickCandidate,
   EVENT_KEY_RE,
+  eventKey,
   hasConfirmedMeeting,
   isLikelyBotClick,
   makeEvent,
@@ -112,9 +113,9 @@ test("événements webinar / RDV : une clé par webinar et par contact, un seul 
 });
 
 test("RDV confirmé : valeurs commerciales relevées dans Brevo", () => {
-  assert.equal(hasConfirmedMeeting({ ETAT_RDV: "Prévu" }), true);
-  assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "RDV planifié" }), true);
-  assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "RDV booke" }), true);
+  assert.equal(hasConfirmedMeeting({ ETAT_RDV: "Prévu" }), false);
+  assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "RDV planifié" }), false);
+  assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "RDV booke" }), false);
   assert.equal(hasConfirmedMeeting({ LIFECYCLE_STAGE: "MEETING_BOOKED" }), true);
   assert.equal(hasConfirmedMeeting({ ETAT_RDV: "À préciser" }), false);
   assert.equal(hasConfirmedMeeting({ STATUT_APPEL: "À appeler" }), false);
@@ -245,4 +246,19 @@ test("intention : un clic ou un recalcul de score ne date jamais une nouvelle d�
   assert.equal("INTENT_UPDATED_AT" in p.attributes, false);
   assert.equal("HORIZON_PROJET" in p.attributes, false);
   assert.equal("BESOIN_PRIORITAIRE" in p.attributes, false);
+});
+
+test("CRM : clic sans preuve temporelle et ouverture ne fournissent aucune récence qualifiante", () => {
+  const rows = [
+    { event_key: eventKey("content_click", ["unknown-time"]), contact_id: 1, category: "content_click", points: 5, occurred_at: NOW.toISOString(), ref: "transactionnel" },
+    { event_key: eventKey("content_click", ["open"]), contact_id: 1, category: "open", points: 5, occurred_at: NOW.toISOString() },
+  ];
+  const agg = aggregateLedger(rows)[0];
+  assert.equal(agg.lastQualifyingAt, undefined);
+  const valid = aggregateLedger([{ ...rows[0], ref: "human-validated:transactionnel" }])[0];
+  assert.equal(valid.lastQualifyingType, "HUMAN_CONTENT_CLICK");
+  const plan = planScoreUpdate({}, valid, NOW);
+  assert.equal(plan.attributes.LAST_QUALIFYING_ACTIVITY_AT, NOW.toISOString());
+  assert.equal(plan.attributes.INTENT_UPDATED_AT, undefined);
+  assert.equal(planScoreUpdate({ LAST_QUALIFYING_ACTIVITY_AT: new Date(NOW.getTime() + 1000).toISOString() }, valid, NOW).attributes.LAST_QUALIFYING_ACTIVITY_AT, undefined);
 });

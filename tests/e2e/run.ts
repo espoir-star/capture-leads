@@ -10,6 +10,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { request } from "node:http";
 import assert from "node:assert/strict";
 import { MOCK_API_KEY, startMockBrevo, type MockContact, type MockState } from "./mock-brevo";
@@ -595,8 +596,28 @@ async function main() {
     assert.equal(hotAlerts(await state()).length, 0, "contact déjà contacté : pas d'alerte");
   });
 
+  if (process.env.CRM_QA_PROJECTIONS) await scenario("CRM ↔ Guides · projections réelles du code Django, pause effective au point HTTP d’envoi", async () => {
+    const qa = JSON.parse(readFileSync(process.env.CRM_QA_PROJECTIONS!, "utf8"));
+    assert.equal(qa.kind, "isolated-simulation");
+    process.env.SIGNING_SECRET = "e2e";
+    const { signEnrollment } = await import("@/lib/sequences/enrollment");
+    for (let i = 0; i < qa.records.length; i++) {
+      const record = qa.records[i];
+      const email = `joint-${i}@example.com`;
+      const response = await seed({ email, attributes: record.attributes, listIds: [] });
+      const id = (await response.json()).id;
+      const enrollmentId = signEnrollment({ s: "guide-12-cas-ec-v1", c: id,
+        t: Date.now() - 48 * 3_600_000, r: "12-cas-usage-experts-comptables" });
+      const result = await post("/api/sequences/step", { enrollmentId, stepId: "relance-j2" }, { Authorization: `Bearer ${SEQUENCE_SECRET}` });
+      assert.equal(result.status, 200, JSON.stringify(result.body));
+      const sent = (await state()).emails.filter((e) => e.to[0]?.email === email).length;
+      assert.equal(sent, ["RECEIVED", "ASSIGNED"].includes(record.status) ? 1 : 0, record.status);
+      if (sent === 0) assert.equal(result.body.reason, "commercial_cycle", record.status);
+    }
+  });
+
   await scenario("SC5 · tâches horaires : quota bas → alerte une fois/jour ; RDV confirmé → +25 une fois, sans alerte", async () => {
-    await seed({ email: "rdv@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "Prévu" } });
+    await seed({ email: "rdv@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "Confirmé" } });
     await seed({ email: "rien@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "À préciser" } });
     await configure({ credits: 50 });
     const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
@@ -808,7 +829,7 @@ async function main() {
     const requestedAt = new Date(Date.now() - 3_600_000).toISOString();
     const req = { v: 1, slug: "12-cas-usage-experts-comptables", sequenceId: "guide-12-cas-ec-v1", requestedAt, firstTrackedAt: requestedAt, queued: true, followupAt: requestedAt, scale: 120, source: {} };
     await seed({ email: "qa-retard.e2e@cabinet.fr", attributes: { EMAIL_STATUS: "PENDING", MARKETING_STATUS: "B2B_ELIGIBLE", MG_REQ_10: JSON.stringify(req) } });
-    await seed({ email: "rdv-panne@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "Prévu" } });
+    await seed({ email: "rdv-panne@cabinet.fr", attributes: { LEAD_SCORE: 5, ETAT_RDV: "Confirmé" } });
     await configure({ ledgerDown: true });
     const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
     const before = Date.now();
