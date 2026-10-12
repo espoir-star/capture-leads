@@ -161,6 +161,10 @@ test("bascule : explicite par slug, séquence prête exigée ; pause ; liens sel
   // bascule coordonnée : tous les prospects, sans ajout à la liste qui déclenche l'automation historique
   const noList = { ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables:sans-liste", ALTHOCE_SEQUENCE_QA_TIME_SCALE: "120" };
   assert.deepEqual(sw.activeGuideSequence(lm, noList, "prospect@cabinet.fr"), { seq: pilot, qa: false, timeScale: 1, addToList: false }, "délais réels, hors liste");
+  const liveQa = { ...noList, ALTHOCE_SEQUENCE_QA_EMAILS: "qa@althoce.test", ALTHOCE_SEQUENCE_QA_TIME_SCALE: "1440" };
+  assert.deepEqual(sw.activeGuideSequence(lm, liveQa, "QA@althoce.test"), { seq: pilot, qa: true, timeScale: 1440, addToList: false }, "QA après bascule sans liste : 2 minutes");
+  assert.deepEqual(sw.activeGuideSequence(lm, liveQa, "prospect@cabinet.fr"), { seq: pilot, qa: false, timeScale: 1, addToList: false }, "aucune accélération des vrais prospects");
+  assert.equal(sw.activeGuideSequence(lm, { ...liveQa, ALTHOCE_SEQUENCE_QA_TIME_SCALE: "9999" }, "qa@althoce.test")?.timeScale, 1);
   assert.equal(sw.activeGuideSequence(lm, { ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables" })?.addToList, true);
   assert.equal(sw.sequencesPaused({ ALTHOCE_SEQUENCES_PAUSED: "true" }), true);
   assert.equal(links.siteUrl({ VERCEL_ENV: "preview", VERCEL_BRANCH_URL: "app-git-x.vercel.app" }), "https://app-git-x.vercel.app");

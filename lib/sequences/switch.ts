@@ -55,9 +55,9 @@ export function activeGuideSequence(
   const seq = getSequence(lm.sequence);
   if (!seq || !sequenceReady(seq)) return null;
   if (mode === "all") return { seq, qa: false, timeScale: 1, addToList: true };
-  if (mode === "nolist") return { seq, qa: false, timeScale: 1, addToList: false };
   const qaEmails = new Set((env.ALTHOCE_SEQUENCE_QA_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean));
-  if (!email || !qaEmails.has(email.toLowerCase())) return null;
+  const qa = Boolean(email && qaEmails.has(email.toLowerCase()));
+  if (!qa) return mode === "nolist" ? { seq, qa: false, timeScale: 1, addToList: false } : null;
   const k = Number(env.ALTHOCE_SEQUENCE_QA_TIME_SCALE ?? 1);
   return { seq, qa: true, timeScale: Number.isFinite(k) && k >= 1 && k <= 1440 ? k : 1, addToList: false };
 }
