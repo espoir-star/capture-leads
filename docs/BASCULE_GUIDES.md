@@ -85,3 +85,16 @@ Les 12 emails au nouveau modèle sont arrivés en boîte de réception (Gmail, a
 - **Variables Vercel (Production) :** `ALTHOCE_SEQUENCE_GUIDES` = les 9 guides en `:sans-liste` ; `ALTHOCE_MULTI_GUIDES=on`. Les autres variables sont inchangées.
 - **Redéploiement :** ce commit sur `main`.
 - **Automations Brevo :** laissées actives cette nuit. Elles ne reçoivent plus d'entrées du site, car celui-ci n'ajoute plus personne aux listes. À mettre en pause après la première capture réelle validée sur le nouveau moteur : la 4 après ses relances en cours, les autres dès la validation. En cas d'erreur de configuration, l'ancien parcours (liste → automation) reste donc un filet de sécurité, sans double envoi.
+
+### Capture de contrôle et mise en pause (12/10/2026, matin)
+
+- **Capture de contrôle (09:10) :** contact 1818 `espoir+qa-bascule`, guide Pennylane, après la bascule.
+  - Livraison par le nouveau moteur (modèle 43), acceptée à 09:10:13 et remise à 09:10:14, arrivée en boîte de réception.
+  - Contact ajouté à **aucune liste**, et aucun email de l'ancienne automation n°2.
+  - Relance n8n à **J+2 réel** : 14/10 à 09:10.
+- **Nuit du 11 au 12/10 :** 8 maintenances et 8 recalculs en succès, aucune alerte.
+- **Automations mises en pause vers 09:20 :** 2, 3, 6, 7, 8, 9, 10 et 11, avec « Mettre en pause », sans désactivation ni suppression.
+  - Aucune n'avait de contact en cours, sauf la n°8 : 1 contact, le test 1815 (adresse mal saisie, en rebond).
+  - Compteurs Brevo après l'opération : 8 en pause, 1 active.
+- **Automation 4 (12 cas) : encore active.** Ses 10 contacts en cours terminent leur relance J+2 et elle ne reçoit plus d'entrées (toujours 518). La mettre en pause **à partir du 14/10 à 01:00**.
+- **Ne jamais réactiver une automation en pause** : elle reprendrait l'envoi des anciens emails au tutoiement.
