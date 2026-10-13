@@ -33,6 +33,7 @@ function genericGuide(id: string, label: string): SequenceConfig {
 }
 
 export const SEQUENCES = {
+  "guide-claude-dashboards-cabinets-v1": genericGuide("guide-claude-dashboards-cabinets-v1", "Claude Dashboards pour les cabinets"),
   "guide-12-cas-ec-v1": {
     id: "guide-12-cas-ec-v1", label: "12 cas d'usage experts-comptables", delivery: "guide-12-cas-ec.delivery",
     steps: [{ id: "relance-j2", template: "guide-12-cas-ec.relance-j2", category: "marketing", offsetHours: 48, anchor: "enrollment" }],

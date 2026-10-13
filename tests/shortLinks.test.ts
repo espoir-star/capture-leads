@@ -9,6 +9,10 @@ test("liens courts : guide existant, code court, utm_content conforme et unique 
   for (const [code, l] of Object.entries(SHORT_LINKS)) {
     assert.match(code, /^[a-z0-9-]{1,20}$/, code);
     assert.ok(getLeadMagnet(l.slug), l.slug);
+    if (l.utm_content === null) {
+      assert.equal(shortLinkTarget(code), null, "code réservé, jamais diffusé avec une date inventée");
+      continue;
+    }
     assert.match(l.utm_content, LINKEDIN_UTM_CONTENT_PATTERN, code);
     assert.equal(contents.has(l.utm_content), false, `utm_content déjà utilisé : ${l.utm_content}`);
     contents.add(l.utm_content);

@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { LEAD_MAGNETS } from "@/config/leadMagnets";
 import { guideStateFields, multiGuidesEnabled, MULTI_GUIDE_ATTRIBUTES, MULTI_GUIDE_LAST_FOLLOWUP } from "@/config/multiGuides";
 import { buildGuideRequest, guideSummaryAttributes, parseGuideRequest, guideDeliveryKey, guideEnrollmentKey, guideFollowupDecision } from "@/lib/guides/requests";
 
@@ -17,9 +18,9 @@ test("multi-guides : activation absente = désactivée, QA uniquement sur liste 
   assert.equal(multiGuidesEnabled("prospect@test.fr", env), false);
 });
 
-test("multi-guides : 34 attributs déclarés une seule fois, noms valides", () => {
-  assert.equal(MULTI_GUIDE_ATTRIBUTES.length, 34);
-  assert.equal(new Set(MULTI_GUIDE_ATTRIBUTES.map((x) => x.name)).size, 34);
+test("multi-guides : trois attributs par guide et sept communs, noms uniques et valides", () => {
+  assert.equal(MULTI_GUIDE_ATTRIBUTES.length, Object.keys(LEAD_MAGNETS).length * 3 + 7);
+  assert.equal(new Set(MULTI_GUIDE_ATTRIBUTES.map((x) => x.name)).size, MULTI_GUIDE_ATTRIBUTES.length);
   for (const a of MULTI_GUIDE_ATTRIBUTES) assert.match(a.name, /^[A-Z][A-Z0-9_]{0,49}$/);
 });
 

@@ -67,6 +67,23 @@ export interface Ressource {
 }
 
 export const RESSOURCES: Record<string, Ressource> = {
+  "tableaux-de-bord-claude-cabinets": {
+    slug: "tableaux-de-bord-claude-cabinets",
+    badge: "GUIDE GRATUIT",
+    titre: "3 tableaux de bord <accent>Claude</accent> pour piloter votre cabinet",
+    sousTitre: "Pour les experts-comptables et dirigeants de cabinets. Un tutoriel court et trois prompts prêts à adapter, avec sources officielles et précautions sur les données clients.",
+    resourceCard: {
+      titre: "3 tableaux de bord Claude pour piloter votre cabinet",
+      description: "Portefeuille, rendez-vous client et radar sectoriel.",
+      meta: "Lecture estimée : 5 minutes",
+    },
+    pills: ["3 prompts prêts à adapter", "Portefeuille, rendez-vous, secteur", "Sources vérifiables"],
+    // Route interne : reste dans la Preview lors de la recette, en production après activation.
+    urlRessource: "/g/tableaux-de-bord-claude-cabinets",
+    style: "modal",
+    cta: "Recevoir le guide",
+    signature: "Espoir Mwami — Althoce",
+  },
   /* ─────────────────────────────────────────────────────────────
    * EXEMPLE 1 — Guide Claude × Pennylane (guide existant, corrigé)
    * ──────────────────────────────────────────────────────────── */

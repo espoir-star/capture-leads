@@ -1,6 +1,6 @@
 # Publier un nouveau guide
 
-Objectif : une page de capture, la livraison par email, la segmentation, la relance J+2 et le suivi, **sans nouveau workflow** (n8n ni Brevo). Compter 20 à 30 minutes.
+Objectif : une page de capture, la livraison par email, la segmentation, la relance J+2 et le suivi, **sans nouveau workflow** (n8n ni Brevo).
 
 ## 1. Contenu de la page — `lib/ressources.ts`
 
@@ -10,7 +10,7 @@ Règle : chaque affirmation factuelle est vérifiée avant la mise en ligne.
 
 ## 2. Liste Brevo
 
-Brevo → Contacts → Listes → dossier « Lead Magnets » → Créer « LM - <titre> ». Noter son ID. **Ne pas créer d'automation** : le moteur livre et relance.
+Brevo → Contacts → Listes → dossier « Lead Magnets » → Créer « LM - <titre> ». Noter son ID réel. Créer et relire les trois champs texte `MG_REQ_<ID>`, `MG_SENT_<ID>`, `MG_ENROLLED_<ID>`. Le script `npm run brevo:dashboard-guide` propose un dry-run idempotent pour le seul guide Dashboards. **Ne pas créer d'automation** : le moteur livre et relance.
 
 ## 3. Mapping CRM et séquence — `config/leadMagnets.ts`
 
@@ -18,21 +18,23 @@ Brevo → Contacts → Listes → dossier « Lead Magnets » → Créer « LM - 
 "mon-nouveau-guide": {
   slug: "mon-nouveau-guide",
   resource: "mon-nouveau-guide",
-  brevoListId: 19,                      // ID réel de l'étape 2
+  brevoListId: ID_REEL,                 // ID réel de la nouvelle liste ; 19 appartient à Dashboards
   brevoListName: "LM - Mon nouveau guide",
   vertical: "FINANCE",                  // null + note TODO si ambigu (jamais deviner)
   subsector: "DAF_FINANCE",             // idem
   note: "Pourquoi cette verticale",
-  sequence: "guide-generique-v1",       // modèles génériques : rien d'autre à faire
+  sequence: "guide-mon-nouveau-guide-v1", // identité dédiée via genericGuide dans config/sequences.ts
   legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] }, // aucune automation historique
 },
 ```
 
 La verticale pilote la segmentation newsletter et le statut `B2B_ELIGIBLE` (un guide sans verticale donne `TO_REVIEW`).
 
+Une identité de séquence par guide évite les collisions de clés anti-doublons. `guide-generique-v1` reste réservé aux inscriptions historiques.
+
 ### Emails personnalisés (optionnel)
 
-Par défaut, les modèles génériques (#37 livraison, #38 relance J+2, vouvoiement) reprennent `resourceCard.titre` et `urlRessource`. Pour un texte propre au guide :
+Par défaut, les modèles génériques (#43 livraison, #44 relance J+2, vouvoiement, avec ALTHOCE_GUIDE_EMAIL_VERSION=2) reprennent `resourceCard.titre` et `urlRessource`. Pour un texte propre au guide :
 
 1. Créer `emails/sequences/<guide>/delivery.html` et `relance-j2.html` (partir de `emails/sequences/generique/`). Garder `{{ params.UNSUBSCRIBE_URL }}` et `{% if params.CONFIRM_URL %}…{% endif %}` ; **jamais `{{ unsubscribe }}`**.
 2. Les déclarer dans `config/emailTemplates.ts` (`id: null`) et une séquence dans `config/sequences.ts` (copier `guide-12-cas-ec-v1`).
@@ -54,7 +56,9 @@ Vercel → Environment Variables (Production) → `ALTHOCE_SEQUENCE_GUIDES` : aj
 
 Option prudente : d'abord `mon-nouveau-guide:qa` avec une adresse QA dans `ALTHOCE_SEQUENCE_QA_EMAILS`, puis retirer `:qa`.
 
-Sans cette étape, la page fonctionne (contact, liste, guide affiché sur la page merci) mais **aucun email n'est envoyé** : un nouveau guide n'a pas d'automation Brevo.
+Sans cette étape, un guide sans automation historique refuse proprement la capture **avant création du contact**. En `:qa`, seules les adresses autorisées passent. Après recette, ajouter uniquement ce guide en `:sans-liste` selon `docs/BASCULE_GUIDES.md`.
+
+Le workflow n8n rappelle la production : une inscription depuis la Preview ne prouve pas une relance par le code de cette Preview. Voir la frontière de recette dans `docs/NOUVEAU_GUIDE_CLAUDE_DASHBOARDS.md`.
 
 ## 6. Diffuser
 
