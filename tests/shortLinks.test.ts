@@ -21,6 +21,10 @@ test("liens courts : guide existant, code court, utm_content conforme et unique 
 
 test("liens courts : cible exacte, code inconnu et clés du prototype refusés", () => {
   assert.equal(
+    shortLinkTarget("db1"),
+    "/r/tableaux-de-bord-claude-cabinets?utm_source=linkedin&utm_medium=organic&utm_campaign=guide_claude_dashboards_cabinets&utm_content=LI_EC_20261013_01"
+  );
+  assert.equal(
     shortLinkTarget("ec1"),
     "/r/12-cas-usage-experts-comptables?utm_source=linkedin&utm_medium=organic&utm_campaign=12_cas_usage_experts_comptables&utm_content=LI_EC_20261012_01"
   );

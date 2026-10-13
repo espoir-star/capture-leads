@@ -23,9 +23,8 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     utm_source: "linkedin",
     utm_medium: "organic",
     utm_campaign: "guide_claude_dashboards_cabinets",
-    // TODO date réelle du post demandée à Espoir : LI_EC_AAAAMMJJ_01.
-    // Ne pas confondre la date de création du guide avec sa publication LinkedIn.
-    utm_content: null,
+    // Date de publication confirmée par Espoir : 13/10/2026.
+    utm_content: "LI_EC_20261013_01",
   },
   ec1: {
     slug: "12-cas-usage-experts-comptables",
