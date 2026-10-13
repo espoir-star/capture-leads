@@ -65,6 +65,13 @@ export async function captureLead(
   const firstTouch = cleanTouch(input.firstTouch);
   const currentTouch = cleanTouch(input.currentTouch);
   const attribution = resolveAttribution(firstTouch, currentTouch);
+  const lm = isWebinar ? undefined : getLeadMagnet(source.slug);
+  const active = lm ? activeGuideSequence(lm, process.env, email.email) : null;
+  // Les nouveaux guides n'ont aucun ancien moteur en repli : un flag absent ou
+  // un visiteur hors QA ne doit jamais créer un lead en promettant un email absent.
+  if (lm && !lm.legacy.automationId && !active) {
+    return { ok: false, status: 503, message: "Ce guide sera bientôt disponible. Merci de réessayer plus tard." };
+  }
   try {
     const existing = await getContactByEmail(email.email);
     const update = buildContactUpdate(existing, {
@@ -74,9 +81,7 @@ export async function captureLead(
       marketingOptoutToken: createMarketingOptoutToken(email.email),
       confirmToken: createEmailConfirmToken(email.email), phone, attribution, source, now,
     });
-    const lm = isWebinar ? undefined : getLeadMagnet(source.slug);
     const webinar = isWebinar ? getWebinar(source.slug) : undefined;
-    const active = lm ? activeGuideSequence(lm, process.env, email.email) : null;
     const sequence = active?.seq ?? (lm ? null : webinarSequence(webinar));
     const opposed = update.marketingStatus === "OPPOSED";
     const legacyOpposed = !!lm && !sequence && opposed;

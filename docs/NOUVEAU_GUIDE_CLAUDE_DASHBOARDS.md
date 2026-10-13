@@ -1,30 +1,79 @@
-# Nouveau guide — Claude Dashboards pour les cabinets (octobre 2026)
+# Claude Dashboards pour les cabinets
 
-Statut : **page de lecture en branche, publication de la capture bloquée tant que les ressources Brevo réelles ne sont pas créées**.
+## État au 13 octobre 2026
 
-## Page de lecture livrée
-`/g/tableaux-de-bord-claude-cabinets` : guide court, mobile, trois prompts copiables, liens officiels et limites comptables/RGPD. Le HTML des premières maquettes a été transposé en page Next.js intégrée à la charte Althoce.
+Raccordement préparé dans la PR [#21](https://github.com/espoir-star/capture-leads/pull/21), branche `feat/guide-claude-dashboards-cabinets`, basée sur `main` `a964906`. Le checkout utilisateur `feat/liens-courts` reste intact. **Pas encore de GO public : réception réelle, callback n8n et recette CRM restent à confirmer.**
 
-## Connexion exacte au moteur existant, SANS CRÉER DE WORKFLOW
+## Brevo réellement configuré
 
-**Ne pas fusionner / activer une page de capture sans liste et attributs Brevo réels.** Le compte ne possède actuellement que les listes Lead Magnets ID 6, 7, 10–16. Le connecteur Brevo accessible à ChatGPT propose la consultation et la création de modèles d'email, mais **pas la création de listes ni d'attributs**. Le navigateur TinyFish n'est pas opérationnel sans crédit ; Vercel retourne 403. Aucune liste ni ID ne sont inventés.
+Après dry-run, création additive par API puis relecture :
 
-1. Dans Brevo, créer dans le dossier existant « Lead Magnets » la liste `LM - Claude Dashboards cabinets`. Récupérer son **ID réel** `L`.
-2. Brevo → attributs contacts : créer trois attributs **texte** `MG_REQ_L`, `MG_SENT_L`, `MG_ENROLLED_L` ; vérifier les trois types via API GET /contacts/attributes. Remplacer `L` par son nombre effectif. Vérifier d'abord qu'ils n'existent pas.
-3. Dans `config/leadMagnets.ts`, ajouter `tableaux-de-bord-claude-cabinets` avec `brevoListId: L`, `brevoListName: "LM - Claude Dashboards cabinets"`, `vertical: "FINANCE"`, `subsector: "EXPERTISE_COMPTABLE"`, `resource` identique au slug et `legacy: { automationId:0,deliveryTemplateId:0,followupTemplateIds:[] }`. Donner une **identité dédiée** `guide-claude-dashboards-cabinets-v1` dans `config/sequences.ts` (utilise `generique.delivery` et `generique.relance-j2`), plutôt que `guide-generique-v1` partagé. S'assurer que le typage et les tests tiennent.
-4. Ajouter `lib/ressources.ts` avec `slug: "tableaux-de-bord-claude-cabinets"`, `urlRessource: "https://guide-gratuit-pi.vercel.app/g/tableaux-de-bord-claude-cabinets"`, `style:"modal"`, `cta:"Recevoir le guide"`, `vertical` non exposée côté client. Titre « 3 tableaux de bord Claude pour piloter votre cabinet », sous-titre « Un tutoriel de 5 minutes et trois prompts copiables, avec sources officielles et précautions sur les données clients. », pills « 3 prompts prêts à adapter », « Portefeuille, rendez-vous, secteur », « Sources vérifiables ». Le rendu utilise le composant `CaptureForm` existant et la page merci existante.
-5. `config/shortLinks.ts` : pour le POST LinkedIn prévu, créer un code court distinct et `utm_content` suivant la date effective de publication ; ne pas inventer d'URL de post dans `config/sourceRegistry.ts`.
-6. `ALTHOCE_SEQUENCE_GUIDES` : vérifier la valeur actuelle en prod, ajouter uniquement `tableaux-de-bord-claude-cabinets:qa` d'abord ; puis, après succès, `:sans-liste`. Ne pas enlever les 9 guides en production. `ALTHOCE_MULTI_GUIDES=on` reste inchangé si confirmé. Aucun nouveau workflow n8n et aucune automation Brevo.
-7. Recette QA : formulaire complet → fiche Brevo, `MG_REQ_L` → modèle #43 livraison → `MG_SENT_L` → `MG_ENROLLED_L` → J+2 (ou accélération QA explicite) → opposition respectée et CRM selon règles actives ; répéter avec un même email ayant un ancien guide, sans doublon de prospect. Vérifier url réelle et message Gmail, pas seulement accusé d'envoi.
-8. `npm run check`, CI, Preview, validation de publication, puis prod et test live avant de diffuser le lien `https://guide-gratuit-pi.vercel.app/r/tableaux-de-bord-claude-cabinets`. Ne pas publier ce lien comme actif avant le test complet.
+| Objet | Valeur vérifiée |
+| --- | --- |
+| Dossier | `Lead Magnets`, ID **5** |
+| Liste | `LM - Claude Dashboards cabinets`, ID **19** |
+| Attributs normaux texte | `MG_REQ_19`, `MG_SENT_19`, `MG_ENROLLED_19` |
+| Modèle livraison | **43**, actif, titre/lien du guide et désabonnement paramétrés |
+| Modèle relance | **44**, actif, titre/lien du guide et désabonnement paramétrés |
 
-## Sources et réserves éditoriales
+Le deuxième dry-run ne prévoit aucune création. Aucun contact, liste historique, template ou automation n'a été modifié par le script.
 
-- [Anthropic, 8 octobre 2026, lancement Dashboards](https://claude.com/resources/articles/dashboards-and-motion)
-- [Anthropic, démarrer Claude Dashboards](https://support.claude.com/fr/articles/17454700-commencer-avec-claude-dashboards)
-- [Insee, ratios annuels Ésane](https://www.insee.fr/fr/statistiques/2015421)
-- [Insee, indice de production industrielle : périmètre mensuel](https://www.insee.fr/fr/metadonnees/source/indicateur/p1646/presentation)
-- [CNIL, IA générative pour TPE/PME](https://www.cnil.fr/fr/utiliser-lia-generative-dans-les-tpe-et-pme)
-- [Anthropic, DPA offres commerciales](https://support.claude.com/fr/articles/7996862-comment-puis-je-consulter-et-signer-votre-addendum-de-traitement-des-donnees-dpa)
+```bash
+# BREVO_API_KEY dans l'environnement serveur sécurisé, jamais en argument ni dans Git.
+npm run brevo:dashboard-guide            # aperçu, aucune écriture
+npm run brevo:dashboard-guide -- --apply # liste + 3 attributs manquants uniquement
+```
 
-Ne pas affirmer que CEGID, Pennylane ou un autre logiciel a nécessairement un connecteur natif Claude Dashboards. Ne pas inférer TVA due, impayés de 30 jours ou tension de trésorerie si les bonnes données ne sont pas accessibles. La disponibilité varie selon plan, rôles et droits d'administration.
+Le script pagine les dossiers/listes, refuse les homonymes ambigus, un dossier différent, les types incompatibles et le dépassement de capacité. Il ne déplace ni ne renomme rien. Les créations ne sont pas réessayées aveuglément après erreur réseau : relancer le dry-run. Une seule instance à la fois, l'API de création de liste n'offrant pas de verrou distribué. Toute reprise relit la liste et les types.
+
+## Raccordement au moteur commun
+
+- Capture : `/r/tableaux-de-bord-claude-cabinets`, via `lib/ressources.ts`, formulaire et page merci existants.
+- Lecture : `/g/tableaux-de-bord-claude-cabinets`, trois prompts copiables, six sources primaires.
+- Mapping serveur : liste 19, `FINANCE`, `EXPERTISE_COMPTABLE`.
+- Séquence dédiée : `guide-claude-dashboards-cabinets-v1`. Livraison `generique.delivery`, relance `generique.relance-j2`, à 48 heures si autorisée.
+- Publication email : `ALTHOCE_GUIDE_EMAIL_VERSION=2` pour #43/#44. Aucun nouvel email, workflow n8n ou automation Brevo créé.
+- Multi-guides : les champs 19 sont calculés par la configuration existante ; les demandes/reçus des neuf autres guides gardent leurs noms. Une seule fiche par email et mêmes clés anti-doublons par guide.
+- Sans flag de livraison, ou adresse hors QA : réponse 503 avant écriture contact pour ce guide sans ancien moteur. Cela évite un faux succès sans livraison. Les guides historiques conservent leur repli existant.
+- Lien interne relatif : reste sur la Preview depuis la page merci ; les emails utilisent un lien absolu construit côté serveur. `SITE_URL` ne doit pas forcer le domaine de production pendant une recette Preview du nouveau guide.
+- Qualification, scoring, first touch, protections, opposition et consentement : parcours commun inchangé.
+
+## LinkedIn
+
+Code **db1 réservé** dans `config/shortLinks.ts`, campagne `guide_claude_dashboards_cabinets`, source `linkedin`, medium `organic`. La date réelle du post a été demandée, pas déduite de la création du guide. `utm_content: null` empêche la diffusion du code tant qu'elle n'est pas confirmée. Renseigner alors `LI_EC_AAAAMMJJ_01` (ou le numéro disponible ce jour-là). Ne pas partager `/l/db1` avant activation et recette. Aucune URL de post inventée dans `sourceRegistry.ts`.
+
+## CRM
+
+Le connecteur existant côté CRM est l'unique propriétaire de la synchronisation. Son parseur lit `MG_REQ_\d+`, la ressource, les noms de guides et la provenance imbriquée ; il n'est pas limité aux IDs 6–16. Le nouveau champ 19 respecte ce format. Le formulaire conserve `INTENT_UPDATED_AT`, besoin/horizon et le score nécessaires à sa politique d'admission. Aucune règle commerciale ni synchronisation supplémentaire créée.
+
+Compatibilité du contrat/code ne signifie pas remontée réelle : vérifier le contact QA exact dans l'environnement de recette CRM, sans injecter de fausses tâches dans les files commerciales. Respecter les exclusions `IS_QA` existantes.
+
+## Vérifications et limites de recette
+
+- Sources Anthropic, Insee et CNIL relues le 13/10/2026 ; pas de promesse de connecteur comptable universel, de temps réel garanti ni d'autorisation juridique par le seul abonnement payant.
+- Tests HTTP contre doubles locaux : nouveau guide QA → contact / champs 19 / livraison #43 / inscription dédiée / relance #44 ; rejeu sans doublon ; deux guides même email ; score 30 et first touch conservés ; opposition bloque la relance ; hors QA refusé sans contact. Ces tests n'envoient aucun email réel.
+- Les suites communes vérifient aussi validation, anti-bot, cookies, scoring, sécurité et neuf guides existants. Voir le rapport de session pour le résultat du dernier commit.
+- Les statuts `MG_SENT=SENT` et `MG_ENROLLED=ENROLLED` prouvent respectivement acceptation d'envoi et acceptation du webhook, **pas** réception en boîte ni succès du callback différé.
+
+## Déploiement et portes de validation
+
+Production Vercel relue dans le navigateur le 13/10 : neuf slugs en `:sans-liste`, `ALTHOCE_MULTI_GUIDES=on`, version email `2`. Le connecteur API Vercel renvoie 403 pour cette équipe ; la session navigateur a été reconnectée. Aucune valeur de production changée à ce stade.
+
+1. Contrôler lint, types, tests, build, CI et Preview de la branche.
+2. Recette limitée aux emails autorisés : `tableaux-de-bord-claude-cabinets:qa`, conserver l'ensemble des neuf flags actuels. Vérifier Turnstile sans le désactiver.
+3. **Frontière n8n :** le workflow actuel rappelle `https://guide-gratuit-pi.vercel.app/api/sequences/step`. Avant fusion, la production ne connaît pas la séquence Dashboards. Ne pas inscrire un QA dans ce workflow depuis une Preview en prétendant valider sa relance. Prévoir un déploiement du code avec activation QA seulement, après accord explicite sur cette étape, ou un routage QA autorisé ; ne pas changer le callback commun des neuf guides.
+4. Vérifier séparément : contact exact, MG_REQ_19, email #43 reçu avec lien fonctionnel, MG_SENT_19, inscription n8n, exécution et réception #44, deux guides/une fiche, opposition, contrôle CRM et responsive.
+5. Après recette complète seulement : remplacer uniquement le suffixe du nouveau slug par `:sans-liste`, redéployer, vérifier l'environnement réellement pris en compte et refaire une capture QA. Aucun ancien workflow réactivé.
+6. Confirmer date/UTM et alors diffuser le lien public. Aucun backfill, aucune campagne newsletter, aucun contact réel supprimé.
+
+Retour arrière du seul nouveau guide : retirer son flag et redéployer ; les nouvelles soumissions seront refusées proprement. Préserver les neuf flags historiques et examiner séparément toute relance QA déjà inscrite. Aucune automation historique n'existe pour la liste 19.
+
+## Sources
+
+- [Anthropic : annonce Dashboards du 8 octobre](https://claude.com/resources/articles/dashboards-and-motion)
+- [Anthropic : guide Dashboards, disponibilité, requêtes et actualisation](https://support.claude.com/fr/articles/17454700-commencer-avec-claude-dashboards)
+- [Insee : ratios annuels Ésane 2023](https://www.insee.fr/fr/statistiques/2015421)
+- [Insee : indice de production industrielle mensuel](https://www.insee.fr/fr/metadonnees/source/indicateur/p1646/presentation)
+- [CNIL : précautions IA pour TPE/PME](https://www.cnil.fr/fr/utiliser-lia-generative-dans-les-tpe-et-pme)
+- [Anthropic : DPA des offres commerciales](https://support.claude.com/fr/articles/7996862-comment-puis-je-consulter-et-signer-votre-addendum-de-traitement-des-donnees-dpa)
+- [Brevo : création de liste](https://developers.brevo.com/reference/create-list)

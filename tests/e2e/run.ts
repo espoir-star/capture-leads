@@ -98,9 +98,10 @@ async function main() {
       SIGNING_SECRET: "e2e",
       // Moteur de séquences : guide pilote basculé ; Pennylane en mode QA (adresses QA seulement) ;
       // Meta Ads en bascule « sans-liste » (tous les prospects, automation historique non alimentée)
-      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables,guide-claude-pennylane:qa,guide-claude-meta-ads:sans-liste",
-      ALTHOCE_SEQUENCE_QA_EMAILS: "qa-multi.e2e@cabinet.fr,qa-retard.e2e@cabinet.fr",
+      ALTHOCE_SEQUENCE_GUIDES: "12-cas-usage-experts-comptables,guide-claude-pennylane:qa,guide-claude-meta-ads:sans-liste,tableaux-de-bord-claude-cabinets:qa",
+      ALTHOCE_SEQUENCE_QA_EMAILS: "qa-multi.e2e@cabinet.fr,qa-retard.e2e@cabinet.fr,qa-dashboard.e2e@cabinet.fr",
       ALTHOCE_SEQUENCE_QA_TIME_SCALE: "120",
+      ALTHOCE_GUIDE_EMAIL_VERSION: "2",
       // Multi-guides en recette, comme la Production du 11/10/2026 (incident #1810)
       ALTHOCE_MULTI_GUIDES: "qa",
       N8N_SEQUENCE_WEBHOOK_URL: `${MOCK}/__n8n`,
@@ -362,7 +363,7 @@ async function main() {
     const r = await post("/api/lead", lead());
     assert.equal(r.status, 200);
     const s = await until((x) => x.emails.length === 1 && x.n8n.length === 1, "livraison + inscription");
-    assert.equal(s.emails[0].templateId, 35, "modèle de livraison du pilote");
+    assert.equal(s.emails[0].templateId, 41, "modèle publié de livraison du pilote");
     assert.equal(s.emails[0].to[0].email, "claire.martin.e2e@gmail.com");
     assert.match(s.emails[0].headers["List-Unsubscribe"], /\/api\/marketing\/unsubscribe\?t=m1\./);
     assert.equal(s.n8n[0].authorization, "Bearer e2e-n8n-token");
@@ -389,7 +390,7 @@ async function main() {
     assert.equal(r.status, 200);
     assert.equal(r.body.marketing, "opposed", "opposition confirmée par le serveur");
     const s = await until((x) => x.emails.length === 1, "livraison");
-    assert.equal(s.emails[0].templateId, 37, "modèle générique");
+    assert.equal(s.emails[0].templateId, 43, "modèle générique publié");
     assert.equal(s.emails[0].params.GUIDE_URL.startsWith("https://"), true);
     const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
     assert.deepEqual(c.listIds, [], "pas d'ajout à la liste 6 : l'automation n'envoie rien");
@@ -853,6 +854,85 @@ async function main() {
     const u = await fetch(`${APP}/l/nexistepas`, { redirect: "manual" });
     assert.equal(u.status, 302);
     assert.equal(new URL(u.headers.get("location")!, APP).pathname, "/");
+  });
+
+  await scenario("DB1 · nouveau guide en QA : visiteur non autorisé refusé avant écriture ou email", async () => {
+    const r = await post("/api/lead", lead({ slug: "tableaux-de-bord-claude-cabinets" }));
+    assert.equal(r.status, 503);
+    assert.equal(r.body.leadRef, undefined);
+    const s = await state();
+    assert.equal(s.contacts.length, 0);
+    assert.equal(s.emails.length, 0);
+  });
+
+  await scenario("DB2 · Dashboards : capture QA, champs 19, #43, n8n dédié, #44 et rejeu sans doublon", async () => {
+    const slug = "tableaux-de-bord-claude-cabinets";
+    const email = "qa-dashboard.e2e@cabinet.fr";
+    const touch = { ...PILOT_TOUCH, utm_campaign: "guide_claude_dashboards_cabinets", utm_content: "LI_EC_20261013_01", landing_page: `/r/${slug}` };
+    const r = await post("/api/lead", lead({ slug, email, firstTouch: touch, currentTouch: touch }));
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.ok(r.body.leadRef);
+    const s = await until((x) => x.emails.length === 1 && x.n8n.length === 1 && !!x.contacts[0]?.attributes.MG_ENROLLED_19, "nouveau guide livré et inscrit");
+    const c = (await contactOf(email))!;
+    assert.deepEqual(c.listIds, [], "QA hors liste");
+    for (const [key, value] of Object.entries({ RESSOURCE: slug, VERTICAL: "FINANCE", SUBSECTOR: "EXPERTISE_COMPTABLE", LEAD_SCORE: 12, EMAIL_STATUS: "PENDING", PHONE_STATUS: "VALID_FORMAT", UTM_SOURCE: "linkedin", UTM_CONTENT: touch.utm_content })) {
+      assert.equal(c.attributes[key], value, key);
+    }
+    assert.ok(c.attributes.INTENT_UPDATED_AT, "signal de projet daté pour le CRM");
+    assert.equal(JSON.parse(String(c.attributes.MG_REQ_19)).slug, slug);
+    assert.equal(JSON.parse(String(c.attributes.MG_SENT_19)).status, "SENT");
+    assert.equal(JSON.parse(String(c.attributes.MG_ENROLLED_19)).status, "ENROLLED");
+    assert.equal(c.attributes.GUIDES_COUNT, 1);
+    assert.match(String(c.attributes.GUIDES_NAMES), /tableaux de bord Claude/);
+    assert.equal(s.emails[0].templateId, 43);
+    assert.equal(s.emails[0].params.GUIDE_URL, `${APP}/g/${slug}`);
+    assert.equal((await fetch(s.emails[0].params.GUIDE_URL)).status, 200);
+    assert.equal(s.n8n[0].body.sequenceId, "guide-claude-dashboards-cabinets-v1");
+    assert.ok(Date.parse(String(s.n8n[0].body.at)) - Date.now() < 25 * 60_000);
+    // Horloge simulée uniquement dans le faux prestataire pour l'étape différée.
+    process.env.SIGNING_SECRET = "e2e";
+    const { signEnrollment } = await import("@/lib/sequences/enrollment");
+    const at = Date.now() - 49 * 3_600_000;
+    const oldRequest = JSON.parse(String(c.attributes.MG_REQ_19));
+    const shifted = await fetch(`${MOCK}/v3/contacts/${c.id}?identifierType=contact_id`, {
+      method: "PUT", headers: { "api-key": MOCK_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ attributes: { MG_REQ_19: JSON.stringify({ ...oldRequest, firstTrackedAt: new Date(at).toISOString(), requestedAt: new Date(at).toISOString(), followupAt: new Date(at).toISOString() }) } }),
+    });
+    assert.equal(shifted.status, 204);
+    const enrollmentId = signEnrollment({ s: "guide-claude-dashboards-cabinets-v1", c: c.id, t: at, r: slug });
+    const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const step = { enrollmentId, stepId: "relance-j2" };
+    assert.equal((await post("/api/sequences/step", step, auth)).status, 200);
+    assert.equal((await post("/api/sequences/step", step, auth)).status, 200);
+    const after = await state();
+    assert.equal(after.emails.filter((e) => e.templateId === 44).length, 1, "une seule relance générique v2");
+  });
+
+  await scenario("DB3 · Dashboards + ancien guide : fiche unique, first touch et score conservés, opposition respectée", async () => {
+    const email = "qa-dashboard.e2e@cabinet.fr";
+    await seed({ email, attributes: { LEAD_SCORE: 30, UTM_SOURCE: "linkedin", UTM_CONTENT: "LI_EC_INITIAL" } });
+    const dashboard = lead({ email, slug: "tableaux-de-bord-claude-cabinets", currentTouch: { ...PILOT_TOUCH, utm_source: "google", utm_content: "GOOGLE_TEST" } });
+    assert.equal((await post("/api/lead", dashboard)).status, 200);
+    await until((s) => s.emails.length === 1 && s.n8n.length === 1, "livraison Dashboards");
+    assert.equal((await post("/api/lead", lead({ email, slug: "guide-claude-pennylane" }))).status, 200);
+    await until((s) => s.emails.length === 2 && s.contacts[0]?.attributes.GUIDES_COUNT === 2, "deux guides");
+    assert.equal((await post("/api/lead", dashboard)).status, 200);
+    const s = await state();
+    assert.equal(s.contacts.length, 1);
+    const c = (await contactOf(email))!;
+    assert.ok(c.attributes.MG_REQ_6 && c.attributes.MG_REQ_19);
+    assert.equal(c.attributes.LEAD_SCORE, 30);
+    assert.equal(c.attributes.UTM_SOURCE, "linkedin");
+    assert.equal(c.attributes.UTM_CONTENT, "LI_EC_INITIAL");
+    const unsub = s.emails[0].headers["List-Unsubscribe"].slice(1, -1);
+    assert.equal((await fetch(unsub, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "List-Unsubscribe=One-Click" })).status, 200);
+    process.env.SIGNING_SECRET = "e2e";
+    const { signEnrollment } = await import("@/lib/sequences/enrollment");
+    const enrollmentId = signEnrollment({ s: "guide-claude-dashboards-cabinets-v1", c: c.id, r: "tableaux-de-bord-claude-cabinets", t: Date.now() - 49 * 3_600_000 });
+    const step = await post("/api/sequences/step", { enrollmentId, stepId: "relance-j2" }, { Authorization: `Bearer ${SEQUENCE_SECRET}` });
+    assert.equal(step.status, 200);
+    assert.equal(step.body.reason, "marketing_not_allowed");
+    assert.equal((await state()).emails.length, 2, "ni troisième livraison ni relance après opposition");
   });
 
   await scenario("Brevo en panne : message clair, réessai possible", async () => {

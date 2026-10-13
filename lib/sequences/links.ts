@@ -70,5 +70,5 @@ export function guideParams(slug: string | undefined): { GUIDE_TITLE: string; GU
   const r = slug ? getRessource(slug) : undefined;
   if (!r) return null;
   const title = (r.resourceCard?.titre ?? r.titre).replace(/<\/?accent>/g, "").trim();
-  return { GUIDE_TITLE: title, GUIDE_URL: r.urlRessource };
+  return { GUIDE_TITLE: title, GUIDE_URL: new URL(r.urlRessource, siteUrl()).href };
 }

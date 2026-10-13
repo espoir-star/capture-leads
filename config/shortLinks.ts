@@ -13,10 +13,20 @@ export interface ShortLink {
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
-  utm_content: string;
+  /** null réserve un code, sans le diffuser tant que la date du post n'est pas confirmée. */
+  utm_content: string | null;
 }
 
 export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
+  db1: {
+    slug: "tableaux-de-bord-claude-cabinets",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "guide_claude_dashboards_cabinets",
+    // TODO date réelle du post demandée à Espoir : LI_EC_AAAAMMJJ_01.
+    // Ne pas confondre la date de création du guide avec sa publication LinkedIn.
+    utm_content: null,
+  },
   ec1: {
     slug: "12-cas-usage-experts-comptables",
     utm_source: "linkedin",
@@ -30,6 +40,7 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
 export function shortLinkTarget(code: string): string | null {
   if (!Object.hasOwn(SHORT_LINKS, code)) return null;
   const l = SHORT_LINKS[code];
+  if (!l.utm_content) return null;
   if (!getLeadMagnet(l.slug)) return null;
   const q = new URLSearchParams({ utm_source: l.utm_source, utm_medium: l.utm_medium, utm_campaign: l.utm_campaign, utm_content: l.utm_content });
   return `/r/${l.slug}?${q}`;

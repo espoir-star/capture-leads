@@ -54,7 +54,7 @@ test("multi-guide : l'alerte montre les ressources exactes, pas un téléchargem
 
 test("multi-guide : chaque guide possède une identité de séquence propre et réutilise les modèles", () => {
   const ids = Object.values(LEAD_MAGNETS).map((lm) => lm.sequence);
-  assert.equal(new Set(ids).size, 9, "neuf ressources, neuf identités (pas neuf workflows n8n)");
+  assert.equal(new Set(ids).size, ids.length, "une identité par ressource, un seul moteur n8n");
   assert.ok(getSequence("guide-generique-v1"), "compatibilité des anciennes inscriptions signées");
   for (const lm of Object.values(LEAD_MAGNETS)) {
     const seq = getSequence(lm.sequence);

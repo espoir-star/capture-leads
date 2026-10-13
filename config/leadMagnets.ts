@@ -1,4 +1,4 @@
-/** Mapping serveur des neuf guides : liste, métier et séquence.
+/** Mapping serveur des guides : liste, métier et séquence.
  * Une identité de séquence par ressource, un moteur n8n et des modèles partagés.
  * Les correspondances métier inconnues restent null ; ne pas les deviner.
  */
@@ -23,6 +23,14 @@ export interface LeadMagnetConfig {
 }
 
 export const LEAD_MAGNETS = {
+  "tableaux-de-bord-claude-cabinets": {
+    slug: "tableaux-de-bord-claude-cabinets", resource: "tableaux-de-bord-claude-cabinets",
+    brevoListId: 19, brevoListName: "LM - Claude Dashboards cabinets",
+    vertical: "FINANCE", subsector: "EXPERTISE_COMPTABLE",
+    note: "Liste 19 et champs MG_*_19 créés et relus via API le 13/10/2026. Cible explicite : cabinets comptables.",
+    sequence: "guide-claude-dashboards-cabinets-v1",
+    legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
+  },
   "12-cas-usage-experts-comptables": {
     slug: "12-cas-usage-experts-comptables", resource: "12-cas-usage-experts-comptables",
     brevoListId: 10, brevoListName: "LM - 12 cas d'usage experts-comptables",

@@ -12,6 +12,7 @@
     "test:e2e": "tsx tests/e2e/run.ts",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "brevo:attributes": "tsx --env-file-if-exists=.env scripts/brevo/setup-attributes.ts",
+    "brevo:dashboard-guide": "tsx --env-file-if-exists=.env scripts/brevo/setup-dashboard-guide.ts",
     "brevo:backfill": "tsx --env-file-if-exists=.env scripts/brevo/backfill.ts",
     "brevo:smoke": "tsx --env-file-if-exists=.env scripts/brevo/smoke-test.ts",
     "newsletter": "tsx --env-file-if-exists=.env scripts/newsletter/campaign.ts",
