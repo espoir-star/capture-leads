@@ -111,4 +111,7 @@ export const CRM_SALES_STATES: Readonly<Record<string, CommercialState>> = {
   MEETING_CANCELLED: "MEETING_CANCELLED", OPPORTUNITY: "OPPORTUNITY", CLIENT: "CLIENT",
   LOST: "LOST", DISQUALIFIED: "DISQUALIFIED", ARCHIVED: "ARCHIVED",
   DO_NOT_CALL: "DO_NOT_CALL", OPPOSED: "DO_NOT_CALL",
+  // Contrat v1.2 : écarté avant attribution (motif dans CRM_SALES_REASON). Relances et
+  // alerte HOT suspendues ; une réintégration CRM renvoie RECEIVED avec une version supérieure.
+  UNVERIFIED: "DISQUALIFIED",
 };

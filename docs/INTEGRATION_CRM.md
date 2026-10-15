@@ -1,6 +1,6 @@
 # Contrat Brevo ↔ CRM Althoce — V1
 
-Version contractuelle **1.1 — 12 octobre 2026**. Fichier identique dans le CRM (`docs/integrations/brevo-crm-v1.md`) et les guides (`docs/INTEGRATION_CRM.md`).
+Version contractuelle **1.2 — 15 octobre 2026** (1.1 du 12 octobre, plus le statut `UNVERIFIED`, le motif `CRM_SALES_REASON` et l'appel autorisé sur opposition marketing). Fichier identique dans le CRM (`docs/integrations/brevo-crm-v1.md`) et les guides (`docs/INTEGRATION_CRM.md`).
 
 Le contrat décrit le fonctionnement attendu du code ; il ne prouve pas son activation. Voir le rapport `brevo-crm-finalisation-2026-10-12.md` côté CRM pour les versions, contrôles et limites observées. Au début de l’audit du 12 octobre, la production CRM n’avait ni migration 0074, ni clé serveur Brevo, ni timer Brevo ; aucun checkpoint n'a été supprimé ou réinitialisé. Les cinq contacts Brevo #1833–1837 sont absents du CRM au rapprochement en lecture seule. Aucun import historique n'est relancé.
 
@@ -89,11 +89,14 @@ Le champ existant `LAST_EMAIL_CLICK_AT` est actuellement de type Date : il n'app
 | `CRM_SALES_UPDATED_AT` | **texte ISO UTC** | CRM, date de la projection commerciale |
 | `CRM_SALES_VERSION` | nombre (`float`) | CRM, version monotone par lien externe |
 | `CRM_SALES_EVENT_ID` | texte UUID | CRM, identifiant durable du retour |
+| `CRM_SALES_REASON` | texte | CRM, motif du dernier écart : `NO_PHONE`, `FOREIGN_PHONE`, `FAKE_PROFILE`, `OUT_OF_TARGET`, `DUPLICATE`, `OTHER`. Écrit seulement avec `UNVERIFIED`, conservé ensuite : à lire uniquement quand `CRM_SALES_STATUS=UNVERIFIED` |
 | `CRM_DO_NOT_CALL` | booléen | Refus téléphone, monotone |
 | `CRM_EMAIL_OPPOSED` | booléen | Refus email, monotone |
 | `CRM_GLOBAL_OPPOSED` | booléen | Refus global ou portée ambiguë, monotone |
 
 Les refus sont séparés parce qu'un simple statut commercial ne permettrait pas d'en conserver la portée. **Aucun `false` n'est envoyé pour lever ces refus.** L'opposition email/globale peut également positionner le champ natif `emailBlacklisted` à `true`, jamais à `false`.
+
+**Appel autorisé sur la demande (v1.2).** Un prospect opposé aux communications marketing mais ayant déclaré un projet est visible dans « Sollicitation bloquée », sans dossier ni écriture Brevo. Un administrateur peut, avec confirmation et commentaire tracés, autoriser **un suivi téléphonique de ce projet**. Cette décision ne lève aucun refus : `CRM_EMAIL_OPPOSED`/`CRM_GLOBAL_OPPOSED` et `emailBlacklisted` restent à `true`, `CRM_SALES_STATUS` reste `OPPOSED`, aucun email (ni rappel de RDV) n'est envoyé. Elle est impossible en cas de refus téléphonique ; si la personne refuse au téléphone, « Ne plus appeler » écrit `CRM_DO_NOT_CALL=true`.
 
 Réutilisation des champs commerciaux existants : `BREVO_COMMERCIAL_MAPPING` accepte, pour chaque statut CRM, uniquement les attributs `STATUT_APPEL`, `ETAPE_COMMERCIALE`, `ETAT_RDV`, `TYPE_RDV`, `DATE_APPEL`, `NOM_SETTER`, `LIFECYCLE_STAGE`. Le mapping reste désactivé par défaut. `fixtures/brevo-commercial-mapping.json` prépare quatre correspondances avec les libellés effectivement observés : NO_ANSWER → À rappeler ; CONTACTED → Contacté ; MEETING_PENDING → RDV planifié / Prévu ; DO_NOT_CALL → Ne plus appeler. Le laisser vide pour ce raccordement : les champs CRM sont directement consommés. Ce JSON reste un exemple non activé de compatibilité historique. Les autres états utilisent uniquement `CRM_SALES_STATUS`, afin de ne pas écraser un détail comme R2 ou Négociation avec une étape moins précise. Les catégories sont envoyées avec leur valeur native, pas leur libellé. Toute valeur/type incompatible bloque l'écriture ; la relecture doit confirmer le résultat.
 
@@ -132,6 +135,7 @@ Files internes : `ready`, `review`, `coordinates`, `historical`, `existing_follo
 |---|---|---|
 | RECEIVED | Réception, encore à distribuer | Pas de pause par simple import |
 | ASSIGNED | Responsable attribué, qualification new | Pas de contact abouti déduit |
+| UNVERIFIED | Écarté par un administrateur avant attribution (« Non vérifié » / « Écarter »), motif dans `CRM_SALES_REASON` | Suspendre. Réintégration humaine ou nouveau signal qualifiant : retour à `RECEIVED` avec une nouvelle version |
 | TAKEN_IN_CHARGE | contacting/callback, ou découverte sans RDV actif | Suspendre |
 | NO_ANSWER | Tentative enregistrée unreachable | Suspendre ; le CRM gère le rappel humain |
 | CONTACTED | Qualification positive qualified sans RDV actif | Suspendre |
@@ -144,11 +148,11 @@ Files internes : `ready`, `review`, `coordinates`, `historical`, `existing_follo
 | LOST | stage lost | Suspendre ; pas de réouverture automatique |
 | ARCHIVED | Dossier archivé déjà lié/autorisé | Suspendre ; pas de réouverture automatique |
 | DO_NOT_CALL | Opposition téléphone explicite | Suspendre la sollicitation, conserver sa portée |
-| OPPOSED | Opposition email/globale/ambiguë | Suspendre ; aucune tentative de contournement par téléphone |
+| OPPOSED | Opposition email/globale/ambiguë | Suspendre ; aucun contournement automatique par téléphone. Seul un appel autorisé par un administrateur (tracé) reste possible, l'email restant refusé |
 
-Ordre CRM : opposition > archive > gagné/perdu > non qualifié > opportunité > RDV actif/dernier RDV > qualification > attribution. Un R1 planifié signifie une réservation, pas la preuve que le client l'a accepté. Annuler un RDV actualise l'état commercial existant sans relancer automatiquement les guides.
+Ordre CRM : opposition > archive > gagné/perdu > non qualifié > opportunité > RDV actif/dernier RDV > qualification > écart avant attribution (`UNVERIFIED`) > attribution. Un R1 planifié signifie une réservation, pas la preuve que le client l'a accepté. Annuler un RDV actualise l'état commercial existant sans relancer automatiquement les guides.
 
-La projection canonique comporte statut, version entière positive, identifiant d'événement et date ISO avec fuseau. Elle prime sur les anciens libellés commerciaux. Un refus CRM ou historique reste prioritaire. Une projection partielle/inconnue suspend les relances. Une projection initiale RECEIVED/ASSIGNED ne lève pas un ancien état commercial restrictif. `MEETING_BOOKED` reste accepté en lecture comme alias non confirmé de transition ; le CRM n'émet plus cette valeur. `Prévu` et `RDV planifié` ne sont pas des confirmations. Sans version canonique, une annulation historique prime par prudence sur une ancienne confirmation.
+La projection canonique comporte statut, version entière positive, identifiant d'événement et date ISO avec fuseau. Elle prime sur les anciens libellés commerciaux. Un refus CRM ou historique reste prioritaire. Une projection partielle/inconnue suspend les relances. Une projection initiale RECEIVED/ASSIGNED ne lève pas un ancien état commercial restrictif, sauf `UNVERIFIED`, levé seulement par une réintégration humaine ou un nouveau signal qualifiant. Un `CRM_SALES_STATUS=UNVERIFIED` relu dans Brevo n'est pas un suivi commercial existant. `MEETING_BOOKED` reste accepté en lecture comme alias non confirmé de transition ; le CRM n'émet plus cette valeur. `Prévu` et `RDV planifié` ne sont pas des confirmations. Sans version canonique, une annulation historique prime par prudence sur une ancienne confirmation.
 
 L'effacement de champs de qualification ne remet pas un dossier pris en charge à RECEIVED/ASSIGNED : le dernier état restrictif est conservé. Une éventuelle reprise marketing nécessite un futur parcours humain explicite, absent de cette V1. Une étape suspendue est journalisée `commercial_cycle` ; le moteur ne programme ensuite que les étapes transactionnelles. Une nouvelle demande de guide n'efface pas les champs CRM.
 
