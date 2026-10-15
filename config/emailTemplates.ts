@@ -48,31 +48,31 @@ export const EMAIL_TEMPLATES = {
     name: "SEQ · Webinar · Confirmation",
     subject: "Inscription confirmée : {{ params.WEBINAR_TITLE }}",
     file: "emails/sequences/webinar/confirmation.html",
-    id: null,
+    id: 45,
   },
   "webinar.j-1": {
     name: "SEQ · Webinar · Rappel J-1",
     subject: "Demain : {{ params.WEBINAR_TITLE }}",
     file: "emails/sequences/webinar/rappel-j-1.html",
-    id: null,
+    id: 46,
   },
   "webinar.h-1": {
     name: "SEQ · Webinar · Rappel H-1",
     subject: "On commence dans une heure : {{ params.WEBINAR_TITLE }}",
     file: "emails/sequences/webinar/rappel-h-1.html",
-    id: null,
+    id: 47,
   },
   "webinar.replay": {
     name: "SEQ · Webinar · Replay",
     subject: "Le replay : {{ params.WEBINAR_TITLE }}",
     file: "emails/sequences/webinar/replay.html",
-    id: null,
+    id: 48,
   },
   "webinar.suivi": {
     name: "SEQ · Webinar · Suivi",
     subject: "Et maintenant, on l'applique chez vous ?",
     file: "emails/sequences/webinar/suivi.html",
-    id: null,
+    id: 49,
   },
 } satisfies Record<string, EmailTemplateDef>;
 

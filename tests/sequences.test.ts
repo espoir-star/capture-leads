@@ -65,10 +65,12 @@ test("modèles : fichiers présents, désinscription Althoce, jamais {{ unsubscr
   }
 });
 
-test("webinar : parcours inactif tant que ses modèles n'existent pas ; replay seulement s'il est publié", () => {
+test("webinar : parcours prêt (modèles 45-49 créés le 15/10/2026), seulement pour un webinar ouvert ; replay seulement s'il est publié", () => {
   const seq = SEQUENCES["webinar-standard-v1"];
-  assert.equal(sequenceReady(seq), false);
-  assert.equal(sw.webinarSequence({ sequence: "webinar-standard-v1", status: "open" }), null);
+  assert.equal(sequenceReady(seq), true);
+  assert.equal(sw.webinarSequence({ sequence: "webinar-standard-v1", status: "open" })?.id, "webinar-standard-v1");
+  assert.equal(sw.webinarSequence({ sequence: "webinar-standard-v1", status: "draft" }), null, "démonstration ou brouillon");
+  assert.equal(sw.webinarSequence({ status: "open" }), null, "webinar sans parcours déclaré");
   assert.equal(sw.webinarSequence({ sequence: "guide-generique-v1", status: "draft" }), null, "webinar non ouvert");
   assert.equal(seq.steps.find((x) => x.id === "replay")?.requires, "replayUrl");
   assert.deepEqual(

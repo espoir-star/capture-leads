@@ -4,6 +4,7 @@
  */
 
 import { getWebinar } from "@/config/webinars";
+import { googleCalendarUrl, personalWebinarLinks } from "@/lib/webinar/access";
 import { getRessource } from "@/lib/ressources";
 import { createEmailConfirmToken } from "@/lib/security/emailConfirm";
 import { createMarketingOptoutToken } from "@/lib/marketing/token";
@@ -42,8 +43,12 @@ export function confirmUrl(email: string, emailStatus: unknown): string | undefi
   return t ? `${siteUrl()}/confirmer-email?t=${t}` : undefined;
 }
 
-/** Titre, date (heure de Paris), lien de connexion et replay d'un webinar (config/webinars.ts) */
-export function webinarParams(slug: string | undefined): Record<string, string> | null {
+/**
+ * Titre, date (heure de Paris), agenda et liens d'un webinar (config/webinars.ts).
+ * Avec `contactId`, JOIN_URL et REPLAY_URL deviennent des liens PERSONNELS
+ * (présence et replay mesurés) ; sans lui, seule la présence d'un replay compte.
+ */
+export function webinarParams(slug: string | undefined, contactId?: number): Record<string, string> | null {
   const w = slug ? getWebinar(slug) : undefined;
   if (!w) return null;
   const date = new Intl.DateTimeFormat("fr-FR", {
@@ -51,18 +56,24 @@ export function webinarParams(slug: string | undefined): Record<string, string> 
     timeStyle: "short",
     timeZone: "Europe/Paris",
   }).format(new Date(w.startsAt));
+  const base = siteUrl();
   return {
     WEBINAR_TITLE: w.title,
     WEBINAR_DATE: date,
     WEBINAR_DURATION: `${w.durationMin} min`,
+    WEBINAR_PAGE_URL: `${base}/w/${w.slug}`,
+    CALENDAR_GOOGLE_URL: googleCalendarUrl(w, base),
+    CALENDAR_ICS_URL: `${base}/w/${w.slug}/agenda.ics`,
+    // Repli sans secret de signature : lien direct (jamais affiché sur la page publique).
     ...(w.joinUrl && { JOIN_URL: w.joinUrl }),
     ...(w.replayUrl && { REPLAY_URL: w.replayUrl }),
+    ...(contactId && personalWebinarLinks(w, contactId, base)),
   };
 }
 
-/** Paramètres de la ressource (guide ou webinar) */
-export function resourceParams(slug: string | undefined): Record<string, string> {
-  return guideParams(slug) ?? webinarParams(slug) ?? {};
+/** Paramètres de la ressource (guide ou webinar) ; liens personnels si le contact est connu */
+export function resourceParams(slug: string | undefined, contactId?: number): Record<string, string> {
+  return guideParams(slug) ?? webinarParams(slug, contactId) ?? {};
 }
 
 /** Titre et lien du guide (modèles génériques) depuis lib/ressources.ts */

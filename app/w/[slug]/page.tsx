@@ -1,11 +1,12 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CaptureForm from "@/components/CaptureForm";
-import { getOpenWebinarSlugs, getWebinar } from "@/config/webinars";
+import { getWebinar, getWebinarPageSlugs } from "@/config/webinars";
 
 /**
- * Landing d'inscription webinar (fondation). Aucune page n'est générée tant
- * que config/webinars.ts ne contient pas de webinar au statut "open".
+ * Landing d'inscription webinar : même formulaire, mêmes protections et même
+ * suivi de source que les guides. Pages générées pour les webinars ouverts ;
+ * la démonstration (statut « draft ») n'existe que hors Production, formulaire fermé.
  */
 
 interface Props {
@@ -15,12 +16,18 @@ interface Props {
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return getOpenWebinarSlugs().map((slug) => ({ slug }));
+  return getWebinarPageSlugs().map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const w = getWebinar((await params).slug);
-  return w ? { title: `${w.title} — Webinar Althoce`, description: w.description } : {};
+  if (!w) return {};
+  return {
+    title: `${w.title} — Webinar Althoce`,
+    description: w.description,
+    openGraph: { title: w.title, description: w.description, type: "website", locale: "fr_FR" },
+    ...(w.status === "draft" && { robots: { index: false, follow: false } }),
+  };
 }
 
 function dateLongue(iso: string): string {
@@ -37,38 +44,78 @@ function dateLongue(iso: string): string {
 export default async function PageWebinar({ params }: Props) {
   const { slug } = await params;
   const w = getWebinar(slug);
-  if (!w || w.status !== "open") notFound();
+  if (!w || (w.status !== "open" && w.status !== "draft")) notFound();
+  const preview = w.status === "draft";
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center px-4 py-10 overflow-hidden">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[720px] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
       />
-      <div className="relative w-full max-w-lg rounded-2xl border border-bordure bg-carte p-6 sm:p-10 shadow-2xl">
-        <div className="mb-5 sm:mb-6 flex items-center justify-between">
-          <p className="font-display text-lg font-semibold tracking-tight">
-            Althoce<span className="text-accent">.</span>
+      <div className="relative grid w-full max-w-5xl items-start gap-6 lg:grid-cols-[1.1fr_1fr] lg:gap-10">
+        <section>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="font-display text-lg font-semibold tracking-tight">
+              Althoce<span className="text-accent">.</span>
+            </p>
+            <span className="rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent">
+              WEBINAR GRATUIT · EN LIGNE
+            </span>
+          </div>
+          <h1 className="mt-5 font-display text-[26px] font-bold leading-snug text-balance sm:text-4xl sm:leading-tight">
+            {w.title}
+          </h1>
+          <p className="mt-4 text-[15px] leading-relaxed text-secondaire sm:text-base">{w.description}</p>
+          <ul className="mt-5 flex flex-wrap gap-2 text-sm">
+            <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5 font-medium first-letter:uppercase">
+              {dateLongue(w.startsAt)}
+            </li>
+            <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5">{w.durationMin} min</li>
+            <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5">Google Meet</li>
+          </ul>
+          {w.audience && (
+            <p className="mt-4 text-sm text-secondaire">
+              <span className="font-semibold text-white">Pour : </span>
+              {w.audience}
+            </p>
+          )}
+          {w.agenda && w.agenda.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xs font-bold tracking-widest text-accent">AU PROGRAMME</h2>
+              <ul className="mt-3 space-y-2">
+                {w.agenda.map((item) => (
+                  <li key={item} className="flex gap-2 text-[15px] leading-relaxed">
+                    <span aria-hidden className="text-accent">→</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {w.speaker && (
+            <p className="mt-6 text-sm text-secondaire">
+              Animé par <span className="font-semibold text-white">{w.speaker.name}</span>, {w.speaker.role}
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-bordure bg-carte p-6 shadow-2xl sm:p-8">
+          <h2 className="font-display text-xl font-bold">Réserver ma place</h2>
+          <p className="mt-2 text-sm leading-relaxed text-secondaire">
+            Votre lien de connexion personnel arrive par email, avec un rappel la veille et une heure avant.
           </p>
-          <span className="rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent">
-            WEBINAR GRATUIT
-          </span>
-        </div>
-        <h1 className="font-display text-[22px] sm:text-3xl font-bold leading-snug sm:leading-tight text-balance">
-          {w.title}
-        </h1>
-        <p className="mt-3 text-[15px] sm:text-base text-secondaire leading-relaxed">{w.description}</p>
-        <p className="mt-4 text-sm font-medium text-accent first-letter:uppercase">
-          {dateLongue(w.startsAt)} · {w.durationMin} min
-        </p>
-        <div className="mt-6 sm:mt-8">
-          <CaptureForm
-            slug={w.slug}
-            kind="webinar"
-            cta="Je m’inscris"
-            redirectTo={`/w/${w.slug}/confirmation`}
-          />
-        </div>
+          <div className="mt-5">
+            {preview ? (
+              <p role="status" className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm leading-relaxed">
+                Aperçu de démonstration : les inscriptions sont fermées. Le formulaire s’affichera ici une fois le
+                webinar ouvert.
+              </p>
+            ) : (
+              <CaptureForm slug={w.slug} kind="webinar" cta="Je réserve ma place" redirectTo={`/w/${w.slug}/confirmation`} />
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );

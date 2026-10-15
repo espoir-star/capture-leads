@@ -11,7 +11,7 @@
  */
 
 export interface SourceContent {
-  platform: "linkedin" | "newsletter" | "webinar" | "site" | "autre";
+  platform: "linkedin" | "linkedin_ads" | "meta_ads" | "newsletter" | "webinar" | "site" | "autre";
   /** URL publique du contenu (post LinkedIn…) */
   url?: string;
   campaign?: string;
@@ -41,6 +41,12 @@ export const CONTENT_CODES: Record<string, string> = {
 };
 
 export const LINKEDIN_UTM_CONTENT_PATTERN = /^LI_[A-Z0-9]{2,6}_\d{8}_\d{2}$/;
+
+/**
+ * Publicité payante : utm_medium=paid_social, utm_content AD_[LI|META]_[CODE]_[AAAAMMJJ]_[NN]
+ * (une valeur par annonce). Aucun pixel ni traceur publicitaire avant consentement.
+ */
+export const PAID_UTM_CONTENT_PATTERN = /^AD_(LI|META)_[A-Z0-9]{2,6}_\d{8}_\d{2}$/;
 
 export function getSourceContent(utmContent: string | undefined): SourceContent | undefined {
   if (!utmContent) return undefined;

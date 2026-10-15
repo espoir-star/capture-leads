@@ -34,6 +34,10 @@
               {% else %}
               <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">Le lien de connexion vous sera envoyé avant le début.</p>
               {% endif %}
+              {% if params.CALENDAR_GOOGLE_URL %}
+              <p style="margin:26px 0 0;color:#FFFFFF;font-size:15px;font-weight:bold;">Bloquez le créneau</p>
+              <p style="margin:8px 0 0;font-size:14px;line-height:1.8;"><a href="{{ params.CALENDAR_GOOGLE_URL }}" target="_blank" style="color:#51D9AA;">Ajouter à Google Agenda</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="{{ params.CALENDAR_ICS_URL }}" target="_blank" style="color:#51D9AA;">Outlook, Apple (.ics)</a></p>
+              {% endif %}
             </td>
           </tr>
           <tr>

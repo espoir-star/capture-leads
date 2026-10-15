@@ -7,8 +7,11 @@
  * config/sourceRegistry.ts). Pour un nouveau post : ajouter une entrée.
  */
 import { getLeadMagnet } from "@/config/leadMagnets";
+import { getWebinar } from "@/config/webinars";
 
 export interface ShortLink {
+  /** Page cible : guide (/r/<slug>, défaut) ou webinar ouvert (/w/<slug>) */
+  kind?: "guide" | "webinar";
   slug: string;
   utm_source: string;
   utm_medium: string;
@@ -48,7 +51,8 @@ export function shortLinkTarget(code: string): string | null {
   if (!Object.hasOwn(SHORT_LINKS, code)) return null;
   const l = SHORT_LINKS[code];
   if (!l.utm_content) return null;
-  if (!getLeadMagnet(l.slug)) return null;
+  const webinar = l.kind === "webinar";
+  if (webinar ? getWebinar(l.slug)?.status !== "open" : !getLeadMagnet(l.slug)) return null;
   const q = new URLSearchParams({ utm_source: l.utm_source, utm_medium: l.utm_medium, utm_campaign: l.utm_campaign, utm_content: l.utm_content });
-  return `/r/${l.slug}?${q}`;
+  return `/${webinar ? "w" : "r"}/${l.slug}?${q}`;
 }
