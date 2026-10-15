@@ -506,7 +506,7 @@ export const CLAUDE_FINANCE_SKILLS_GUIDE = {
   title: "12 skills Claude pour la finance",
   edition: "15 octobre 2026",
   intro:
-    "Un prompt, vous le retrouvez et vous le collez à chaque fois. Une compétence (« skill »), vous l'installez une fois : Claude la déclenche lui-même quand votre demande correspond à sa description. Ce guide contient 12 compétences finance à copier, deux façons de les installer et la méthode pour écrire les vôtres.",
+    "12 compétences finance prêtes à copier dans Claude. Une compétence s'installe une fois et se déclenche seule quand votre demande correspond à sa description.",
   families: [
     { id: "production", label: "Production et contrôle" },
     { id: "pilotage", label: "Pilotage" },
@@ -532,34 +532,24 @@ export const CLAUDE_FINANCE_SKILLS_GUIDE = {
       detail: "Fichier SKILL.md, nom (64 caractères) et description (200 caractères) obligatoires, dossier à la racine du ZIP.",
     },
     {
-      label: "Anthropic — Qu'est-ce qu'une compétence ?",
-      url: "https://support.claude.com/fr/articles/12512176-what-are-skills",
-      detail: "Compétences Anthropic et personnalisées, chargement progressif selon la tâche.",
-    },
-    {
       label: "Claude Academy — Créer une compétence avec Claude en conversation",
       url: "https://academy.claude.com/tutorials/how-to-create-a-skill-with-claude-through-conversation",
-      detail: "Méthode conversationnelle : Claude construit le fichier, vous l'enregistrez puis le testez.",
-    },
-    {
-      label: "Anthropic — Agent Skills (documentation)",
-      url: "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview",
-      detail: "Environ 100 tokens par compétence tant qu'elle n'est pas déclenchée ; règles du champ name ; sécurité.",
+      detail: "Claude construit le fichier, vous l'enregistrez puis le testez.",
     },
     {
       label: "Anthropic — Données sensibles : qui peut consulter mes conversations ?",
       url: "https://support.claude.com/fr/articles/8325621",
-      detail: "Offres individuelles : amélioration du modèle selon vos paramètres de confidentialité ; conversations incognito exclues.",
+      detail: "Offres individuelles : amélioration du modèle selon vos paramètres de confidentialité.",
     },
     {
       label: "Anthropic — Addendum de traitement des données (DPA)",
       url: "https://support.claude.com/fr/articles/7996862-comment-puis-je-consulter-et-signer-votre-addendum-de-traitement-des-donnees-dpa",
-      detail: "Le DPA s'applique aux produits commerciaux (Claude for Work, API), via les Conditions commerciales.",
+      detail: "Le DPA s'applique aux produits commerciaux (Claude for Work, API).",
     },
     {
       label: "CNIL — Utiliser l'IA générative dans les TPE et PME",
       url: "https://www.cnil.fr/fr/utiliser-lia-generative-dans-les-tpe-et-pme",
-      detail: "Précautions de sécurité et de conformité avant d'y mettre des données personnelles.",
+      detail: "Précautions avant d'y mettre des données personnelles.",
     },
   ],
 } as const;
