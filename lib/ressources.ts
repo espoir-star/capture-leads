@@ -229,7 +229,7 @@ export const RESSOURCES: Record<string, Ressource> = {
     resourceCard: {
       titre: "12 skills Claude pour la finance",
       description: "Les 12 fichiers à copier, l'installation et la méthode.",
-      meta: "Lecture estimée : 10 minutes",
+      meta: "Lecture estimée : 3 minutes",
     },
     pills: [],
     // Lecteur interne depuis le 15/10/2026 (l'ancienne page Notion reste en ligne pour les premiers inscrits).
