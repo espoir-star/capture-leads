@@ -26,6 +26,14 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // Date de publication confirmée par Espoir : 13/10/2026.
     utm_content: "LI_EC_20261013_01",
   },
+  sk1: {
+    slug: "12-skills-claude-finance",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "12_skills_claude_finance",
+    // Post annoncé par Espoir pour le 16/10/2026 (nouvelle version du guide, lecteur /g/).
+    utm_content: "LI_FIN_20261016_01",
+  },
   ec1: {
     slug: "12-cas-usage-experts-comptables",
     utm_source: "linkedin",

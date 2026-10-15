@@ -28,6 +28,10 @@ test("liens courts : cible exacte, code inconnu et clés du prototype refusés",
     shortLinkTarget("ec1"),
     "/r/12-cas-usage-experts-comptables?utm_source=linkedin&utm_medium=organic&utm_campaign=12_cas_usage_experts_comptables&utm_content=LI_EC_20261012_01"
   );
+  assert.equal(
+    shortLinkTarget("sk1"),
+    "/r/12-skills-claude-finance?utm_source=linkedin&utm_medium=organic&utm_campaign=12_skills_claude_finance&utm_content=LI_FIN_20261016_01"
+  );
   assert.equal(shortLinkTarget("inconnu"), null);
   assert.equal(shortLinkTarget("toString"), null);
   assert.equal(shortLinkTarget("__proto__"), null);
