@@ -86,13 +86,22 @@ const projection = (status: string, version = 1) => ({
 test("Contrat partagé : chaque retour CRM est réellement consommé par la décision de relance", () => {
   for (const status of ["RECEIVED", "ASSIGNED", "TAKEN_IN_CHARGE", "NO_ANSWER", "CONTACTED",
     "MEETING_PENDING", "MEETING_CONFIRMED", "MEETING_CANCELLED", "OPPORTUNITY", "CLIENT", "LOST",
-    "DISQUALIFIED", "ARCHIVED", "DO_NOT_CALL", "OPPOSED"]) {
+    "DISQUALIFIED", "ARCHIVED", "DO_NOT_CALL", "OPPOSED", "UNVERIFIED"]) {
     const attributes = { ...B2B, ...projection(status) };
     const contact = { attributes, emailBlacklisted: false };
     assert.equal(decideStep(contact, marketing).send, ["RECEIVED", "ASSIGNED"].includes(status), status);
     assert.equal(decideStep(contact, transactional).send, true, status);
     assert.equal(hasConfirmedMeeting(attributes), status === "MEETING_CONFIRMED", status);
   }
+});
+test("Écarté par le CRM (UNVERIFIED) : relances et alerte HOT suspendues, reprises après réintégration", () => {
+  const unverified = { ...B2B, ...projection("UNVERIFIED", 2), CRM_SALES_REASON: "FOREIGN_PHONE" };
+  assert.equal(readCommercialState(unverified).state, "DISQUALIFIED");
+  assert.equal(decideStep({ attributes: unverified, emailBlacklisted: false }, marketing).send, false);
+  // Le motif reste dans Brevo après réintégration : seul le statut versionné compte.
+  const back = { ...unverified, ...projection("RECEIVED", 3) };
+  assert.equal(readCommercialState(back).state, "IMPORTED");
+  assert.equal(decideStep({ attributes: back, emailBlacklisted: false }, marketing).send, true);
 });
 test("Une annulation récente prime sur les anciennes confirmations et ne donne aucun +25", () => {
   const attributes = { ...projection("MEETING_CANCELLED", 3), ETAT_RDV: "Confirmé", LIFECYCLE_STAGE: "MEETING_BOOKED" };
