@@ -33,9 +33,9 @@ async function recordAttempt(contactId: number, out: SendOutcome, props: Record<
 const asSendResult = (out: SendOutcome): SendResult => out.status === "SENT"
   ? out.via === "sent" ? { status: "sent", messageId: out.messageId } : { status: "duplicate" }
   : { status: "error", httpStatus: out.status === "FAILED" ? out.httpStatus : 0, code: out.status === "FAILED" ? out.code : out.reason };
-function baseParams(email: string, slug: string | undefined): Record<string, string> {
+function baseParams(email: string, slug: string | undefined, contactId?: number): Record<string, string> {
   const links = unsubscribeLinks(email);
-  return { ...resourceParams(slug), CTA_URL, ...(links && { UNSUBSCRIBE_URL: links.page }) };
+  return { ...resourceParams(slug, contactId), CTA_URL, ...(links && { UNSUBSCRIBE_URL: links.page }) };
 }
 
 export async function deliverGuide(opts: {
@@ -47,7 +47,7 @@ export async function deliverGuide(opts: {
   if (id === null) return { status: "error", httpStatus: 0, code: "template_missing" };
   const confirm = confirmUrl(email, opts.emailStatus);
   const out = await sendOnce({
-    to: { email }, templateId: id, params: { ...baseParams(email, slug), ...(confirm && { CONFIRM_URL: confirm }) },
+    to: { email }, templateId: id, params: { ...baseParams(email, slug, contactId), ...(confirm && { CONFIRM_URL: confirm }) },
     tags: [`seq:${seq.id}`, `seq:${seq.id}:delivery`, `guide:${slug}`],
     sendKey: deliverySendKey(seq.id, contactId, requested), since: new Date(`${requested.toISOString().slice(0, 10)}T00:00:00Z`), now,
     oneClickUnsubscribeUrl: unsubscribeLinks(email)?.oneClick,
@@ -132,7 +132,7 @@ export async function runStep(enrollmentId: unknown, stepId: unknown, now = new 
       const email = contact!.email;
       const links = unsubscribeLinks(email);
       const out = await sendOnce({
-        to: { email }, templateId: id, params: baseParams(email, enr.r),
+        to: { email }, templateId: id, params: baseParams(email, enr.r, enr.c),
         tags: [`seq:${seq.id}`, `seq:${seq.id}:${step.id}`, ...(enr.r ? [`guide:${enr.r}`] : [])],
         sendKey: stepSendKey(seq.id, enr.c, step.id), since: new Date(at - 6 * HOUR), now, oneClickUnsubscribeUrl: links?.oneClick,
       });

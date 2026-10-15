@@ -401,13 +401,14 @@ Refus si : `status` ≠ `ready`, segment introuvable, date passée, campagne du 
 
 ---
 
-## 15. Webinars (fondation)
+## 15. Webinars
 
-Rien n'est publié tant qu'un webinar réel (date, heure, plateforme, URL) n'est pas renseigné.
+**Mis en place le 15/10/2026 : procédure complète dans [`docs/WEBINAIRES.md`](WEBINAIRES.md).**
 
-1. Liste Brevo `WB - <titre>`. 2. Bloc dans `config/webinars.ts` (`status: "open"`). 3. Automation sur la liste : confirmation, J-1, H-1, replay, suivi — expéditeur Althoce `<bonjour@althoce.fr>`, réponses sur `espoir@contact.althoce.com` (`WEBINAR_DEFAULT_SENDER`, surchargeable par webinar via `sender`). 4. `/w/[slug]` → `webinar_registered` → `/w/[slug]/confirmation`. 5. Après le live : plateforme → n8n → `webinar_attended` / `webinar_no_show` → replay → `webinar_replay_clicked` → `webinar_cta_clicked`. 6. Activer `EVENT_SCORING_ENABLED` quand ces données existent.
-
----
+- Inscription `/w/[slug]` : formulaire, protections et suivi de source communs. Confirmation avec Google Agenda et `.ics`.
+- Moteur de séquences `webinar-standard-v1` (modèles Brevo 45 à 49), sans automation : confirmation, J-1, H-1, replay à J+20 h, suivi à J+3.
+- Lien de connexion personnel `/w/[slug]/rejoindre` : la présence est enregistrée (score +15, activité qualifiante lue par le CRM), puis l'inscrit est redirigé vers Google Meet. Le replay passe aussi par un lien personnel.
+- Aucun webinar réel publié tant que la date, l'URL Meet et la liste ne sont pas renseignées. La démonstration n'existe que hors Production.
 
 ## 16. Backfill des contacts historiques
 

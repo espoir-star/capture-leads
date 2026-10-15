@@ -2,13 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SHORT_LINKS, shortLinkTarget } from "@/config/shortLinks";
 import { getLeadMagnet } from "@/config/leadMagnets";
+import { getWebinar } from "@/config/webinars";
 import { LINKEDIN_UTM_CONTENT_PATTERN } from "@/config/sourceRegistry";
 
 test("liens courts : guide existant, code court, utm_content conforme et unique par post", () => {
   const contents = new Set<string>();
   for (const [code, l] of Object.entries(SHORT_LINKS)) {
     assert.match(code, /^[a-z0-9-]{1,20}$/, code);
-    assert.ok(getLeadMagnet(l.slug), l.slug);
+    assert.ok(l.kind === "webinar" ? getWebinar(l.slug)?.status === "open" : getLeadMagnet(l.slug), l.slug);
     if (l.utm_content === null) {
       assert.equal(shortLinkTarget(code), null, "code réservé, jamais diffusé avec une date inventée");
       continue;

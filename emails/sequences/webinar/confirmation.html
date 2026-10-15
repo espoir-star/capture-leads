@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <!--
   CONFIRMATION D'INSCRIPTION (transactionnel, envoyée par Vercel à l'inscription).
-  Paramètres : WEBINAR_TITLE, WEBINAR_DATE, WEBINAR_DURATION, JOIN_URL, REPLAY_URL,
-  CTA_URL, UNSUBSCRIBE_URL (lib/sequences/links.ts).
+  Paramètres : WEBINAR_TITLE, WEBINAR_DATE, WEBINAR_DURATION, WEBINAR_PAGE_URL,
+  CALENDAR_GOOGLE_URL, CALENDAR_ICS_URL, JOIN_URL (lien PERSONNEL : présence mesurée),
+  REPLAY_URL, CTA_URL, UNSUBSCRIBE_URL (lib/sequences/links.ts, lib/webinar/access.ts).
 -->
 <html lang="fr">
 <head>
@@ -28,12 +29,17 @@
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 0;">
                 <tr>
                   <td style="background-color:#1D9E75;border-radius:8px;">
-                    <a href="{{ params.JOIN_URL }}" target="_blank" style="display:inline-block;padding:14px 28px;color:#FFFFFF;font-size:15px;font-weight:bold;text-decoration:none;">Lien de connexion →</a>
+                    <a href="{{ params.JOIN_URL }}" target="_blank" style="display:inline-block;padding:14px 28px;color:#FFFFFF;font-size:15px;font-weight:bold;text-decoration:none;">Mon lien de connexion →</a>
                   </td>
                 </tr>
               </table>
+              <p style="margin:12px 0 0;color:#A0A0A0;font-size:13px;line-height:1.6;">Ce lien est personnel et s'ouvre 15 minutes avant le début. Pour inviter un collègue : <a href="{{ params.WEBINAR_PAGE_URL }}" target="_blank" style="color:#51D9AA;">page d'inscription</a>.</p>
               {% else %}
               <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">Le lien de connexion vous sera envoyé avant le début.</p>
+              {% endif %}
+              {% if params.CALENDAR_GOOGLE_URL %}
+              <p style="margin:26px 0 0;color:#FFFFFF;font-size:15px;font-weight:bold;">Bloquez le créneau</p>
+              <p style="margin:8px 0 0;font-size:14px;line-height:1.8;"><a href="{{ params.CALENDAR_GOOGLE_URL }}" target="_blank" style="color:#51D9AA;">Ajouter à Google Agenda</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="{{ params.CALENDAR_ICS_URL }}" target="_blank" style="color:#51D9AA;">Outlook, Apple (.ics)</a></p>
               {% endif %}
             </td>
           </tr>
