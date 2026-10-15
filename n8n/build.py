@@ -379,7 +379,7 @@ def maintenance(name, url, trigger=None, with_auth=True):
     trig = trigger or schedule("Toutes les heures (h:07)", 7, [0, 240])
     nodes = [
         sticky(f"## {name}\nUne fois par heure, Vercel (/api/marketing/maintenance) :\n"
-               "1. lit le **quota d'envoi Brevo** du jour (offre Free : 300) et alerte UNE fois par jour sous 60 restants ;\n"
+               "1. lit les **crédits d'envoi Brevo** (offre payante) et alerte UNE fois par jour sous 2 000 restants ;\n"
                "2. détecte les **RDV confirmés** (ETAT_RDV / STATUT_APPEL, contacts modifiés depuis 3 h) → +25 au score, une seule fois par contact.\n\n"
                f"**Credential** sur l'appel : Header Auth « {CRED_OUT} ».", [-40, -100], 720, 260),
         trig,

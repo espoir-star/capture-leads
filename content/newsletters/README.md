@@ -55,7 +55,7 @@ un aperçu dans `.newsletter-previews/`.
 ```bash
 npm run newsletter -- content/newsletters/2026-11-03-finance.md --create
 ```
-Crée un **brouillon** Brevo (exige `status: ready` et un segment configuré).
+Crée un **brouillon** Brevo (exige `status: ready`, un segment configuré et `MARKETING_SEGMENTS_REVIEWED=true` : segments 7, 8, 9 validés le 15/10/2026 sur `MARKETING_STATUS = CONSENT ou B2B_ELIGIBLE`).
 
 ```bash
 npm run newsletter -- content/newsletters/2026-11-03-finance.md --create --schedule

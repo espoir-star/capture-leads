@@ -248,13 +248,13 @@ Une seule fois par contact (`HOT_ALERT_SENT_AT` + clé d'idempotence Brevo), seu
 
 | Brique | Coût | Limite qui compte |
 | --- | --- | --- |
-| Brevo Free | 0 € | **300 emails / jour, tous types confondus** (livraisons, relances, newsletters). Volume actuel ≈ 40 emails/jour (≈ 20 livraisons + ≈ 20 relances). |
+| Brevo (offre payante depuis octobre 2026) | abonnement | **Crédits d'envoi mensuels** (19 862 restants le 15/10/2026, renouvellement le 12/11) ; l'ancienne limite Free de 300 emails/jour ne s'applique plus. Alerte interne sous 2 000 crédits. |
 | n8n (instance existante) | 0 € de plus | 1 exécution par inscription (en attente jusqu'à la relance). Auto-hébergé : sans limite ; n8n Cloud : quota d'exécutions mensuel de l'offre. |
 | Vercel (projet existant) | 0 € | Fonctions largement suffisantes, y compris ≈ 1 appel par événement email (≈ 500/jour au plafond de 300 emails). ⚠️ L'offre Hobby est réservée à un usage non commercial selon les conditions Vercel : à vérifier pour Althoce. |
 | n8n Data table | 0 € | 50 Mo par défaut pour toutes les tables de l'instance ; ≈ 200 octets par événement scoré (clics, webinars, RDV seulement) → des années au volume actuel. |
 | Appels API Brevo du scoring | 0 € | 1 lecture + 1 écriture par contact actif et par heure au plus (aucune écriture si rien ne change). |
 
-**Limite majeure : la newsletter.** Avec 300 emails/jour, une newsletter ne peut pas dépasser ≈ 250 destinataires par jour une fois les livraisons servies. Deux newsletters par semaine vers les segments FINANCE (838 experts-comptables, 132 DAF une fois le backfill fait) imposent soit d'envoyer par lots sur plusieurs jours, soit une offre Brevo payante (sans limite quotidienne). Le moteur sort de la limite des 2 000 contacts des automations, **pas** de celle des 300 emails/jour.
+**Newsletter (mise à jour du 15/10/2026).** L'offre payante lève la limite quotidienne : la contrainte devient le solde de crédits. Une newsletter au segment NEWSLETTER — FINANCE consomme ≈ 1 500 crédits (863 experts-comptables, 122 DAF). Vérifier le solde avant chaque programmation.
 
 ## 9. Reste à valider ou à faire
 
@@ -262,8 +262,8 @@ Une seule fois par contact (`HOT_ALERT_SENT_AT` + clé d'idempotence Brevo), seu
 - Fusion de la PR, puis mode QA du pilote (§ 4) → test réel avec des contacts QA, puis bascule.
 - Scoring (§ 7) : création des 8 attributs Brevo, activation des 3 workflows, mise à jour des 2 webhooks Brevo, test QA réel. Ordre complet : `docs/MISE_EN_PRODUCTION.md`.
 - À valider : « RDV confirmé » = `ETAT_RDV` Prévu / `STATUT_APPEL` RDV planifié ou RDV booke ; pages d'offre althoce.com à ajouter à `OFFER_URL_PREFIXES` (aujourd'hui : prise de RDV cal.com seulement).
-- Segments Brevo 7, 8, 9 : remplacer `OPT_IN = Vrai` par `MARKETING_STATUS est égal à CONSENT, B2B_ELIGIBLE` (même conditions sinon), vérifier les effectifs, puis `MARKETING_SEGMENTS_REVIEWED=true`.
-- Backfill du statut marketing des contacts historiques (à blanc puis `--apply`) : décision juridique sur les 1 772 contacts sans statut (`TO_REVIEW` par défaut).
-- Effet réel du lien de désinscription newsletter : envoyer la campagne QA #39 à la liste QA #18 (1 contact).
+- ✅ 15/10/2026 — Segments Brevo 7, 8, 9 : `OPT_IN = Vrai` remplacé par `MARKETING_STATUS est égal à CONSENT, B2B_ELIGIBLE` ; effectifs vérifiés (FINANCE 1 504, EXPERTISE COMPTABLE 863, DAF 122) ; `MARKETING_SEGMENTS_REVIEWED=true` dans le `.env` local du script newsletter.
+- ✅ 15/10/2026 — Backfill appliqué avec `--historical-b2b` (décision d'Althoce, voir `docs/BREVO_SETUP.md` § 16) : 1 774 contacts complétés, instantané de retour arrière dans `brevo-backups/2026-10-15-backfill/`.
+- ✅ 15/10/2026 — Lien de désinscription vérifié en réel : campagne QA #39 → liste QA #18 (1 contact), clic « Me désinscrire » → `emailBlacklisted` et `MARKETING_STATUS = OPPOSED` par webhook ; aucun clic ni désinscription automatique par un filtre (page de confirmation Brevo).
 - Contact QA `espoir+qa-optout@contact.althoce.com` (#1802, dans l'automation #4) : vérifier le 12/10 si la relance J+2 lui a été envoyée, puis le supprimer.
 - Instance n8n en 2.1.5 (39 versions de retard) : mise à jour à planifier (sauvegarde avant) ; 2 webhooks non protégés existent sur des workflows qui ne sont pas les nôtres (signalé, non modifié).
