@@ -411,7 +411,7 @@ Rien n'est publié tant qu'un webinar réel (date, heure, plateforme, URL) n'est
 
 ## 16. Backfill des contacts historiques
 
-**Non exécuté.** À lancer séparément, après observation du nouveau système en Production.
+**Appliqué le 15/10/2026** avec `npm run brevo:backfill -- --historical-b2b --apply`, sur décision explicite d'Espoir Mwami pour Althoce : « les prospects sur Brevo et les prospects récents peuvent recevoir [la newsletter], Althoce est responsable de cette décision ». Résultat : 1 774 contacts complétés ; `MARKETING_STATUS` vide → B2B_ELIGIBLE 1 623, TO_REVIEW 140 (contacts « Ne plus appeler », par prudence), CONSENT 3 (OPT_IN), OPPOSED 2 (bloqués ou refus CRM) ; VERTICAL FINANCE 1 591, LEGAL 147, GENERAL 14 ; SUBSECTOR EXPERTISE_COMPTABLE 894, DAF_FINANCE 130 ; EMAIL_STATUS BOUNCED 29, INVALID 16, DISPOSABLE 13. Proposition commerciale (`--with-commercial-mapping`) **non** appliquée. Retour arrière : valeurs précédentes dans `brevo-backups/2026-10-15-backfill/` (hors git).
 
 ```bash
 npm run brevo:backfill                                # DRY RUN, aucune écriture
@@ -428,7 +428,7 @@ Règles (`lib/backfill/plan.ts`) : uniquement ce qui est prouvé, uniquement des
 | EMAIL_STATUS | preuve négative : BOUNCED (Brevo), DISPOSABLE, INVALID | VERIFIED, PENDING |
 | PHONE_STATUS | SMS stocké et preuve dans le numéro : INVALID / SUSPECT | VALID_FORMAT, VERIFIED |
 | OPT_IN, LEAD_SCORE, UTM | — | jamais |
-| MARKETING_STATUS (si vide) | bloqué → OPPOSED ; OPT_IN = true → CONSENT ; sinon TO_REVIEW | jamais B2B_ELIGIBLE |
+| MARKETING_STATUS (si vide) | bloqué ou refus CRM → OPPOSED ; OPT_IN = true → CONSENT ; sinon TO_REVIEW, ou B2B_ELIGIBLE avec `--historical-b2b` (hors « Ne plus appeler ») | B2B_ELIGIBLE sans décision explicite |
 
 Dry run du 08/10/2026 : **1 759 contacts lus, 1 725 concernés, aucune modification appliquée.**
 

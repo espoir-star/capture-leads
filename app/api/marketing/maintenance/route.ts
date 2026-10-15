@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { brevoRequest, type BrevoContact } from "@/lib/brevo/api";
 import { sendInternalAlert } from "@/lib/brevo/internalAlert";
-import { BREVO_DAILY_LIMIT, QUOTA_ALERT_REMAINING } from "@/config/scoring";
+import { QUOTA_ALERT_REMAINING } from "@/config/scoring";
 import { applyBehaviorScores } from "@/lib/scoring/apply";
 import { retryPendingDeliveries } from "@/lib/sequences/delivery";
 import { maintainMultiGuides } from "@/lib/guides/store";
@@ -17,21 +17,21 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const MEETING_WINDOW_MS = 3 * 3_600_000;
 const MAX_CONTACTS = 2000;
-interface Quota { remaining: number | null; limit: number; alert: "none" | "sent" | "failed" }
+interface Quota { remaining: number | null; threshold: number; alert: "none" | "sent" | "failed" }
 async function checkQuota(now: Date): Promise<Quota> {
   const res = await brevoRequest<{ plan?: { type?: string; credits?: number; creditsType?: string }[] }>("/account", { method: "GET" });
   const plan = res.data?.plan?.find((p) => p.creditsType === "sendLimit");
   const remaining = typeof plan?.credits === "number" ? plan.credits : null;
-  if (remaining === null || remaining > QUOTA_ALERT_REMAINING) return { remaining, limit: BREVO_DAILY_LIMIT, alert: "none" };
+  if (remaining === null || remaining > QUOTA_ALERT_REMAINING) return { remaining, threshold: QUOTA_ALERT_REMAINING, alert: "none" };
   const day = now.toISOString().slice(0, 10);
   const ok = await sendInternalAlert({
-    subject: `[Alerte quota Brevo] ${remaining} emails restants aujourd'hui`,
-    title: `Il reste ${remaining} envois sur ${BREVO_DAILY_LIMIT} aujourd'hui (offre Brevo Free)`,
-    intro: "Les livraisons et relances peuvent être retardées. Les tâches en attente sont reprises par la maintenance et n8n ; éviter toute campagne aujourd'hui.",
+    subject: `[Alerte crédits Brevo] ${remaining} envois restants`,
+    title: `Il reste ${remaining} crédits d'envoi sur l'offre Brevo`,
+    intro: `Sous ${QUOTA_ALERT_REMAINING} crédits, une newsletter complète risque de ne pas partir entièrement. Recharger ou attendre le renouvellement avant toute campagne ; les livraisons de guides restent prioritaires.`,
     tag: "alerte-quota",
     idempotencyKey: `quota.${createHash("sha256").update(`quota:${day}`).digest("hex").slice(0, 24)}`,
   });
-  return { remaining, limit: BREVO_DAILY_LIMIT, alert: ok ? "sent" : "failed" };
+  return { remaining, threshold: QUOTA_ALERT_REMAINING, alert: ok ? "sent" : "failed" };
 }
 async function syncMeetings(now: Date) {
   const since = new Date(now.getTime() - MEETING_WINDOW_MS).toISOString();

@@ -6,6 +6,7 @@
  *   npm run brevo:backfill -- --apply              → applique le plan (attributs VIDES uniquement)
  *   npm run brevo:backfill -- --no-dns             → sans vérification de réception (plus rapide)
  *   npm run brevo:backfill -- --with-commercial-mapping
+ *   npm run brevo:backfill -- --historical-b2b     → statut vide → B2B_ELIGIBLE (décision Althoce du 15/10/2026)
  *                                                  → + proposition STATUT_APPEL/ETAPE_COMMERCIALE
  *                                                    → LIFECYCLE_STAGE (à valider avant !)
  *
@@ -26,6 +27,9 @@ const args = new Set(process.argv.slice(2));
 const APPLY = args.has("--apply");
 const WITH_DNS = !args.has("--no-dns");
 const WITH_COMMERCIAL = args.has("--with-commercial-mapping");
+// Décision d'Espoir Mwami pour Althoce, le 15/10/2026 : « les prospects sur Brevo et les prospects
+// récents peuvent recevoir [la newsletter], Althoce est responsable de cette décision ».
+const HISTORICAL_B2B = args.has("--historical-b2b");
 
 type Plan = { email: string; id: number; set: Record<string, string>; before: Record<string, unknown> };
 
@@ -87,6 +91,7 @@ async function main() {
     subsector: new Map<string, number>(),
     emailStatus: new Map<string, number>(),
     phoneStatus: new Map<string, number>(),
+    marketingStatus: new Map<string, number>(),
     lifecycle: new Map<string, number>(),
     conflicts: [] as string[],
     commercial: new Map<string, number>(),
@@ -98,6 +103,7 @@ async function main() {
       hardBounces: bounced,
       dnsVerdict,
       withCommercialMapping: WITH_COMMERCIAL,
+      historicalB2b: HISTORICAL_B2B,
     });
     const { set } = plan;
     for (const name of plan.ambiguousLists) count(stats.ambiguousLists, name);
@@ -115,6 +121,7 @@ async function main() {
     if (set.SUBSECTOR) count(stats.subsector, set.SUBSECTOR);
     if (set.EMAIL_STATUS) count(stats.emailStatus, set.EMAIL_STATUS);
     if (set.PHONE_STATUS) count(stats.phoneStatus, set.PHONE_STATUS);
+    if (set.MARKETING_STATUS) count(stats.marketingStatus, set.MARKETING_STATUS);
     if (set.LIFECYCLE_STAGE) count(stats.lifecycle, set.LIFECYCLE_STAGE);
 
     if (Object.keys(set).length) {
@@ -142,6 +149,7 @@ async function main() {
   show("LIFECYCLE_STAGE", stats.lifecycle);
   show("EMAIL_STATUS", stats.emailStatus);
   show("PHONE_STATUS", stats.phoneStatus);
+  show(`MARKETING_STATUS (${HISTORICAL_B2B ? "--historical-b2b : décision Althoce du 15/10/2026" : "TO_REVIEW par défaut"})`, stats.marketingStatus);
   show("Contacts dans une liste ambiguë (verticale non déduite par cette liste)", stats.ambiguousLists);
   show(
     `Proposition commerciale → LIFECYCLE_STAGE (${WITH_COMMERCIAL ? "APPLIQUÉE" : "NON appliquée, --with-commercial-mapping"})`,

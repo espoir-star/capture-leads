@@ -87,3 +87,21 @@ test("statut marketing historique : choix préservés, rien de converti, jamais 
   assert.equal(planContactBackfill({ ...contact({ OPT_IN: true }), emailBlacklisted: true }, ctx()).set.MARKETING_STATUS, "OPPOSED");
   assert.equal("MARKETING_STATUS" in planContactBackfill(contact({ MARKETING_STATUS: "B2B_ELIGIBLE" }), ctx()).set, false);
 });
+
+test("statut marketing : TO_REVIEW par défaut, B2B_ELIGIBLE seulement sur décision explicite, refus prioritaires", () => {
+  assert.equal(planContactBackfill(contact({}), ctx()).set.MARKETING_STATUS, "TO_REVIEW");
+  assert.equal(planContactBackfill(contact({}), ctx({ historicalB2b: true })).set.MARKETING_STATUS, "B2B_ELIGIBLE");
+  assert.equal(planContactBackfill(contact({ OPT_IN: true }), ctx({ historicalB2b: true })).set.MARKETING_STATUS, "CONSENT");
+  const blocked = { ...contact({}), emailBlacklisted: true };
+  assert.equal(planContactBackfill(blocked, ctx({ historicalB2b: true })).set.MARKETING_STATUS, "OPPOSED");
+  for (const refusal of ["CRM_EMAIL_OPPOSED", "CRM_GLOBAL_OPPOSED"]) {
+    assert.equal(planContactBackfill(contact({ [refusal]: true }), ctx({ historicalB2b: true })).set.MARKETING_STATUS, "OPPOSED", refusal);
+  }
+  // « Ne plus appeler » : pas un refus email, mais pas de prospection ouverte par défaut.
+  assert.equal(planContactBackfill(contact({ STATUT_APPEL: "Ne plus appeler" }), ctx({ historicalB2b: true })).set.MARKETING_STATUS, "TO_REVIEW");
+  assert.equal(planContactBackfill(contact({ CRM_DO_NOT_CALL: true }), ctx({ historicalB2b: true })).set.MARKETING_STATUS, "TO_REVIEW");
+  // Un statut existant n'est jamais remplacé (ni un refus, ni une revue en cours).
+  for (const existing of ["OPPOSED", "TO_REVIEW", "CONSENT"]) {
+    assert.equal("MARKETING_STATUS" in planContactBackfill(contact({ MARKETING_STATUS: existing }), ctx({ historicalB2b: true })).set, false, existing);
+  }
+});

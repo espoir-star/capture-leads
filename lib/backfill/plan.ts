@@ -13,10 +13,13 @@
  *  - PHONE_STATUS : uniquement pour un SMS réellement stocké, et seulement
  *    INVALID ou SUSPECT (preuve dans le numéro lui-même)
  *
- *  - MARKETING_STATUS (si vide) : OPPOSED si le contact est bloqué (désinscrit) ;
- *    CONSENT si OPT_IN = true (consentement explicite ancien) ; sinon
- *    TO_REVIEW. Jamais B2B_ELIGIBLE : l'information sur la prospection lors
- *    de la collecte historique n'est pas prouvée.
+ *  - MARKETING_STATUS (si vide) : OPPOSED si le contact est bloqué (désinscrit)
+ *    ou a refusé via le CRM (CRM_EMAIL_OPPOSED / CRM_GLOBAL_OPPOSED) ; CONSENT si
+ *    OPT_IN = true (consentement explicite ancien) ; sinon TO_REVIEW par défaut.
+ *    B2B_ELIGIBLE seulement avec `historicalB2b` (option --historical-b2b), hors
+ *    contacts « Ne plus appeler » (laissés TO_REVIEW par prudence) :
+ *    décision d'Althoce du 15/10/2026, sous sa responsabilité, de traiter les
+ *    prospects historiques comme prospection B2B (voir docs/BREVO_SETUP.md § 16).
  *
  * Jamais : EMAIL_STATUS = VERIFIED ou PENDING, PHONE_STATUS = VALID_FORMAT ou
  * VERIFIED, OPT_IN, LEAD_SCORE, UTM. Seuls des attributs VIDES sont remplis
@@ -58,6 +61,8 @@ export interface BackfillContext {
   /** verdict DNS par domaine (vide = pas de vérification réseau) */
   dnsVerdict: ReadonlyMap<string, DnsVerdict>;
   withCommercialMapping?: boolean;
+  /** Décision d'Althoce du 15/10/2026 : statut vide → B2B_ELIGIBLE au lieu de TO_REVIEW */
+  historicalB2b?: boolean;
 }
 
 export interface ContactBackfillPlan {
@@ -114,9 +119,12 @@ export function planContactBackfill(c: BrevoContact, ctx: BackfillContext): Cont
     }
   }
 
-  /* Statut marketing : préserver les choix, ne rien convertir */
+  /* Statut marketing : préserver les choix, ne rien convertir ; un refus prime toujours */
   if (isEmptyValue(ex.MARKETING_STATUS)) {
-    set.MARKETING_STATUS = c.emailBlacklisted ? "OPPOSED" : ex.OPT_IN === true ? "CONSENT" : "TO_REVIEW";
+    const refused = c.emailBlacklisted || ex.CRM_EMAIL_OPPOSED === true || ex.CRM_GLOBAL_OPPOSED === true;
+    // « Ne plus appeler » n'est pas un refus email, mais par prudence il n'ouvre pas la prospection.
+    const doNotCall = ex.CRM_DO_NOT_CALL === true || String(ex.STATUT_APPEL ?? "").trim() === "Ne plus appeler";
+    set.MARKETING_STATUS = refused ? "OPPOSED" : ex.OPT_IN === true ? "CONSENT" : ctx.historicalB2b && !doNotCall ? "B2B_ELIGIBLE" : "TO_REVIEW";
   }
 
   /* Téléphone : SMS réellement stocké, preuves négatives uniquement */

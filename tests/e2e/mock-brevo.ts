@@ -5,7 +5,7 @@
  *   PUT  /v3/contacts/:id                      POST /v3/events
  *   POST /v3/smtp/email (en-tête idempotencyKey : 2e envoi refusé, comme Brevo)
  *   unicité de l'attribut SMS (duplicate_parameter), listes cumulées.
- *   GET  /v3/account (crédits d'envoi du jour)  GET /v3/contacts (liste, modifiedSince ignoré)
+ *   GET  /v3/account (crédits d'envoi de l'offre)  GET /v3/contacts (liste, modifiedSince ignoré)
  *   GET  /v3/smtp/emails (journal des envois : email, templateId, tags, messageId)
  *   Idempotence avec durée de vie (idemTtlMs, 30 min par défaut) et horloge décalable
  *   (clockOffsetMs) ; pannes simulées : réponse perdue après acceptation
@@ -69,7 +69,7 @@ export interface MockState {
 }
 
 const emptyState = (): MockState => ({
-  contacts: [], events: [], requests: [], emails: [], n8n: [], ledger: [], credits: 300, ledgerDown: false,
+  contacts: [], events: [], requests: [], emails: [], n8n: [], ledger: [], credits: 20_000, ledgerDown: false,
   idemTtlMs: 30 * 60_000, clockOffsetMs: 0, dropResponses: 0, sendFailStatus: 0, journalDown: false, journalStrictDates: false, journalDelayMs: 0, turnstile: "ok", statsEvents: [],
 });
 
@@ -177,7 +177,7 @@ export function startMockBrevo(port: number) {
     if (req.headers["api-key"] !== MOCK_API_KEY) return send(res, 401, { code: "unauthorized", message: "Key not found" });
 
     if (url.pathname === "/v3/account" && req.method === "GET") {
-      return send(res, 200, { plan: [{ type: "free", credits: state.credits, creditsType: "sendLimit" }] });
+      return send(res, 200, { plan: [{ type: "subscription", credits: state.credits, creditsType: "sendLimit" }] });
     }
     if (url.pathname === "/v3/contacts" && req.method === "GET") {
       return send(res, 200, { contacts: state.contacts, count: state.contacts.length });

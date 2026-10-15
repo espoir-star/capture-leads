@@ -77,6 +77,9 @@ export const BOT_CLICK_SECONDS = 15;
 /** Tags d'emails internes jamais scorés (alertes envoyées à l'équipe) */
 export const INTERNAL_EMAIL_TAGS: readonly string[] = ["alerte-sequences", "alerte-lead-chaud", "alerte-quota"];
 
-/** Quota d'envoi Brevo (offre Free) et seuil d'alerte (emails restants dans la journée) */
-export const BREVO_DAILY_LIMIT = 300;
-export const QUOTA_ALERT_REMAINING = 60;
+/**
+ * Crédits d'envoi Brevo (offre payante depuis octobre 2026, renouvellement mensuel ; l'ancienne
+ * limite Free de 300 emails/jour ne s'applique plus). Alerte sous ce seuil : de quoi couvrir une
+ * newsletter complète (segment NEWSLETTER — FINANCE ≈ 1 500 contacts au 15/10/2026) et les livraisons.
+ */
+export const QUOTA_ALERT_REMAINING = 2000;
