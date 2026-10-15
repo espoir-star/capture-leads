@@ -228,12 +228,12 @@ export const RESSOURCES: Record<string, Ressource> = {
       "Vous chargez votre balance. Claude reconnaît la situation et applique votre procédure, sans que vous ayez à lui demander.",
     resourceCard: {
       titre: "12 skills Claude pour la finance",
-      description: "Les fichiers, l'installation et la méthode.",
-      meta: "Guide gratuit",
+      description: "Les 12 fichiers à copier, l'installation et la méthode.",
+      meta: "Lecture estimée : 10 minutes",
     },
     pills: [],
-    urlRessource:
-      "https://espoir-metareglage.notion.site/12-skills-Claude-pour-la-finance-les-fichiers-l-installation-et-la-m-thode-3c0c7d01a0e8810dac7ec917d2a378e8",
+    // Lecteur interne depuis le 15/10/2026 (l'ancienne page Notion reste en ligne pour les premiers inscrits).
+    urlRessource: "/g/12-skills-claude-finance",
     style: "modal",
     cta: "Recevoir le guide",
     signature: "Espoir Mwami — Althoce",
