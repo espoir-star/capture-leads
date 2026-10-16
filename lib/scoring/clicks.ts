@@ -19,21 +19,55 @@ export interface ClickReport {
   unknownContacts: number;
   recorded: number;
   inserted: number;
+  /** Clics laissés pour la passe suivante (budget de temps atteint) */
+  deferred?: number;
+}
+
+export interface ClickOptions {
+  /** Passe horaire : les clics déjà journalisés ont déjà leur score, rien à recalculer */
+  reconcile?: boolean;
+  /** Heure limite (ms epoch) : au-delà, les clics restants attendent la passe suivante */
+  deadline?: number;
+}
+
+/** Appels Brevo simultanés pendant la passe horaire (bien sous la limite de l'API) */
+const BREVO_CONCURRENCY = 5;
+/**
+ * Passe horaire : clics des 6 dernières heures seulement. Le temps réel passe par le webhook ;
+ * chaque clic est donc revu par 6 passes successives, de quoi couvrir une panne de quelques heures
+ * sans relire deux jours de clics à chaque passe (incident du 16/10/2026).
+ */
+export const RECONCILE_WINDOW_MS = 6 * 3_600_000;
+/** Temps minimal pour écrire au journal n8n avant l'heure limite ; sinon report à la passe suivante */
+const LEDGER_MIN_MS = 8_000;
+
+/** Applique fn à chaque élément avec au plus `limit` appels en parallèle, dans l'ordre d'origine. */
+async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
 }
 
 /** Heure d'envoi d'emails transactionnels, par messageId (journal Brevo) */
 async function sentAtOf(messageIds: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  for (const id of messageIds.slice(0, 50)) {
+  await mapLimit(messageIds.slice(0, 50), BREVO_CONCURRENCY, async (id) => {
     const res = await brevoRequest<{ transactionalEmails?: { date?: string }[] }>(`/smtp/emails?messageId=${encodeURIComponent(id)}`, { method: "GET" }).catch(() => null);
     const date = res?.ok ? res.data?.transactionalEmails?.[0]?.date : undefined;
     if (date) out.set(id, new Date(date).toISOString());
-  }
+  });
   return out;
 }
 
 /** Score des clics. Lève une erreur si le journal n8n est injoignable (l'appelant fait réessayer). */
-export async function scoreClickCandidates(cands: ClickCandidate[], sentAt?: Map<string, string>): Promise<ClickReport> {
+export async function scoreClickCandidates(cands: ClickCandidate[], sentAt?: Map<string, string>, opts: ClickOptions = {}): Promise<ClickReport> {
   const report: ClickReport = { candidates: cands.length, bots: 0, unknownContacts: 0, recorded: 0, inserted: 0 };
   const missing = [...new Set(cands.filter((c) => !c.sentAt && c.messageId && !sentAt?.has(c.messageId)).map((c) => c.messageId!))];
   const known = new Map([...(sentAt ?? new Map()), ...(missing.length ? await sentAtOf(missing) : new Map())]);
@@ -43,15 +77,24 @@ export async function scoreClickCandidates(cands: ClickCandidate[], sentAt?: Map
     return !bot;
   });
 
-  const ids = new Map<string, number | null>();
+  // Une lecture Brevo par adresse, en parallèle limité ; au-delà de l'heure limite, la suite attend.
+  const emails = [...new Set(human.map((c) => c.email))];
+  const found = await mapLimit(emails, BREVO_CONCURRENCY, async (email) =>
+    opts.deadline && Date.now() > opts.deadline ? undefined : ((await getContactByEmail(email))?.id ?? null)
+  );
+  const ids = new Map(emails.map((email, i) => [email, found[i]] as const));
   const events: LedgerEvent[] = [];
   for (const c of human) {
-    if (!ids.has(c.email)) ids.set(c.email, (await getContactByEmail(c.email))?.id ?? null);
     const id = ids.get(c.email);
-    if (id) events.push(toLedgerEvent({ ...c, sentAt: c.sentAt ?? (c.messageId ? known.get(c.messageId) : undefined) }, id));
+    if (id === undefined) report.deferred = (report.deferred ?? 0) + 1;
+    else if (id) events.push(toLedgerEvent({ ...c, sentAt: c.sentAt ?? (c.messageId ? known.get(c.messageId) : undefined) }, id));
     else report.unknownContacts++;
   }
   if (!events.length) return report;
+  if (opts.deadline && opts.deadline - Date.now() < LEDGER_MIN_MS) {
+    report.deferred = (report.deferred ?? 0) + events.length;
+    return report;
+  }
   const r = await recordEvents(events);
   if (!r.ok) {
     if (r.reason === "not_configured") return report;
@@ -59,6 +102,8 @@ export async function scoreClickCandidates(cands: ClickCandidate[], sentAt?: Map
   }
   report.recorded = events.length;
   report.inserted = r.inserted;
+  // Passe horaire sans nouveau clic : les scores ont déjà été calculés à la première écriture.
+  if (opts.reconcile && r.inserted === 0) return report;
   try {
     await applyBehaviorScores(r.rows);
   } catch (e) {
@@ -90,16 +135,17 @@ async function statEvents(event: "clicks" | "requests"): Promise<StatEvent[]> {
 }
 
 /**
- * Réconciliation (tâche horaire) : clics transactionnels d'hier et d'aujourd'hui
- * lus dans le journal Brevo, y compris ceux dont le webhook a été abandonné.
- * Les clics déjà journalisés sont ignorés par la clé unique.
+ * Réconciliation (tâche horaire) : clics transactionnels des 6 dernières heures lus dans le
+ * journal Brevo, y compris ceux dont le webhook a été abandonné. Les clics déjà journalisés
+ * sont ignorés par la clé unique ; au-delà de l'heure limite, la suite attend la passe suivante.
  */
-export async function reconcileTransactionalClicks(now: Date = new Date()): Promise<ClickReport> {
+export async function reconcileTransactionalClicks(now: Date = new Date(), opts: { deadline?: number } = {}): Promise<ClickReport> {
   const clicks = await statEvents("clicks");
   const sends = await statEvents("requests");
   const sentAt = new Map<string, string>();
   for (const s of sends) if (s.messageId && s.date) sentAt.set(s.messageId, new Date(s.date).toISOString());
   const cands: ClickCandidate[] = [];
+  const since = now.getTime() - RECONCILE_WINDOW_MS;
   for (const e of clicks) {
     if (!e.email || e.email.toLowerCase() === REPLY_TO.toLowerCase()) continue; // emails internes
     const t = Date.parse(e.date ?? "");
@@ -107,7 +153,7 @@ export async function reconcileTransactionalClicks(now: Date = new Date()): Prom
       { event: "click", email: e.email, "message-id": e.messageId, link: e.link, template_id: e.templateId, ...(Number.isFinite(t) && { ts_event: Math.floor(t / 1000) }) },
       now
     );
-    if (c) cands.push(c);
+    if (c && Date.parse(c.occurred_at) >= since) cands.push(c);
   }
-  return scoreClickCandidates(cands, sentAt);
+  return scoreClickCandidates(cands, sentAt, { reconcile: true, deadline: opts.deadline });
 }
