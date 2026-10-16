@@ -44,3 +44,36 @@ test("réconciliation des clics à 00:30 heure de Paris (22:30 UTC) : aucune err
   assert.equal(report.candidates, 1);
   assert.equal(report.inserted, 1);
 });
+
+test("passe horaire : clics déjà journalisés = aucune relecture ni réécriture de score (incident du 16/10)", async () => {
+  const sentAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+  const clickAt = new Date(Date.now() - 3_600_000).toISOString();
+  const emails = ["a@cabinet.fr", "b@cabinet.fr", "c@cabinet.fr"];
+  for (const email of emails) await fetch(`${URL}/__seed`, { method: "POST", body: JSON.stringify({ email, attributes: { LEAD_SCORE: 5 } }) });
+  await fetch(`${URL}/__stats`, { method: "POST", body: JSON.stringify({ events: emails.flatMap((email, i) => [
+    { event: "requests", email, messageId: `<m-${i}@relay>`, date: sentAt, templateId: 43 },
+    { event: "clicks", email, messageId: `<m-${i}@relay>`, date: clickAt, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+  ]) }) });
+  const first = await clicks.reconcileTransactionalClicks(new Date());
+  assert.equal(first.inserted, 3);
+  const before = ((await (await fetch(`${URL}/__state`)).json()) as { requests: string[] }).requests.length;
+  const second = await clicks.reconcileTransactionalClicks(new Date());
+  assert.equal(second.recorded, 3);
+  assert.equal(second.inserted, 0);
+  const calls = ((await (await fetch(`${URL}/__state`)).json()) as { requests: string[] }).requests.slice(before);
+  // 2 lectures du journal + 3 recherches de contact, aucune relecture par ID ni écriture (PUT).
+  assert.equal(calls.filter((c) => c.startsWith("PUT ")).length, 0);
+  assert.equal(calls.length, 5);
+});
+
+test("passe horaire : heure limite atteinte → clics reportés, sans erreur", async () => {
+  const clickAt = new Date(Date.now() - 3_600_000).toISOString();
+  await fetch(`${URL}/__seed`, { method: "POST", body: JSON.stringify({ email: "tard@cabinet.fr", attributes: {} }) });
+  await fetch(`${URL}/__stats`, { method: "POST", body: JSON.stringify({ events: [
+    { event: "requests", email: "tard@cabinet.fr", messageId: "<m-tard@relay>", date: new Date(Date.now() - 7_200_000).toISOString(), templateId: 43 },
+    { event: "clicks", email: "tard@cabinet.fr", messageId: "<m-tard@relay>", date: clickAt, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+  ] }) });
+  const report = await clicks.reconcileTransactionalClicks(new Date(), { deadline: Date.now() - 1 });
+  assert.equal(report.deferred, 1);
+  assert.equal(report.recorded, 0);
+});

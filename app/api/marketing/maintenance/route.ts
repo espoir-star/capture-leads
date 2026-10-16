@@ -82,7 +82,8 @@ export async function POST(req: NextRequest) {
     console.warn(JSON.stringify({ type: "multi_guides_maintenance_incomplete", report: multiGuides }));
   }
   const meetings = ledgerConfigured() ? await task("meetings", () => syncMeetings(now)) : "journal_non_configure";
-  const clicks = ledgerConfigured() ? await task("clicks", () => reconcileTransactionalClicks(now)) : "journal_non_configure";
+  // Marge sous maxDuration (60 s) : les clics restants attendent la passe suivante (clé unique, rien de perdu).
+  const clicks = ledgerConfigured() ? await task("clicks", () => reconcileTransactionalClicks(now, { deadline: started + 48_000 })) : "journal_non_configure";
   const report = { ok: failed.length === 0, failed, quota, deliveries, meetings, clicks, multiGuides };
   return NextResponse.json(report, { status: failed.length ? 502 : 200 });
 }
