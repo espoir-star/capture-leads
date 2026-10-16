@@ -177,7 +177,7 @@ Brevo (webhooks marketing + transactionnels, TOUS les événements)
   → n8n « Journal des événements » (Data table althoce_marketing_events)
        insère si la clé est nouvelle, renvoie l'historique complet du contact
   → Vercel recalcule depuis l'historique et écrit Brevo (jamais à la baisse)
-  → alerte « lead chaud » à espoir@contact.althoce.com, une seule fois
+  → lead chaud visible dans le CRM (aucun email depuis le 16/10/2026, HOT_LEAD_EMAIL_ALERTS = false)
 Toutes les heures : n8n « Recalcul des scores » renvoie l'historique des contacts actifs (3 h ; la nuit, 8 jours) → rattrapage
 Toutes les heures : n8n « Quota Brevo et RDV » → quota d'envoi + RDV confirmés (+25)
 ```
@@ -208,6 +208,8 @@ Jamais comptés : liens de désinscription, de confirmation d'adresse, `mailto:`
 - Écriture Brevo refusée → l'événement est déjà journalisé : la passe horaire rattrape.
 
 ### Alerte « lead chaud »
+
+**Email coupé le 16/10/2026** à la demande d'Althoce : les leads chauds se suivent uniquement dans le CRM (accueil, bloc « Priorités à ne pas laisser refroidir » ; score et priorité sur chaque fiche). Le score, `LIFECYCLE_STAGE = HOT_LEAD` et le reste du calcul sont inchangés. Pour réactiver l'email : `HOT_LEAD_EMAIL_ALERTS = true` dans `config/scoring.ts`. Règles de l'email quand il est actif :
 
 Une seule fois par contact (`HOT_ALERT_SENT_AT` + clé d'idempotence Brevo), seulement avant toute prise en charge commerciale (étape SUBSCRIBER, LEAD, MQL ou HOT_LEAD, aucun RDV, pas « Ne plus appeler », email utilisable). Contenu : nom, entreprise, téléphone, ressource, score (formulaire + comportement), 10 derniers signaux, lien vers la fiche Brevo. Aucun contact n'a aujourd'hui un score ≥ 25 : pas de vague d'alertes au démarrage.
 

@@ -1,6 +1,6 @@
 /**
- * Agrégats du journal → attributs Brevo + alerte « lead chaud ».
- * Appelé en temps réel et lors de la passe horaire n8n.
+ * Agrégats du journal → attributs Brevo (+ email « lead chaud » si HOT_LEAD_EMAIL_ALERTS, coupé :
+ * les leads chauds se suivent dans le CRM). Appelé en temps réel et lors de la passe horaire n8n.
  * L'alerte réutilise les guides associés au contact, sans notification
  * supplémentaire, sans modifier son métier ni lui attribuer une lecture.
  */
@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { brevoRequest, getContactById, type AttributeValue, type BrevoContact } from "@/lib/brevo/api";
 import { updateContactAttributes } from "@/lib/brevo/contacts";
 import { sendInternalAlert } from "@/lib/brevo/internalAlert";
-import { BEHAVIOR_POINTS, type BehaviorCategory } from "@/config/scoring";
+import { BEHAVIOR_POINTS, HOT_LEAD_EMAIL_ALERTS, type BehaviorCategory } from "@/config/scoring";
 import { aggregateLedger, brevoDate, EVENT_KEY_RE, planScoreUpdate, type LedgerRow, type ScorePlan } from "@/lib/scoring/behavior";
 import { guideInterestRows } from "@/lib/guides/interests";
 
@@ -81,7 +81,7 @@ export async function applyBehaviorScores(rows: readonly LedgerRow[], now: Date 
     const result: ApplyResult = {
       contactId: contact.id, status: Object.keys(plan.attributes).length ? "updated" : "unchanged", score: plan.score,
     };
-    if (plan.hotAlert) {
+    if (plan.hotAlert && HOT_LEAD_EMAIL_ALERTS) {
       const sent = await sendHotAlert(contact, plan, rows).catch(() => false);
       result.hotAlert = sent ? "sent" : "failed";
       if (sent) await updateContactAttributes({ id: contact.id }, { HOT_ALERT_SENT_AT: brevoDate(now.toISOString()) });

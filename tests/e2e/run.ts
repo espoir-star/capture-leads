@@ -503,7 +503,7 @@ async function main() {
   });
   const hotAlerts = (s: MockState) => s.emails.filter((e) => e.tags?.includes("alerte-lead-chaud"));
 
-  await scenario("SC1 · clic RDV (transactionnel) → +10 ; rejeu → rien ; clic guide → +5, lead chaud, alerte UNE fois", async () => {
+  await scenario("SC1 · clic RDV (transactionnel) → +10 ; rejeu → rien ; clic guide → +5, lead chaud, AUCUN email (suivi dans le CRM)", async () => {
     await seed({ email: "chaud@cabinet.fr", attributes: { LEAD_SCORE: 12, LIFECYCLE_STAGE: "LEAD", EMAIL_STATUS: "PENDING", PRENOM: "Léa", ENTREPRISE: "Cabinet <Test>" } });
     const offer = click("chaud@cabinet.fr", "<m1@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min");
     const r1 = await hook(offer);
@@ -525,22 +525,15 @@ async function main() {
     c = (await contactOf("chaud@cabinet.fr"))!;
     assert.equal(c.attributes.LEAD_SCORE, 27);
     assert.equal(c.attributes.LIFECYCLE_STAGE, "HOT_LEAD");
-    assert.equal(c.attributes.HOT_ALERT_SENT_AT, today());
+    // Email « lead chaud » coupé le 16/10/2026 : le lead chaud se suit dans le CRM (score et LIFECYCLE_STAGE écrits).
+    assert.equal(c.attributes.HOT_ALERT_SENT_AT, undefined);
     s = await state();
-    assert.equal(hotAlerts(s).length, 1);
-    assert.equal(hotAlerts(s)[0].to[0].email, "espoir@contact.althoce.com");
-    // Alerte par le modèle Brevo « INTERNE · Alerte » (id 40) : valeurs brutes en paramètres, échappées par Brevo
-    const alert = hotAlerts(s)[0];
-    assert.equal(alert.templateId, 40, "modèle d'alerte interne");
-    const rowsOf = JSON.stringify((alert.params as unknown as { ROWS: { LABEL: string; VALUE: string }[] }).ROWS);
-    assert.match(rowsOf, /Cabinet <Test>/, "valeur transmise telle quelle, le modèle l'échappe");
-    assert.match(rowsOf, /formulaire 12 \+ comportement 15/);
-    assert.match(String(alert.params.SUBJECT), /^\[Lead chaud\] Léa — Cabinet <Test> \(score 27\)$/);
+    assert.equal(hotAlerts(s).length, 0, "aucun email lead chaud");
 
     await hook({ event: "click", email: "chaud@cabinet.fr", camp_id: 41, URL: "https://www.linkedin.com/posts/x", ts_event: 1 });
     s = await state();
     assert.equal(s.contacts[0].attributes.LEAD_SCORE, 30, "clic newsletter +3");
-    assert.equal(hotAlerts(s).length, 1, "pas de 2e alerte");
+    assert.equal(hotAlerts(s).length, 0, "toujours aucun email");
   });
 
   await scenario("SC2 · n8n arrêté → 429 (Brevo rejoue), rien écrit ; au rejeu → compté une fois", async () => {
