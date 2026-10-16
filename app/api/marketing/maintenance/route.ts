@@ -17,6 +17,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const MEETING_WINDOW_MS = 3 * 3_600_000;
 const MAX_CONTACTS = 2000;
+/**
+ * La réponse part toujours avant le délai du nœud n8n (60 s) et la limite Vercel (maxDuration) :
+ * au-delà de cette heure limite, les tâches lentes s'arrêtent proprement et reprennent à la passe suivante.
+ */
+const DEADLINE_MS = 45_000;
 interface Quota { remaining: number | null; threshold: number; alert: "none" | "sent" | "failed" }
 async function checkQuota(now: Date): Promise<Quota> {
   const res = await brevoRequest<{ plan?: { type?: string; credits?: number; creditsType?: string }[] }>("/account", { method: "GET" });
@@ -33,11 +38,12 @@ async function checkQuota(now: Date): Promise<Quota> {
   });
   return { remaining, threshold: QUOTA_ALERT_REMAINING, alert: ok ? "sent" : "failed" };
 }
-async function syncMeetings(now: Date) {
+async function syncMeetings(now: Date, deadline: number) {
   const since = new Date(now.getTime() - MEETING_WINDOW_MS).toISOString();
   const found: BrevoContact[] = [];
   let checked = 0;
   for (let offset = 0; offset < MAX_CONTACTS; offset += 500) {
+    if (Date.now() > deadline) return { checked, events: 0, inserted: 0, deferred: true };
     const res = await brevoRequest<{ contacts?: BrevoContact[]; count?: number }>(`/contacts?limit=500&offset=${offset}&modifiedSince=${encodeURIComponent(since)}`, { method: "GET" });
     if (!res.ok) throw new Error(`Lecture des contacts modifiés impossible (${res.status})`);
     const page = res.data?.contacts ?? [];
@@ -46,6 +52,7 @@ async function syncMeetings(now: Date) {
     if (page.length < 500) break;
   }
   if (!found.length) return { checked, events: 0, inserted: 0 };
+  if (Date.now() > deadline) return { checked, events: 0, inserted: 0, deferred: true };
   const r = await recordEvents(found.map((c) => makeEvent("meeting_booked", c.id, "crm", "crm", now)));
   if (!r.ok) throw new Error(`Journal n8n indisponible (${r.reason})`);
   await applyBehaviorScores(r.rows, now);
@@ -62,6 +69,7 @@ export async function POST(req: NextRequest) {
   if (!bearerMatches(req.headers.get("authorization"), process.env.SEQUENCE_API_SECRET)) return new NextResponse(null, { status: 401 });
   const now = new Date();
   const started = Date.now();
+  const deadline = started + DEADLINE_MS;
   const failed: string[] = [];
   const task = async <T>(name: string, fn: () => Promise<T>): Promise<T | { error: true }> => {
     try {
@@ -81,9 +89,9 @@ export async function POST(req: NextRequest) {
   if (("failed" in multiGuides && multiGuides.failed > 0) || ("budgetExceeded" in multiGuides && multiGuides.budgetExceeded)) {
     console.warn(JSON.stringify({ type: "multi_guides_maintenance_incomplete", report: multiGuides }));
   }
-  const meetings = ledgerConfigured() ? await task("meetings", () => syncMeetings(now)) : "journal_non_configure";
-  // Marge sous maxDuration (60 s) : les clics restants attendent la passe suivante (clé unique, rien de perdu).
-  const clicks = ledgerConfigured() ? await task("clicks", () => reconcileTransactionalClicks(now, { deadline: started + 48_000 })) : "journal_non_configure";
+  const meetings = ledgerConfigured() ? await task("meetings", () => syncMeetings(now, deadline)) : "journal_non_configure";
+  // Les clics restants attendent la passe suivante (clé unique, rien de perdu ni compté deux fois).
+  const clicks = ledgerConfigured() ? await task("clicks", () => reconcileTransactionalClicks(now, { deadline })) : "journal_non_configure";
   const report = { ok: failed.length === 0, failed, quota, deliveries, meetings, clicks, multiGuides };
   return NextResponse.json(report, { status: failed.length ? 502 : 200 });
 }

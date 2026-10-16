@@ -33,8 +33,8 @@ test("faux Brevo : une date au-delà du jour UTC est refusée comme par le vrai 
 test("réconciliation des clics à 00:30 heure de Paris (22:30 UTC) : aucune erreur, clic rattrapé", async () => {
   const utcToday = new Date().toISOString().slice(0, 10);
   const parisAfterMidnight = new Date(`${utcToday}T22:30:00Z`); // à Paris : déjà le lendemain
-  const sentAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
-  const clickAt = new Date(Date.now() - 3_600_000).toISOString();
+  const sentAt = new Date(parisAfterMidnight.getTime() - 2 * 3_600_000).toISOString();
+  const clickAt = new Date(parisAfterMidnight.getTime() - 3_600_000).toISOString();
   await fetch(`${URL}/__seed`, { method: "POST", body: JSON.stringify({ email: "nuit@cabinet.fr", attributes: { LEAD_SCORE: 5 } }) });
   await fetch(`${URL}/__stats`, { method: "POST", body: JSON.stringify({ events: [
     { event: "requests", email: "nuit@cabinet.fr", messageId: "<m-nuit@relay>", date: sentAt, templateId: 43 },
@@ -76,4 +76,20 @@ test("passe horaire : heure limite atteinte → clics reportés, sans erreur", a
   const report = await clicks.reconcileTransactionalClicks(new Date(), { deadline: Date.now() - 1 });
   assert.equal(report.deferred, 1);
   assert.equal(report.recorded, 0);
+});
+
+test("passe horaire : seuls les clics des 6 dernières heures sont relus (le webhook fait le temps réel)", async () => {
+  const now = new Date();
+  const old = new Date(now.getTime() - 20 * 3_600_000).toISOString();
+  const recent = new Date(now.getTime() - 3_600_000).toISOString();
+  for (const email of ["ancien@cabinet.fr", "recent@cabinet.fr"]) await fetch(`${URL}/__seed`, { method: "POST", body: JSON.stringify({ email, attributes: {} }) });
+  await fetch(`${URL}/__stats`, { method: "POST", body: JSON.stringify({ events: [
+    { event: "requests", email: "ancien@cabinet.fr", messageId: "<m-old@relay>", date: new Date(now.getTime() - 21 * 3_600_000).toISOString(), templateId: 43 },
+    { event: "clicks", email: "ancien@cabinet.fr", messageId: "<m-old@relay>", date: old, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    { event: "requests", email: "recent@cabinet.fr", messageId: "<m-new@relay>", date: new Date(now.getTime() - 2 * 3_600_000).toISOString(), templateId: 43 },
+    { event: "clicks", email: "recent@cabinet.fr", messageId: "<m-new@relay>", date: recent, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+  ] }) });
+  const report = await clicks.reconcileTransactionalClicks(now);
+  assert.equal(report.candidates, 1);
+  assert.equal(report.inserted, 1);
 });

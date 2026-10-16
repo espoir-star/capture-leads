@@ -32,6 +32,14 @@ export interface ClickOptions {
 
 /** Appels Brevo simultanés pendant la passe horaire (bien sous la limite de l'API) */
 const BREVO_CONCURRENCY = 5;
+/**
+ * Passe horaire : clics des 6 dernières heures seulement. Le temps réel passe par le webhook ;
+ * chaque clic est donc revu par 6 passes successives, de quoi couvrir une panne de quelques heures
+ * sans relire deux jours de clics à chaque passe (incident du 16/10/2026).
+ */
+export const RECONCILE_WINDOW_MS = 6 * 3_600_000;
+/** Temps minimal pour écrire au journal n8n avant l'heure limite ; sinon report à la passe suivante */
+const LEDGER_MIN_MS = 8_000;
 
 /** Applique fn à chaque élément avec au plus `limit` appels en parallèle, dans l'ordre d'origine. */
 async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -83,6 +91,10 @@ export async function scoreClickCandidates(cands: ClickCandidate[], sentAt?: Map
     else report.unknownContacts++;
   }
   if (!events.length) return report;
+  if (opts.deadline && opts.deadline - Date.now() < LEDGER_MIN_MS) {
+    report.deferred = (report.deferred ?? 0) + events.length;
+    return report;
+  }
   const r = await recordEvents(events);
   if (!r.ok) {
     if (r.reason === "not_configured") return report;
@@ -123,9 +135,9 @@ async function statEvents(event: "clicks" | "requests"): Promise<StatEvent[]> {
 }
 
 /**
- * Réconciliation (tâche horaire) : clics transactionnels d'hier et d'aujourd'hui
- * lus dans le journal Brevo, y compris ceux dont le webhook a été abandonné.
- * Les clics déjà journalisés sont ignorés par la clé unique.
+ * Réconciliation (tâche horaire) : clics transactionnels des 6 dernières heures lus dans le
+ * journal Brevo, y compris ceux dont le webhook a été abandonné. Les clics déjà journalisés
+ * sont ignorés par la clé unique ; au-delà de l'heure limite, la suite attend la passe suivante.
  */
 export async function reconcileTransactionalClicks(now: Date = new Date(), opts: { deadline?: number } = {}): Promise<ClickReport> {
   const clicks = await statEvents("clicks");
@@ -133,6 +145,7 @@ export async function reconcileTransactionalClicks(now: Date = new Date(), opts:
   const sentAt = new Map<string, string>();
   for (const s of sends) if (s.messageId && s.date) sentAt.set(s.messageId, new Date(s.date).toISOString());
   const cands: ClickCandidate[] = [];
+  const since = now.getTime() - RECONCILE_WINDOW_MS;
   for (const e of clicks) {
     if (!e.email || e.email.toLowerCase() === REPLY_TO.toLowerCase()) continue; // emails internes
     const t = Date.parse(e.date ?? "");
@@ -140,7 +153,7 @@ export async function reconcileTransactionalClicks(now: Date = new Date(), opts:
       { event: "click", email: e.email, "message-id": e.messageId, link: e.link, template_id: e.templateId, ...(Number.isFinite(t) && { ts_event: Math.floor(t / 1000) }) },
       now
     );
-    if (c) cands.push(c);
+    if (c && Date.parse(c.occurred_at) >= since) cands.push(c);
   }
   return scoreClickCandidates(cands, sentAt, { reconcile: true, deadline: opts.deadline });
 }
