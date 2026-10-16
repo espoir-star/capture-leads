@@ -83,3 +83,10 @@ export const INTERNAL_EMAIL_TAGS: readonly string[] = ["alerte-sequences", "aler
  * newsletter complète (segment NEWSLETTER — FINANCE ≈ 1 500 contacts au 15/10/2026) et les livraisons.
  */
 export const QUOTA_ALERT_REMAINING = 2000;
+
+/**
+ * Email « [Lead chaud] » à l'équipe : coupé le 16/10/2026 à la demande d'Althoce (boîte polluée).
+ * Les leads chauds se suivent dans le CRM : bloc « Priorités à ne pas laisser refroidir » (HOT)
+ * de l'accueil, score et priorité sur chaque fiche. Le score et LIFECYCLE_STAGE restent écrits dans Brevo.
+ */
+export const HOT_LEAD_EMAIL_ALERTS = false;
