@@ -42,10 +42,11 @@ const OCTOBER = [
   ["2026-10-30", "+01:00", "Pourquoi Althoce ?", "/g/mini-diagnostic-ia-finance"],
 ] as const;
 
-test("newsletters d'octobre : brouillons Finance, 8 h 30 à Paris (heure d'hiver le 25/10), un seul CTA", () => {
+test("newsletters d'octobre : brouillons Brevo créés (jamais programmés), Finance, 8 h 30 à Paris (heure d'hiver le 25/10), un seul CTA", () => {
   for (const [date, offset, rubric, ctaPart] of OCTOBER) {
     const nl = loadNewsletter(`content/newsletters/${date}-finance.md`);
-    assert.equal(nl.meta.status, "draft", date);
+    assert.ok(["draft", "created"].includes(nl.meta.status), `${date} : ${nl.meta.status}`);
+    assert.notEqual(nl.meta.status, "scheduled");
     assert.equal(nl.meta.audience, "finance");
     assert.equal(nl.meta.tag, "NL_FINANCE");
     assert.equal(nl.meta.utmCampaign, `nl_finance_${date.replaceAll("-", "")}`);
