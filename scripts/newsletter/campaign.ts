@@ -11,6 +11,10 @@
  *   npm run newsletter -- <fichier> --create --schedule
  *        → crée ET programme à `scheduledAt`
  *
+ *   npm run newsletter -- <fichier> --update
+ *        → met à jour un BROUILLON déjà créé (objet, aperçu, contenu) après relecture.
+ *          Refusé si la campagne n'est plus un brouillon. Ne programme jamais.
+ *
  * Garde-fous : status "ready" exigé, segment d'audience existant dans Brevo,
  * expéditeur actif dans Brevo (domaine althoce.fr authentifié),
  * date future, refus si une campagne du même nom existe déjà ou si le
@@ -30,6 +34,7 @@ const argv = process.argv.slice(2);
 const file = argv.find((a) => !a.startsWith("--"));
 const CREATE = argv.includes("--create");
 const SCHEDULE = argv.includes("--schedule");
+const UPDATE = argv.includes("--update");
 
 function fmtDate(iso?: string) {
   if (!iso) return "(non programmée)";
@@ -56,6 +61,7 @@ function markFile(path: string, status: "created" | "scheduled", id: number) {
 async function main() {
   if (!file) throw new Error("Usage : npm run newsletter -- content/newsletters/<fichier>.md [--create] [--schedule]");
   if (SCHEDULE && !CREATE) throw new Error("--schedule s'utilise avec --create (création + programmation)");
+  if (UPDATE && CREATE) throw new Error("--update met à jour un brouillon existant : ne pas combiner avec --create");
 
   const nl = loadNewsletter(file);
   const { meta } = nl;
@@ -95,6 +101,24 @@ async function main() {
   if (senderOk === false) console.log("               ⚠ expéditeur absent ou inactif dans Brevo (npm run brevo:domain)");
   console.log(`  Statut       ${meta.status}${meta.brevoCampaignId ? ` · campagne Brevo #${meta.brevoCampaignId}` : ""}`);
   console.log(`  Aperçu HTML  ${previewFile}`);
+
+  if (UPDATE) {
+    if (!getApiKey()) throw new Error("Refusé : BREVO_API_KEY absente");
+    if (!meta.brevoCampaignId) throw new Error("Refusé : aucun brevoCampaignId dans le fichier (créer d'abord avec --create)");
+    if (meta.status !== "created") throw new Error(`Refusé : statut "${meta.status}" (seul un brouillon créé, status "created", se met à jour)`);
+    const current = await brevoRequest<{ status?: string; name?: string }>(`/emailCampaigns/${meta.brevoCampaignId}?excludeHtmlContent=true`);
+    if (!current.ok) throw new Error(`Refusé : campagne #${meta.brevoCampaignId} illisible (${current.status})`);
+    if (current.data?.status !== "draft") throw new Error(`Refusé : la campagne #${meta.brevoCampaignId} n'est plus un brouillon (${current.data?.status})`);
+    if (current.data?.name !== nl.name) throw new Error(`Refusé : la campagne #${meta.brevoCampaignId} ne correspond pas à ${nl.name}`);
+    const upd = await brevoRequest(`/emailCampaigns/${meta.brevoCampaignId}`, {
+      method: "PUT",
+      body: { subject: meta.subject, previewText: meta.previewText || undefined, htmlContent: html, sender: NEWSLETTER_SENDER, replyTo: NEWSLETTER_REPLY_TO },
+      retries: 0,
+    });
+    if (!upd.ok) throw new Error(`Mise à jour refusée par Brevo : ${upd.status} ${upd.code ?? ""} ${upd.message ?? ""}`);
+    console.log(`\n✓ Brouillon #${meta.brevoCampaignId} mis à jour (toujours en brouillon, rien n'est programmé).\n`);
+    return;
+  }
 
   if (!CREATE) {
     console.log("\nDRY RUN : rien n'a été créé ni envoyé. Ajouter --create (brouillon) ou --create --schedule.\n");

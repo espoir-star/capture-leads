@@ -23,6 +23,8 @@ const ISO_WITH_TZ = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\
 
 export const frontmatterSchema = z.object({
   title: z.string().min(3).max(160),
+  /** Rubrique affichée au-dessus du titre (ex. « Actualité IA & Finance ») */
+  rubric: z.string().min(3).max(40).optional(),
   subject: z.string().min(3).max(200),
   previewText: z.string().max(200).default(""),
   scheduledAt: z
@@ -175,6 +177,12 @@ export function renderNewsletterHtml(nl: Newsletter, templatePath = TEMPLATE_PAT
   return template
     .replace(/<!--[\s\S]*?-->\n?/, "") // commentaire d'en-tête du template
     .replaceAll("%%TITLE%%", esc(nl.meta.title))
+    .replace(
+      "%%RUBRIC%%",
+      nl.meta.rubric
+        ? `<p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#157A5B;">${esc(nl.meta.rubric)}</p>`
+        : ""
+    )
     .replaceAll("%%PREVIEW_TEXT%%", esc(nl.meta.previewText))
     .replace("%%CONTENT%%", renderMarkdown(nl.body, utm))
     .replace("%%CTA%%", cta)
