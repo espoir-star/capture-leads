@@ -42,21 +42,39 @@ export const MINI_DIAGNOSTIC = {
   cases: [
     {
       title: "Collecte de documents",
+      example: "Collecte et suivi de documents manquants",
       ai: "Comparer la liste des pièces attendues avec les documents reçus, repérer les manquants et préparer des relances en brouillon.",
       prerequisites: "Une liste de pièces attendues par dossier et un accès autorisé aux documents reçus.",
       human: "Chaque relance est relue et validée avant envoi.",
+      suggestions: {
+        data: "Liste des pièces attendues par dossier, documents reçus (dossier partagé ou GED)",
+        validator: "Le chef de mission ou le collaborateur en charge du dossier",
+        indicator: "Temps passé par dossier et délai d'obtention des pièces",
+      },
     },
     {
       title: "Reporting financier",
+      example: "Préparation de reportings et synthèses financières",
       ai: "Réunir les indicateurs disponibles dans des sources autorisées, signaler les variations importantes et préparer une synthèse contrôlable.",
       prerequisites: "Des sources identifiées et des définitions d'indicateurs écrites (période, périmètre, règle de calcul).",
       human: "Les chiffres et le commentaire sont vérifiés avant diffusion.",
+      suggestions: {
+        data: "Exports comptables et de gestion autorisés, définitions écrites des indicateurs",
+        validator: "Le contrôleur de gestion, puis le DAF avant diffusion",
+        indicator: "Délai de production du reporting et nombre de corrections",
+      },
     },
     {
       title: "Rendez-vous client",
+      example: "Préparation des rendez-vous et réunions clients",
       ai: "Préparer un ordre du jour, puis un projet de compte rendu (décisions, tâches, points à clarifier) à partir d'informations autorisées.",
       prerequisites: "Des notes ou une transcription que vous êtes autorisé à utiliser, et un modèle de compte rendu.",
       human: "Le responsable vérifie décisions et engagements avant diffusion.",
+      suggestions: {
+        data: "Notes ou transcription autorisées, modèle de compte rendu, historique du dossier",
+        validator: "Le responsable du rendez-vous",
+        indicator: "Temps de préparation et de rédaction du compte rendu",
+      },
     },
   ],
   roadmap: [
@@ -96,15 +114,45 @@ export function band(total: number): { label: string; detail: string } {
 }
 
 /**
- * Tâche la plus simple à expérimenter en premier : score le plus élevé ;
- * à égalité, la plus facile à contrôler, puis celle dont les données sont prêtes.
+ * Tâches nommées et entièrement notées, de la plus simple à expérimenter à la moins simple :
+ * score le plus élevé ; à égalité, la plus facile à contrôler, puis celle dont les données sont prêtes.
  */
+export function ranking<T extends { name: string; ratings: Ratings }>(tasks: readonly T[]): T[] {
+  return tasks
+    .filter((t) => t.name.trim() && score(t.ratings) !== null)
+    .sort((a, b) =>
+      (score(b.ratings)! - score(a.ratings)!) ||
+      ((b.ratings.control ?? 0) - (a.ratings.control ?? 0)) ||
+      ((b.ratings.data ?? 0) - (a.ratings.data ?? 0))
+    );
+}
+
 export function bestCandidate<T extends { name: string; ratings: Ratings }>(tasks: readonly T[]): T | null {
-  const scored = tasks.filter((t) => t.name.trim() && score(t.ratings) !== null);
-  if (!scored.length) return null;
-  return [...scored].sort((a, b) =>
-    (score(b.ratings)! - score(a.ratings)!) ||
-    ((b.ratings.control ?? 0) - (a.ratings.control ?? 0)) ||
-    ((b.ratings.data ?? 0) - (a.ratings.data ?? 0))
-  )[0];
+  return ranking(tasks)[0] ?? null;
+}
+
+export type DiagnosticCase = (typeof MINI_DIAGNOSTIC.cases)[number];
+
+/** Cas concret correspondant à une tâche d'exemple, pour pré-remplir la feuille de route. */
+export function caseFor(name: string): DiagnosticCase | null {
+  return MINI_DIAGNOSTIC.cases.find((c) => c.example === name.trim()) ?? null;
+}
+
+/** Texte de la feuille de route, à copier, imprimer ou s'envoyer par email. */
+export function roadmapSummary(tasks: readonly { name: string; ratings: Ratings }[], answers: Record<string, string>): string {
+  const ranked = ranking(tasks);
+  return [
+    "Mini-diagnostic IA — ma première feuille de route",
+    "",
+    ...MINI_DIAGNOSTIC.roadmap.map((q) => `${q.short} : ${answers[q.id]?.trim() || "à compléter"}`),
+    ...(ranked.length
+      ? [
+          "",
+          `Classement de mes tâches (score sur ${MAX_SCORE} : aide à la priorisation, pas une estimation) :`,
+          ...ranked.map((t, i) => `${i + 1}. ${t.name.trim()} — ${score(t.ratings)}/${MAX_SCORE} · ${band(score(t.ratings)!).label}`),
+        ]
+      : []),
+    "",
+    "Prochaine étape : un test sur un périmètre limité, avec des données fictives ou autorisées, et une validation humaine de chaque résultat.",
+  ].join("\n");
 }
