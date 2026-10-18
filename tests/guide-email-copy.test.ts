@@ -10,11 +10,12 @@ for (const family of ["guide-12-cas-ec", "generique"]) {
   for (const file of ["delivery.html", "relance-j2.html"]) {
     const path = `emails/sequences/${family}/${file}`;
     const isGeneric = family === "generique";
-    test(`${path} : vouvoiement, cabinet de conseil IA et trois accompagnements`, () => {
+    test(`${path} : vouvoiement et positionnement Althoce (conseil & intégration IA, professions réglementées)`, () => {
       const html = readFileSync(path, "utf8");
       const visible = html.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]*>/g, " ");
-      assert.match(visible, /cabinet de conseil en intelligence artificielle/i);
-      for (const expected of [/l’audit de vos usages/, /la formation de vos équipes/, /l’intégration de solutions/]) assert.match(visible, expected);
+      assert.match(visible, /cabinet de conseil (?:&amp;|&) intégration IA/i);
+      assert.match(visible, /le partenaire IA des professions réglementées/);
+      for (const expected of [/formons vos équipes/, /sécurisons vos usages/, /automatisons vos processus métier/, /adaptées aux exigences de votre profession/]) assert.match(visible, expected);
       assert.doesNotMatch(visible, /\b(?:tu|ton|tes|ta|salut|bordeaux|agence)\b/i);
       assert.doesNotMatch(visible, /[\u{1F300}-\u{1FAFF}\u2705\uFE0F]/u);
       assert.match(html, /contact\.PRENOM/);

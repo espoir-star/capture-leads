@@ -14,6 +14,7 @@ Brevo en est dérivé (`NL 2026-11-03-finance`) et sert d'anti-doublon.
 | Champ          | Obligatoire | Exemple / règle                                        |
 | -------------- | ----------- | ------------------------------------------------------ |
 | `title`        | oui         | Hook affiché en titre de l'email                       |
+| `rubric`       | non         | Rubrique au-dessus du titre : `Actualité IA & Finance`, `Conseil pratique`, `Pourquoi Althoce ?` |
 | `subject`      | oui         | Objet                                                  |
 | `previewText`  | non         | Texte d'aperçu (pré-en-tête)                           |
 | `scheduledAt`  | pour programmer | `2026-11-03T08:30:00+01:00` (toujours avec fuseau) |
@@ -61,3 +62,8 @@ Crée un **brouillon** Brevo (exige `status: ready`, un segment configuré et `M
 npm run newsletter -- content/newsletters/2026-11-03-finance.md --create --schedule
 ```
 Crée et programme à `scheduledAt`. Toujours envoyer un test depuis Brevo avant.
+
+```bash
+npm run newsletter -- content/newsletters/2026-10-19-finance.md --update
+```
+Met à jour un brouillon déjà créé (objet, aperçu, contenu) après relecture. Refusé si la campagne n'est plus un brouillon ; ne programme jamais.

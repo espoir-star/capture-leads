@@ -91,7 +91,7 @@ export default async function PageMerci({ params }: Props) {
         </div>
 
         <p className="mt-8 text-xs text-secondaire">
-          Althoce — cabinet de conseil en intelligence artificielle : audit IA, formation, intégration
+          Althoce — cabinet de conseil &amp; intégration IA, le partenaire IA des professions réglementées
         </p>
       </div>
     </main>
