@@ -18,7 +18,7 @@ const space = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Ressources Althoce",
   description:
-    "Guides pratiques IA et automatisation pour PME et agences françaises.",
+    "Althoce, cabinet de conseil & intégration IA : le partenaire IA des professions réglementées. Guides pratiques pour former vos équipes, sécuriser vos usages et automatiser vos processus métier.",
 };
 
 export default function RootLayout({

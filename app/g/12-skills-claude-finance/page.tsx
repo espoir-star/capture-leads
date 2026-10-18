@@ -17,7 +17,7 @@ function Ref({ n }: { n: string }) {
 
 export default function Page() {
  return <main className="min-h-screen bg-[#0A0A0A] text-white"><div className="mx-auto max-w-[790px] px-5 pb-20 pt-10 sm:px-8">
-   <header className="flex items-center justify-between gap-3 border-b border-[#26382D] pb-6"><Link href="https://althoce.com" className="font-display text-2xl font-bold">Althoce<span className="text-[#26C08F]">.</span></Link><span className="text-right text-[10px] uppercase tracking-[0.16em] text-[#A0A0A0]">Cabinet de conseil en IA</span></header>
+   <header className="flex items-center justify-between gap-3 border-b border-[#26382D] pb-6"><Link href="https://althoce.com" className="font-display text-2xl font-bold">Althoce<span className="text-[#26C08F]">.</span></Link><span className="text-right text-[10px] uppercase tracking-[0.16em] text-[#A0A0A0]">Cabinet de conseil &amp; intégration IA</span></header>
 
    <div className="pt-12"><p className="text-xs font-semibold tracking-[0.16em] text-[#51D9AA]">GUIDE · ÉDITION DU {guide.edition.toUpperCase()}</p><h1 className="mt-4 font-display text-4xl font-bold tracking-tight sm:text-[54px] sm:leading-[1.15]">12 skills Claude <span className="text-[#51D9AA]">pour la finance.</span></h1><p className="mt-5 text-base leading-7 text-[#C5D1C9]">{guide.intro}</p></div>
 
@@ -33,6 +33,6 @@ export default function Page() {
 
    <section className="mt-12" id="sources"><h2 className="text-lg font-semibold">Sources officielles</h2><p className="mt-1 text-xs text-[#A9B9AB]">Consultées le {guide.edition}.</p><ol className="mt-3 space-y-1.5 text-xs leading-5">{guide.sources.map((s,i)=><li key={s.url}><span className="font-bold text-[#51D9AA]">{i+1}.</span> <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-[#E6F5EB] underline underline-offset-4">{s.label} ↗</a></li>)}</ol></section>
 
-   <footer className="mt-12 border-t border-[#2A3A2D] pt-6"><p className="text-sm leading-6 text-[#ADBCB0]">Des compétences construites sur vos process ? Althoce forme les équipes finance et construit des compétences sur mesure.</p><a href="https://cal.com/althoce-conseil-4ncbuz/30min" target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex rounded-lg bg-[#1D9E75] px-5 py-3 text-sm font-semibold text-[#081D12]">Réserver 30 minutes ↗</a><p className="mt-6 text-xs text-[#82988A]">Guide rédigé par Espoir Mwami — Althoce</p></footer>
+   <footer className="mt-12 border-t border-[#2A3A2D] pt-6"><p className="text-sm leading-6 text-[#ADBCB0]">Des compétences construites sur vos process ? Althoce, le partenaire IA des professions réglementées : nous formons vos équipes, sécurisons vos usages et automatisons vos processus métier, avec des solutions adaptées aux exigences de votre profession.</p><a href="https://cal.com/althoce-conseil-4ncbuz/30min" target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex rounded-lg bg-[#1D9E75] px-5 py-3 text-sm font-semibold text-[#081D12]">Réserver 30 minutes ↗</a><p className="mt-6 text-xs text-[#82988A]">Guide rédigé par Espoir Mwami — Althoce</p></footer>
  </div></main>
 }
