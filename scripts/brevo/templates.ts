@@ -72,7 +72,8 @@ async function main() {
       console.log(`  ✓ ${key} : créé → config/emailTemplates.ts : id ${res.data.id}`);
       continue;
     }
-    const same = t.htmlContent === html && t.subject === def.subject && t.isActive;
+    // Brevo retire le saut de ligne final du HTML enregistré : comparer sans les blancs de bord.
+    const same = t.htmlContent.trim() === html.trim() && t.subject === def.subject && t.isActive;
     const idNote = def.id === t.id ? "" : `  → config/emailTemplates.ts : id ${t.id}`;
     if (same) {
       console.log(`  = ${key} : identique (id ${t.id})${idNote}`);
