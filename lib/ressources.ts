@@ -92,7 +92,7 @@ export const RESSOURCES: Record<string, Ressource> = {
     badge: "GUIDE GRATUIT",
     titre: "Claude est branché sur <accent>Pennylane</accent>.\nVoici 10 usages qui changent le quotidien.",
     sousTitre:
-      "Pour les experts-comptables, collaborateurs et DAF. Production, analyse, relation client et pilotage du cabinet : chaque usage avec son prompt prêt à copier.",
+      "Pour les experts-comptables, collaborateurs et DAF. Production, analyse, relation client et pilotage du cabinet : chaque usage avec son prompt prêt à copier, avec Claude, ChatGPT ou Mistral.",
     resourceCard: {
       titre: "Claude × Pennylane : 10 usages",
       description: "Les 10 prompts prêts à copier et le paramétrage du connecteur.",
@@ -101,7 +101,7 @@ export const RESSOURCES: Record<string, Ressource> = {
     pills: [
       "Connecteur officiel Pennylane",
       "10 prompts prêts à copier",
-      "Paramétrage pas à pas",
+      "Claude, ChatGPT, Mistral…",
       "Lecture seule : rien n'est modifié",
     ],
     // Lecteur interne depuis le 19/10/2026 (l'ancienne page Notion reste en ligne pour les premiers inscrits).
