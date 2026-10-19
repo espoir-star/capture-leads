@@ -40,7 +40,9 @@ function deliver(slug: typeof slugs[number], contactId: number) {
 function assertTwoCorrectGuides(s: MockState) {
   assert.equal(s.contacts.length, 1, "un seul contact");
   assert.equal(s.emails.length, 2, "une livraison pour chacun des deux guides");
-  assert.deepEqual(new Set(s.emails.map((e) => e.params.GUIDE_URL)), new Set(slugs.map((slug) => getRessource(slug)!.urlRessource)));
+  // Un lecteur interne (/g/…) est envoyé en adresse absolue, sur SITE_URL.
+  const absolute = (url: string) => (url.startsWith("/") ? `${process.env.SITE_URL}${url}` : url);
+  assert.deepEqual(new Set(s.emails.map((e) => e.params.GUIDE_URL)), new Set(slugs.map((slug) => absolute(getRessource(slug)!.urlRessource))));
   for (const e of s.emails) {
     assert.equal(e.templateId, 37, "même modèle générique réutilisé");
     assert.match(e.params.UNSUBSCRIBE_URL, /^https:\/\/site\.test\/desinscription\?t=m1\./);

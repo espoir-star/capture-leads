@@ -391,7 +391,7 @@ async function main() {
     assert.equal(r.body.marketing, "opposed", "opposition confirmée par le serveur");
     const s = await until((x) => x.emails.length === 1, "livraison");
     assert.equal(s.emails[0].templateId, 43, "modèle générique publié");
-    assert.equal(s.emails[0].params.GUIDE_URL.startsWith("https://"), true);
+    assert.equal(s.emails[0].params.GUIDE_URL, `${APP}/g/claude-pennylane`, "lecteur interne en adresse absolue (SITE_URL)");
     const c = (await contactOf("claire.martin.e2e@gmail.com"))!;
     assert.deepEqual(c.listIds, [], "pas d'ajout à la liste 6 : l'automation n'envoie rien");
     assert.equal(c.attributes.MARKETING_STATUS, "OPPOSED");

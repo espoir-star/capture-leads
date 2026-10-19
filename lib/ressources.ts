@@ -85,24 +85,30 @@ export const RESSOURCES: Record<string, Ressource> = {
     signature: "Espoir Mwami — Althoce",
   },
   /* ─────────────────────────────────────────────────────────────
-   * EXEMPLE 1 — Guide Claude × Pennylane (guide existant, corrigé)
+   * Claude × Pennylane : 10 usages (refait le 19/10/2026, connecteur officiel)
    * ──────────────────────────────────────────────────────────── */
   "guide-claude-pennylane": {
     slug: "guide-claude-pennylane",
     badge: "GUIDE GRATUIT",
-    titre: "Connecter Claude à <accent>Pennylane</accent> et automatiser votre comptabilité",
+    titre: "Claude est branché sur <accent>Pennylane</accent>.\nVoici 10 usages qui changent le quotidien.",
     sousTitre:
-      "Pour les experts-comptables et cabinets. Guide complet de connexion Claude × Pennylane via MCP : installation pas à pas, cas d'usage concrets et prompts prêts à copier.",
+      "Pour les experts-comptables, collaborateurs et DAF. Production, analyse, relation client et pilotage du cabinet : chaque usage avec son prompt prêt à copier.",
+    resourceCard: {
+      titre: "Claude × Pennylane : 10 usages",
+      description: "Les 10 prompts prêts à copier et le paramétrage du connecteur.",
+      meta: "Lecture estimée : 5 minutes",
+    },
     pills: [
-      "Installation pas à pas",
-      "Prompts prêts à copier",
-      "Cas d'usage cabinet",
-      "Open source · Gratuit",
+      "Connecteur officiel Pennylane",
+      "10 prompts prêts à copier",
+      "Paramétrage pas à pas",
+      "Lecture seule : rien n'est modifié",
     ],
-    urlRessource:
-      "https://espoir-metareglage.notion.site/Claude-Pennylane-le-guide-pour-automatiser-ta-production-comptable-en-2026-387c7d01a0e88169b12dc48fee3de7c0",
+    // Lecteur interne depuis le 19/10/2026 (l'ancienne page Notion reste en ligne pour les premiers inscrits).
+    urlRessource: "/g/claude-pennylane",
     style: "modal",
     cta: "Recevoir le guide",
+    signature: "Espoir Mwami — Althoce",
   },
 
   /* ─────────────────────────────────────────────────────────────
