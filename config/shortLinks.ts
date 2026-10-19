@@ -37,6 +37,14 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // Post annoncé par Espoir pour le 16/10/2026 (nouvelle version du guide, lecteur /g/).
     utm_content: "LI_FIN_20261016_01",
   },
+  pl1: {
+    slug: "guide-claude-pennylane",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "claude_pennylane_10_usages",
+    // Post « 10 usages Claude × Pennylane » : code réservé tant que la date de publication n'est pas confirmée.
+    utm_content: null,
+  },
   ec1: {
     slug: "12-cas-usage-experts-comptables",
     utm_source: "linkedin",
