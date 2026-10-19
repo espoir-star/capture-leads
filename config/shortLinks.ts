@@ -42,8 +42,8 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     utm_source: "linkedin",
     utm_medium: "organic",
     utm_campaign: "claude_pennylane_10_usages",
-    // Post « 10 usages Claude × Pennylane » : code réservé tant que la date de publication n'est pas confirmée.
-    utm_content: null,
+    // Post « 10 usages Claude × Pennylane » publié le vendredi 16/10/2026 (date donnée par Espoir).
+    utm_content: "LI_EC_20261016_01",
   },
   ec1: {
     slug: "12-cas-usage-experts-comptables",

@@ -43,7 +43,7 @@ test("Claude × Pennylane : serveur officiel et sources HTTPS uniques et datées
   assert.match(guide.edition, /2026/);
 });
 
-test("Claude × Pennylane : lecteur interne dans la capture et les emails, mapping Brevo inchangé, lien court réservé", () => {
+test("Claude × Pennylane : lecteur interne dans la capture et les emails, mapping Brevo inchangé, lien court pl1", () => {
   const r = getRessource("guide-claude-pennylane")!;
   assert.equal(r.urlRessource, "/g/claude-pennylane");
   assert.equal(r.resourceCard?.titre, "Claude × Pennylane : 10 usages");
@@ -52,7 +52,10 @@ test("Claude × Pennylane : lecteur interne dans la capture et les emails, mappi
   assert.equal(lm.brevoListId, 6);
   assert.equal(lm.sequence, "guide-claude-pennylane-v1");
   assert.equal(SHORT_LINKS.pl1.slug, "guide-claude-pennylane");
-  assert.equal(shortLinkTarget("pl1"), null, "réservé : aucune date de post inventée");
+  assert.equal(
+    shortLinkTarget("pl1"),
+    "/r/guide-claude-pennylane?utm_source=linkedin&utm_medium=organic&utm_campaign=claude_pennylane_10_usages&utm_content=LI_EC_20261016_01"
+  );
   const before = process.env.SITE_URL;
   try {
     process.env.SITE_URL = "https://qa.althoce.example";
