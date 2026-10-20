@@ -112,10 +112,15 @@ export default async function PageWebinar({ params }: Props) {
           </p>
           <div className="mt-5">
             {preview ? (
-              <p role="status" className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm leading-relaxed">
-                Aperçu de démonstration : les inscriptions sont fermées. Le formulaire s’affichera ici une fois le
-                webinar ouvert.
-              </p>
+              <>
+                <p role="status" className="mb-4 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm leading-relaxed">
+                  Aperçu de démonstration : inscriptions fermées. Le formulaire ci-dessous est désactivé.
+                </p>
+                {/* Formulaire réel, inactif : la capture refuse de toute façon un webinar « draft ». */}
+                <fieldset disabled aria-disabled className="opacity-70">
+                  <CaptureForm slug={w.slug} kind="webinar" cta="Je réserve ma place" redirectTo={`/w/${w.slug}/confirmation`} />
+                </fieldset>
+              </>
             ) : closed ? (
               <p role="status" className="rounded-xl border border-bordure bg-fond p-4 text-sm leading-relaxed">
                 Ce webinar a eu lieu : les inscriptions sont closes. Les inscrits reçoivent le replay par email.
