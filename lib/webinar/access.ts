@@ -3,18 +3,19 @@
  *
  * Chaque inscrit reçoit /w/<slug>/rejoindre?t=… : le jeton (AES-256-GCM, chiffré,
  * infalsifiable) porte l'identifiant du contact, le webinar et l'usage. Le clic
- * pendant la fenêtre du live enregistre la présence (webinar_attended), puis
- * redirige vers la salle Google Meet. Aucune donnée personnelle lisible dans
+ * pendant la fenêtre du live est noté « lien de connexion ouvert » (signal, pas
+ * une présence : aucun point de score), puis redirige vers la salle Google Meet,
+ * lue côté serveur (lib/webinar/urls.ts). Aucune donnée personnelle lisible dans
  * l'URL, et le lien Meet n'est jamais publié.
  *
  * Fenêtre : 15 min avant le début → fin + 30 min. Un antivirus de messagerie
- * qui ouvre le lien à la livraison (J-1, H-1) tombe hors fenêtre : aucune
- * présence n'est comptée à tort.
+ * qui ouvre le lien à la livraison (J-1, H-1) tombe hors fenêtre : rien n'est noté.
  */
 
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { deriveKey } from "@/lib/security/secret";
 import type { WebinarConfig } from "@/config/webinars";
+import { webinarReplayUrl } from "@/lib/webinar/urls";
 
 export type WebinarLinkPurpose = "join" | "replay";
 
@@ -51,11 +52,16 @@ export function readWebinarToken(token: unknown, slug: string, purpose: WebinarL
 /** Liens personnels à insérer dans les emails (absents si le secret manque). */
 export function personalWebinarLinks(w: WebinarConfig, contactId: number, base: string): { JOIN_URL?: string; REPLAY_URL?: string } {
   const join = createWebinarToken(contactId, w.slug, "join");
-  const replay = w.replayUrl ? createWebinarToken(contactId, w.slug, "replay") : undefined;
+  const replay = webinarReplayUrl(w.slug) ? createWebinarToken(contactId, w.slug, "replay") : undefined;
   return {
     ...(join && { JOIN_URL: `${base}/w/${w.slug}/rejoindre?t=${join}` }),
     ...(replay && { REPLAY_URL: `${base}/w/${w.slug}/replay?t=${replay}` }),
   };
+}
+
+/** Inscriptions acceptées jusqu'à la fin du direct (une inscription pendant le live reste utile). */
+export function registrationOpen(w: Pick<WebinarConfig, "startsAt" | "durationMin">, now: Date): boolean {
+  return now.getTime() < Date.parse(w.startsAt) + w.durationMin * 60_000;
 }
 
 export type JoinState = "too_early" | "open" | "ended";

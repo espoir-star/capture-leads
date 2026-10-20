@@ -21,8 +21,12 @@
           </tr>
           <tr>
             <td style="background-color:#111311;border:1px solid #1E221E;border-radius:14px;padding:36px 32px;">
-              <p style="margin:0;color:#FFFFFF;font-size:22px;font-weight:bold;line-height:1.3;">{% if contact.PRENOM %}{{ contact.PRENOM }}, {% endif %}voici le replay</p>
-              <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">Que vous ayez assisté au webinar ou non, le replay de <strong style="color:#FFFFFF;">{{ params.WEBINAR_TITLE }}</strong> est disponible.</p>
+              <p style="margin:0;color:#FFFFFF;font-size:22px;font-weight:bold;line-height:1.3;">{% if params.ATTENDED %}Merci de votre participation{% else %}{% if contact.PRENOM %}{{ contact.PRENOM }}, {% endif %}voici le replay{% endif %}</p>
+              {% if params.ATTENDED %}
+              <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">Merci d'avoir assisté à <strong style="color:#FFFFFF;">{{ params.WEBINAR_TITLE }}</strong>. Voici le replay, pour revoir un passage ou le partager avec votre équipe.</p>
+              {% else %}
+              <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">Le replay de <strong style="color:#FFFFFF;">{{ params.WEBINAR_TITLE }}</strong> est disponible. Vous pouvez le regarder quand vous le souhaitez.</p>
+              {% endif %}
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 0;">
                 <tr>
                   <td style="background-color:#1D9E75;border-radius:8px;">
@@ -30,13 +34,17 @@
                   </td>
                 </tr>
               </table>
+              {% if params.RESOURCE_1_URL %}
+              <p style="margin:26px 0 0;color:#FFFFFF;font-size:15px;font-weight:bold;">Les ressources annoncées</p>
+              <p style="margin:8px 0 0;font-size:14px;line-height:1.8;"><a href="{{ params.RESOURCE_1_URL }}" target="_blank" style="color:#51D9AA;">{{ params.RESOURCE_1_TITLE }}</a>{% if params.RESOURCE_2_URL %}<br /><a href="{{ params.RESOURCE_2_URL }}" target="_blank" style="color:#51D9AA;">{{ params.RESOURCE_2_TITLE }}</a>{% endif %}</p>
+              {% endif %}
             </td>
           </tr>
           <tr>
             <td style="padding-top:30px;text-align:center;">
               <p style="margin:0;color:#A0A0A0;font-size:12px;line-height:1.6;">
                 Althoce — Cabinet de conseil &amp; intégration IA · Le partenaire IA des professions réglementées<br />
-                Vous recevez cet email car vous êtes inscrit(e) à ce webinar Althoce.<br />
+                Email de service lié à votre inscription à ce webinar Althoce.<br />
                 <a href="{{ params.UNSUBSCRIBE_URL }}" style="color:#A0A0A0;text-decoration:underline;">Ne plus recevoir nos conseils par email</a>
               </p>
             </td>

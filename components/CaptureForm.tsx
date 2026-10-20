@@ -26,7 +26,7 @@ interface Props {
   kind?: "guide" | "webinar";
 }
 
-type Field = "prenom" | "nom" | "email" | "tel" | "besoin" | "horizon";
+type Field = "prenom" | "nom" | "email" | "entreprise" | "tel" | "besoin" | "horizon";
 
 /** Clé sessionStorage du jeton signé, lu par la page merci (lead_magnet_downloaded) */
 export const LEAD_REF_KEY = "althoce_lead_ref:";
@@ -76,6 +76,8 @@ function newSessionId(): string {
 
 export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: Props) {
   const router = useRouter();
+  /** Webinar : formulaire court (prénom, nom, email, entreprise facultative), aucun projet demandé. */
+  const isWebinar = kind === "webinar";
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
@@ -123,10 +125,9 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
           prenom: String(form.get("prenom") ?? "").trim(),
           nom: String(form.get("nom") ?? "").trim(),
           email,
-          tel: String(form.get("tel") ?? "").trim(),
-          pays,
-          besoin,
-          horizon,
+          ...(isWebinar
+            ? { entreprise: String(form.get("entreprise") ?? "").trim() }
+            : { tel: String(form.get("tel") ?? "").trim(), pays, besoin, horizon }),
           marketingOpposition,
           website: String(form.get("website") ?? ""),
           turnstileToken,
@@ -143,7 +144,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         const message = typeof data?.message === "string"
           ? data.message
           : "Votre inscription n’a pas pu être confirmée. Réessayez ou contactez Althoce si le problème persiste.";
-        if (field && ["prenom", "nom", "email", "tel", "besoin", "horizon"].includes(field)) {
+        if (field && ["prenom", "nom", "email", "entreprise", "tel", "besoin", "horizon"].includes(field)) {
           setErrors({ [field]: message });
           document.getElementById(field)?.focus();
         } else {
@@ -271,6 +272,28 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         )}
       </div>
 
+      {isWebinar && (
+        <div>
+          <label htmlFor="entreprise" className="sr-only">
+            Entreprise (facultatif)
+          </label>
+          <input
+            id="entreprise"
+            name="entreprise"
+            type="text"
+            maxLength={120}
+            placeholder="Entreprise (facultatif)"
+            autoComplete="organization"
+            aria-invalid={!!errors.entreprise}
+            aria-describedby={errors.entreprise ? "entreprise-error" : undefined}
+            onChange={() => clearError("entreprise")}
+            className={`${INPUT} ${borderFor(errors.entreprise)}`}
+          />
+          <ErrorText id="entreprise-error" message={errors.entreprise} />
+        </div>
+      )}
+
+      {!isWebinar && (<>
       <div>
         <label htmlFor="tel" className="sr-only">
           Numéro de mobile
@@ -384,6 +407,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         </div>
         <ErrorText id="horizon-error" message={errors.horizon} />
       </div>
+      </>)}
 
       <Turnstile ref={turnstile} />
 
@@ -392,7 +416,10 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         <p>
           Dans le cadre de votre activité professionnelle, Althoce pourra vous adresser des
           conseils, actualités IA et invitations en lien avec votre métier. Vous pouvez vous y
-          opposer dès maintenant, puis vous désinscrire à tout moment : le guide reste envoyé.
+          opposer dès maintenant, puis vous désinscrire à tout moment :{" "}
+          {isWebinar
+            ? "la confirmation, les rappels et le replay de ce webinar restent envoyés."
+            : "le guide reste envoyé."}
         </p>
         <button
           type="button"
@@ -421,8 +448,8 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
       </button>
 
       <p className="text-xs leading-relaxed text-secondaire">
-        {kind === "webinar"
-          ? "Vous recevrez les informations du webinar par email."
+        {isWebinar
+          ? "Vous recevrez votre lien de connexion personnel et les rappels par email."
           : "Vous recevrez le guide par email."}{" "}
         Althoce peut vous recontacter au sujet de votre demande. Vos données ne sont jamais
         revendues.{" "}

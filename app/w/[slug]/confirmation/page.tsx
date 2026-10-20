@@ -31,6 +31,9 @@ export default async function ConfirmationWebinar({ params }: Props) {
           ✓ INSCRIPTION CONFIRMÉE
         </span>
         <h1 className="mt-6 font-display text-2xl font-bold leading-snug text-balance sm:text-4xl">{w.title}</h1>
+        <p className="mt-3 text-sm font-semibold text-accent first-letter:uppercase">
+          {new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Paris" }).format(new Date(w.startsAt))} (heure de Paris) · {w.durationMin} min
+        </p>
         <p className="mt-4 leading-relaxed text-secondaire">
           Votre lien de connexion personnel arrive par email dans quelques instants (vérifiez vos spams si besoin).
           Un rappel vous sera envoyé la veille et une heure avant.

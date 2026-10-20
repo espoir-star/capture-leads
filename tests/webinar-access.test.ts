@@ -5,6 +5,9 @@ import { createWebinarToken, googleCalendarUrl, joinState, personalWebinarLinks,
 import { PAID_UTM_CONTENT_PATTERN } from "@/config/sourceRegistry";
 
 process.env.SIGNING_SECRET ??= "secret-de-test-webinar";
+// Dépôt public : salle et replay viennent des variables d'environnement, jamais de la config.
+process.env.WEBINAR_JOIN_URL__IA_CABINET_TEST = "https://meet.google.com/abc-defg-hij";
+process.env.WEBINAR_REPLAY_URL__IA_CABINET_TEST = "https://drive.google.com/file/d/replay-test-0123456789/view";
 
 const W: WebinarConfig = {
   ...DEMO_WEBINAR,
@@ -13,8 +16,6 @@ const W: WebinarConfig = {
   status: "open",
   startsAt: "2026-12-03T12:30:00+01:00",
   durationMin: 45,
-  joinUrl: "https://meet.google.com/abc-defg-hij",
-  replayUrl: "https://drive.google.com/file/d/replay-test/view",
 };
 const BASE = "https://qa.althoce.example";
 
@@ -46,7 +47,7 @@ test("emails : liens personnels de connexion et de replay, jamais la salle Meet 
   assert.match(links.REPLAY_URL!, /\/w\/ia-cabinet-test\/replay\?t=w1\./);
   assert.doesNotMatch(JSON.stringify(links), /meet\.google|drive\.google/);
   assert.equal(readWebinarToken(new URL(links.JOIN_URL!).searchParams.get("t"), W.slug, "join"), 42);
-  assert.equal(personalWebinarLinks({ ...W, replayUrl: undefined }, 42, BASE).REPLAY_URL, undefined);
+  assert.equal(personalWebinarLinks({ ...W, slug: "sans-replay" }, 42, BASE).REPLAY_URL, undefined);
 });
 
 test("agenda : .ics conforme (UTC, CRLF, lignes ≤ 75 octets, échappement) et Google Agenda, sans lien de connexion", () => {

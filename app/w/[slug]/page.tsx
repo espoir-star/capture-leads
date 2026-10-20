@@ -2,11 +2,14 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CaptureForm from "@/components/CaptureForm";
 import { getWebinar, getWebinarPageSlugs } from "@/config/webinars";
+import { registrationOpen } from "@/lib/webinar/access";
 
 /**
- * Landing d'inscription webinar : même formulaire, mêmes protections et même
- * suivi de source que les guides. Pages générées pour les webinars ouverts ;
- * la démonstration (statut « draft ») n'existe que hors Production, formulaire fermé.
+ * Landing d'inscription webinar : formulaire court (prénom, nom, email,
+ * entreprise facultative), mêmes protections et même suivi de source que les
+ * guides. Pages générées pour les webinars ouverts ; la démonstration (statut
+ * « draft ») n'existe que hors Production, formulaire fermé. Régénérée toutes
+ * les 10 minutes : après le direct, la page annonce la clôture des inscriptions.
  */
 
 interface Props {
@@ -14,6 +17,7 @@ interface Props {
 }
 
 export const dynamicParams = false;
+export const revalidate = 600;
 
 export function generateStaticParams() {
   return getWebinarPageSlugs().map((slug) => ({ slug }));
@@ -46,6 +50,7 @@ export default async function PageWebinar({ params }: Props) {
   const w = getWebinar(slug);
   if (!w || (w.status !== "open" && w.status !== "draft")) notFound();
   const preview = w.status === "draft";
+  const closed = !preview && !registrationOpen(w, new Date());
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
@@ -69,7 +74,7 @@ export default async function PageWebinar({ params }: Props) {
           <p className="mt-4 text-[15px] leading-relaxed text-secondaire sm:text-base">{w.description}</p>
           <ul className="mt-5 flex flex-wrap gap-2 text-sm">
             <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5 font-medium first-letter:uppercase">
-              {dateLongue(w.startsAt)}
+              {dateLongue(w.startsAt)} (heure de Paris)
             </li>
             <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5">{w.durationMin} min</li>
             <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5">Google Meet</li>
@@ -110,6 +115,10 @@ export default async function PageWebinar({ params }: Props) {
               <p role="status" className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm leading-relaxed">
                 Aperçu de démonstration : les inscriptions sont fermées. Le formulaire s’affichera ici une fois le
                 webinar ouvert.
+              </p>
+            ) : closed ? (
+              <p role="status" className="rounded-xl border border-bordure bg-fond p-4 text-sm leading-relaxed">
+                Ce webinar a eu lieu : les inscriptions sont closes. Les inscrits reçoivent le replay par email.
               </p>
             ) : (
               <CaptureForm slug={w.slug} kind="webinar" cta="Je réserve ma place" redirectTo={`/w/${w.slug}/confirmation`} />

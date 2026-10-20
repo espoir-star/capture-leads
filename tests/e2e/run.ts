@@ -22,6 +22,8 @@ const MOCK = `http://127.0.0.1:${MOCK_PORT}`;
 const WEBHOOK_SECRET = "e2e-webhook-secret";
 const SEQUENCE_SECRET = "e2e-sequence-secret";
 
+const WEBINAR_STARTS_AT = new Date(Date.now() + 10 * 60_000).toISOString();
+const MEET_ROOM = "https://meet.google.com/abc-defg-hij";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let ipCounter = 10;
 
@@ -109,6 +111,9 @@ async function main() {
       N8N_EVENTS_WEBHOOK_URL: `${MOCK}/__n8n_events`,
       SEQUENCE_API_SECRET: SEQUENCE_SECRET,
       SITE_URL: APP,
+      // Webinar de recette (jamais en Production) : direct dans 10 min, salle ouverte (fenêtre −15 min).
+      WEBINAR_E2E_STARTS_AT: WEBINAR_STARTS_AT,
+      WEBINAR_JOIN_URL__WEBINAR_E2E: MEET_ROOM,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -632,15 +637,114 @@ async function main() {
     assert.equal(s.contacts.find((c) => c.email === "rien@cabinet.fr")!.attributes.LEAD_SCORE, 5);
   });
 
-  await scenario("SC6 · présence webinar (n8n → /api/sequences/event) → +15, une fois", async () => {
+  await scenario("SC6 · présence CONFIRMÉE (rapport de sondage → /api/sequences/event) → +15 une fois, suivi CRM", async () => {
     await seed({ email: "present@cabinet.fr", attributes: { LEAD_SCORE: 8 } });
     const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
-    const evt = { email: "present@cabinet.fr", event: "webinar_attended", properties: { webinar: "ia-cabinet-2026" } };
+    const evt = { email: "present@cabinet.fr", event: "webinar_attended", properties: { webinar: "webinar-e2e", proof: "poll" } };
     assert.equal((await post("/api/sequences/event", evt, auth)).status, 200);
     assert.equal((await post("/api/sequences/event", evt, auth)).status, 200);
     const c = (await contactOf("present@cabinet.fr"))!;
     assert.equal(c.attributes.BEHAVIOR_SCORE, 15);
     assert.equal(c.attributes.LEAD_SCORE, 23);
+    const activity = JSON.parse(String(c.attributes.WEBINAR_ACTIVITY));
+    assert.equal(activity.attendance, "CONFIRMED");
+    assert.equal(activity.attendanceProof, "poll");
+    const unknown = { email: "present@cabinet.fr", event: "webinar_attended", properties: { webinar: "webinar-inconnu" } };
+    assert.equal((await post("/api/sequences/event", unknown, auth)).status, 200);
+    assert.equal((await contactOf("present@cabinet.fr"))!.attributes.BEHAVIOR_SCORE, 15, "webinar inconnu : aucun point");
+  });
+
+  /* ── Webinars : formulaire court, rappels, lien personnel, présence ── */
+  const webinarLead = (over: Record<string, unknown> = {}) => ({
+    kind: "webinar", slug: "webinar-e2e", prenom: "Paul", nom: "Durand", email: "paul.durand.e2e@gmail.com",
+    entreprise: "Cabinet Durand", website: "", turnstileToken: "XXXX.DUMMY.TOKEN.XXXX", sessionId: "e2e-webinar",
+    currentTouch: { utm_source: "linkedin", utm_medium: "organic", utm_campaign: "webinar_ia_finance", utm_content: "LI_FIN_20261105_01", landing_page: "/w/webinar-e2e", ts: Date.now() },
+    ...over,
+  });
+  const joinOf = (s: MockState) => s.emails.find((e) => e.templateId === 45)?.params.JOIN_URL ?? "";
+
+  await scenario("W1 · inscription webinar (formulaire court) : un contact, entreprise, aucun projet inventé, confirmation #45, rappels dépassés sautés", async () => {
+    const r = await post("/api/lead", webinarLead());
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const s = await until((x) => x.emails.some((e) => e.templateId === 45) && x.n8n.length > 0
+      && !!x.contacts.find((c) => c.email === "paul.durand.e2e@gmail.com")?.attributes.WEBINAR_ACTIVITY, "confirmation + séquence + suivi");
+    const c = s.contacts.find((x) => x.email === "paul.durand.e2e@gmail.com")!;
+    assert.deepEqual(c.listIds, [9999]);
+    assert.equal(c.attributes.ENTREPRISE, "Cabinet Durand");
+    for (const k of ["BESOIN_PRIORITAIRE", "HORIZON_PROJET", "INTENT_UPDATED_AT", "SMS", "PHONE_STATUS"]) assert.equal(c.attributes[k], undefined, `${k} jamais inventé`);
+    assert.equal(c.attributes.LAST_QUALIFYING_ACTIVITY_TYPE, "WEBINAR_REGISTERED");
+    assert.notEqual(c.attributes.MARKETING_STATUS, "CONSENT", "inscription ≠ consentement");
+    const mail = s.emails.find((e) => e.templateId === 45)!;
+    assert.match(mail.params.JOIN_URL, /\/w\/webinar-e2e\/rejoindre\?t=w1\./);
+    assert.doesNotMatch(JSON.stringify(mail.params), /meet\.google/, "la salle n'apparaît jamais dans un email");
+    assert.match(mail.params.WEBINAR_DATE, /\d/);
+    assert.equal(s.n8n.length, 1, "une seule séquence");
+    assert.equal(s.n8n[0].body.stepId, "replay", "J-1 et H-1 déjà passés à l'inscription : sautés");
+    const activity = JSON.parse(String(c.attributes.WEBINAR_ACTIVITY));
+    assert.equal(activity.slug, "webinar-e2e");
+    assert.equal(activity.attendance, "UNKNOWN");
+    assert.equal(activity.source.utm_campaign, "webinar_ia_finance");
+    assert.equal(s.ledger.filter((l) => String(l.event_key).startsWith("wreg.")).length, 1, "+8 inscription");
+  });
+
+  await scenario("W2 · inscriptions répétées : un contact, une confirmation par jour, une seule séquence de rappels", async () => {
+    for (let i = 0; i < 3; i++) assert.equal((await post("/api/lead", webinarLead({ sessionId: `rep-${i}` }))).status, 200);
+    const s = await until((x) => x.emails.some((e) => e.templateId === 45), "confirmation");
+    await sleep(800);
+    const after = await state();
+    assert.equal(after.contacts.filter((c) => c.email === "paul.durand.e2e@gmail.com").length, 1);
+    assert.equal(after.emails.filter((e) => e.templateId === 45).length, 1, "confirmation du jour non renvoyée");
+    assert.equal(after.n8n.length, 1, "aucune seconde séquence de rappels");
+    void s;
+  });
+
+  await scenario("W3 · validation serveur : guide inchangé (téléphone exigé), webinar sans projet même si injecté", async () => {
+    const noTel = await post("/api/lead", lead({ tel: undefined }));
+    assert.equal(noTel.status, 400);
+    assert.equal(noTel.body.field, "tel");
+    const bad = await post("/api/lead", webinarLead({ entreprise: "<b>http://spam</b>" }));
+    assert.equal(bad.status, 400);
+    assert.equal(bad.body.field, "entreprise");
+    const injected = await post("/api/lead", webinarLead({ email: "injecte.e2e@gmail.com", besoin: "DEPLOYER_AGENT_IA", horizon: "IMMEDIAT", tel: "0645871239" }));
+    assert.equal(injected.status, 200);
+    const c = (await until((x) => !!x.contacts.find((y) => y.email === "injecte.e2e@gmail.com"), "contact"))
+      .contacts.find((y) => y.email === "injecte.e2e@gmail.com")!;
+    assert.equal(c.attributes.HORIZON_PROJET, undefined, "pas de projet via le formulaire webinar");
+    assert.equal(c.attributes.SMS, undefined);
+    assert.equal((await post("/api/lead", webinarLead({ slug: "12-cas-usage-experts-comptables" }))).status, 404, "un guide n'est pas un webinar");
+  });
+
+  await scenario("W4 · lien personnel : salle Meet, « lien ouvert » sans point ni présence ; HEAD, scanner et jeton faux sans effet", async () => {
+    await post("/api/lead", webinarLead());
+    const join = joinOf(await until((x) => !!joinOf(x), "lien personnel"));
+    const head = await fetch(join, { method: "HEAD", redirect: "manual" });
+    assert.equal(head.status, 204);
+    const scanner = await fetch(join, { redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (compatible; Barracuda Sentinel)" } });
+    assert.equal(scanner.headers.get("location"), MEET_ROOM);
+    await sleep(500);
+    assert.equal((await state()).events.filter((e) => e.event_name === "webinar_join_clicked").length, 0, "scanner : rien noté");
+    const res = await fetch(join, { redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (Macintosh) Chrome/130.0 Safari/537.36" } });
+    assert.equal(res.status, 302);
+    assert.equal(res.headers.get("location"), MEET_ROOM);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    const s = await until((x) => x.events.some((e) => e.event_name === "webinar_join_clicked"), "lien ouvert noté");
+    assert.equal(s.ledger.filter((l) => String(l.event_key).startsWith("watt.")).length, 0, "aucun +15 sur un clic");
+    assert.equal(s.events.filter((e) => e.event_name === "webinar_attended").length, 0, "aucune présence sur un clic");
+    const c = await until((x) => JSON.parse(String(x.contacts.find((y) => y.email === "paul.durand.e2e@gmail.com")?.attributes.WEBINAR_ACTIVITY ?? "{}")).joinOpenedAt, "joinOpenedAt");
+    const activity = JSON.parse(String(c.contacts.find((y) => y.email === "paul.durand.e2e@gmail.com")!.attributes.WEBINAR_ACTIVITY));
+    assert.equal(activity.attendance, "UNKNOWN", "présence non certifiée");
+    const forged = await fetch(`${APP}/w/webinar-e2e/rejoindre?t=w1.faux`, { redirect: "manual" });
+    assert.match(forged.headers.get("location") ?? "", /\/w\/webinar-e2e\/acces\?etat=lien-invalide$/);
+    const replay = await fetch(`${APP}/w/webinar-e2e/replay?t=${new URL(join).searchParams.get("t")}`, { redirect: "manual" });
+    assert.match(replay.headers.get("location") ?? "", /etat=lien-invalide/, "un jeton de connexion n'ouvre pas le replay");
+  });
+
+  await scenario("W5 · opposition marketing à l'inscription : rappels de service maintenus, aucun consentement créé", async () => {
+    const r = await post("/api/lead", webinarLead({ email: "oppose.webinar.e2e@gmail.com", marketingOpposition: true }));
+    assert.equal(r.status, 200);
+    assert.equal(r.body.marketing, "opposed");
+    const s = await until((x) => x.emails.some((e) => e.templateId === 45 && e.to[0].email === "oppose.webinar.e2e@gmail.com") && x.n8n.length > 0, "confirmation");
+    assert.equal(s.contacts.find((c) => c.email === "oppose.webinar.e2e@gmail.com")!.attributes.MARKETING_STATUS, "OPPOSED");
   });
 
   /* ── Sécurité des échanges (Brevo → Vercel, n8n → Vercel) ──────────── */
