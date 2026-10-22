@@ -71,5 +71,8 @@ test("Claude × Pennylane : page non indexée, avertissement données clients, a
   assert.match(page, /robots:\{index:false,follow:false\}/);
   assert.match(page, /id="donnees-clients"/);
   assert.match(page, /Free, Pro ou Max/);
+  // Le connecteur n'est pas réservé à Claude : section dédiée aux autres assistants documentés par Pennylane.
+  assert.match(page, /id="autres-ia"/);
+  for (const ia of ["ChatGPT", "Mistral", "Copilot Studio"]) assert.ok(page.includes(ia), ia);
   assert.doesNotMatch(page, /<form|fetch\(|localStorage|sendBeacon|CaptureForm/);
 });
