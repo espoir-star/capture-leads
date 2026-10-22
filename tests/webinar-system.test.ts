@@ -230,3 +230,15 @@ test("webinar de recette interne : réservé aux adresses Althoce, contacts QA, 
   assert.match(readFileSync("app/w/[slug]/page.tsx", "utf8"), /w\.internalTest\) && \{ robots: \{ index: false/);
   assert.match(readFileSync("lib/lead/capture.ts", "utf8"), /internalTest\) update\.attributes\.IS_QA = true/);
 });
+
+test("score : les liens de service d'un webinar (connexion, replay, agenda) ne rapportent aucun point de clic", async () => {
+  const { classifyClick } = await import("@/lib/scoring/behavior");
+  for (const url of [
+    "https://guide-gratuit-pi.vercel.app/w/test-parcours-webinaire/rejoindre?t=w1.abc",
+    "https://guide-gratuit-pi.vercel.app/w/test-parcours-webinaire/replay?t=w1.abc",
+    "https://guide-gratuit-pi.vercel.app/w/test-parcours-webinaire/agenda.ics",
+    "https://calendar.google.com/calendar/render?action=TEMPLATE&text=x",
+  ]) assert.equal(classifyClick(url), null, url);
+  assert.equal(classifyClick("https://guide-gratuit-pi.vercel.app/w/test-parcours-webinaire"), "content_click", "la page d'inscription reste un contenu");
+  assert.equal(classifyClick("https://cal.com/althoce-conseil-4ncbuz/30min"), "offer_click");
+});
