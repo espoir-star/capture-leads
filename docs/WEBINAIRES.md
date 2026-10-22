@@ -145,18 +145,20 @@ La démonstration `/w/demonstration-webinar` n'existe que hors Production, avec 
 - sondages et questions-réponses, avec rapports envoyés au modérateur ;
 - **pas** de rapport de présence (réservé à Business Plus).
 
-**Console d'administration** (Applications > Google Workspace > Google Meet), à vérifier avant le premier webinaire :
-- **Enregistrement** autorisé pour l'organisateur.
-- **Sondages** et **questions-réponses** activés (paramètres de sécurité de Meet).
-- **Participants externes** : autorisés à demander l'accès. Les inscrits n'ont pas de compte Althoce.
-- **Co-organisation** : un co-organisateur Althoce désigné pour admettre les participants et modérer.
+**Console d'administration** (Applications > Google Workspace > Google Meet), relue le 22/10/2026 :
+- **Enregistrement** autorisé ; **autorisation explicite des participants exigée** avant tout enregistrement (activée le 22/10/2026 avec l'accord d'Espoir).
+- **Sondages** et **questions-réponses** activés.
+- **Domaine** : tous les utilisateurs, même sans compte Google. **Type d'accès « Approuvé »** : les externes demandent à entrer, un lien transféré ne suffit pas.
+- **Téléphone** : accès par téléphone ouvert aux externes (secours).
+- Restent volontairement inchangés au niveau de l'organisation : la gestion par l'organisateur (désactivée par défaut), la prise de notes Gemini automatique (réunions d'au moins 3 invités) et le téléchargement des enregistrements. Ils se règlent **par événement** ci-dessous, sans toucher aux rendez-vous commerciaux.
 
-**Dans l'événement Agenda** (Options de l'organisateur) :
-- **Accès** : les invités externes « demandent à participer », pour garder le contrôle de la salle même si un lien circule ;
-- **Gestion par l'organisateur** activée ;
-- partage d'écran réservé aux organisateurs ;
-- chat et Q&R ouverts ;
-- **enregistrement** prévu.
+**Dans l'événement Agenda du webinaire** (Options de l'organisateur) :
+- **Gestion par l'organisateur** activée ; partage d'écran réservé aux organisateurs ; chat et Q&R ouverts ;
+- **co-organisateur** Althoce ajouté (admission des participants, modération) ;
+- **prise de notes Gemini désactivée** pour l'événement : elle capterait les noms et questions de prospects externes ;
+- **enregistrement** prévu ; les participants donnent leur accord au lancement (réglage de la console).
+
+Les participants sont informés de l'enregistrement sur la page d'inscription, la page de confirmation et l'email de confirmation.
 
 ## 10. Checklist organisateur
 
@@ -195,7 +197,7 @@ La démonstration `/w/demonstration-webinar` n'existe que hors Production, avec 
 
 **Après**
 - [ ] Rapports de sondage et de Q&R, puis `webinar:presences`.
-- [ ] Vérifier le replay, le partager, publier la variable Vercel, puis `webinar:check`.
+- [ ] Vérifier le replay, le partager en lecture **avec le téléchargement désactivé** (partage du fichier Drive), publier la variable Vercel, puis `webinar:check`.
 - [ ] Après J+3 : `webinar:replay` si besoin.
 - [ ] Passer `status: "done"`.
 
