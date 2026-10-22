@@ -1,25 +1,29 @@
 /**
  * Lien personnel de connexion : /w/<slug>/rejoindre?t=… (envoyé par email).
- * Pendant la fenêtre du live : présence enregistrée (webinar_attended, une fois
- * par contact) puis redirection vers la salle Google Meet. Hors fenêtre : page
- * d'information, aucune présence comptée. La salle n'est jamais publiée.
+ * Pendant la fenêtre du live : redirection vers la salle Google Meet (lue côté
+ * serveur, jamais publiée) et signal « lien de connexion ouvert », noté APRÈS
+ * la réponse. Ce signal ne vaut pas présence : aucun point, aucun
+ * webinar_attended (voir lib/webinar/events.ts). Hors fenêtre : page d'information.
+ * Scanners de messagerie (HEAD, robots) : rien n'est noté.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { getWebinar } from "@/config/webinars";
 import { createWebinarToken, joinState, readWebinarToken } from "@/lib/webinar/access";
-import { recordWebinarAttendance } from "@/lib/webinar/events";
+import { recordWebinarJoinOpened } from "@/lib/webinar/events";
+import { isAutomatedRequest } from "@/lib/webinar/scanner";
+import { webinarJoinUrl, webinarReplayUrl } from "@/lib/webinar/urls";
 
 export const dynamic = "force-dynamic";
 
-const go = (req: NextRequest, path: string) => {
-  const res = NextResponse.redirect(new URL(path, req.url), 302);
+const noStore = (res: NextResponse) => {
   res.headers.set("Cache-Control", "no-store");
   res.headers.set("Referrer-Policy", "no-referrer");
+  res.headers.set("X-Robots-Tag", "noindex");
   return res;
 };
+const go = (req: NextRequest, path: string) => noStore(NextResponse.redirect(new URL(path, req.url), 302));
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+async function handle(req: NextRequest, slug: string): Promise<NextResponse> {
   const w = getWebinar(slug);
   if (!w || (w.status !== "open" && w.status !== "closed" && w.status !== "done")) return go(req, "/");
   const contactId = readWebinarToken(req.nextUrl.searchParams.get("t"), slug, "join");
@@ -28,13 +32,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const state = joinState(w, now);
   if (state === "too_early") return go(req, `/w/${slug}/acces?etat=bientot`);
   if (state === "ended") {
-    const replay = w.replayUrl ? createWebinarToken(contactId, slug, "replay") : undefined;
+    const replay = webinarReplayUrl(slug) ? createWebinarToken(contactId, slug, "replay") : undefined;
     return go(req, replay ? `/w/${slug}/replay?t=${replay}` : `/w/${slug}/acces?etat=termine`);
   }
-  if (!w.joinUrl) return go(req, `/w/${slug}/acces?etat=salle-fermee`);
-  await recordWebinarAttendance(contactId, slug, now);
-  const res = NextResponse.redirect(w.joinUrl, 302);
-  res.headers.set("Cache-Control", "no-store");
-  res.headers.set("Referrer-Policy", "no-referrer");
-  return res;
+  const room = webinarJoinUrl(slug);
+  if (!room) return go(req, `/w/${slug}/acces?etat=salle-fermee`);
+  if (!isAutomatedRequest(req.headers, req.method)) after(() => recordWebinarJoinOpened(contactId, w, now));
+  return noStore(NextResponse.redirect(room, 302));
+}
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  return handle(req, (await params).slug);
+}
+
+/** Pré-vérification d'un scanner : aucune redirection vers la salle, rien de noté. */
+export async function HEAD() {
+  return noStore(new NextResponse(null, { status: 204 }));
 }

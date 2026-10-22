@@ -5,6 +5,11 @@
  *
  * Les UTM ne bloquent jamais une inscription : une valeur absurde est
  * simplement ignorée (lib/tracking/utm.ts).
+ *
+ * Guides : téléphone, besoin et horizon obligatoires (inchangé).
+ * Webinars (`kind: "webinar"`) : formulaire court prénom, nom, email et
+ * entreprise facultative. Téléphone, besoin et horizon y sont ignorés : une
+ * inscription ne fabrique jamais de déclaration de projet.
  */
 
 import { z } from "zod";
@@ -23,16 +28,27 @@ const personName = z
       .refine((v) => /\p{L}/u.test(v) && !/[@<>]|:\/\//.test(v))
   );
 
+/** Entreprise facultative : texte libre court, sans balise ni lien ; vide = non renseignée. */
+const companyName = z
+  .string()
+  .max(200)
+  .transform(stripControls)
+  .pipe(z.string().max(120).refine((v) => !/[<>]|:\/\/|www\./i.test(v)))
+  .transform((v) => v || undefined);
+
+const GUIDE_ONLY = ["tel", "pays", "besoin", "horizon"] as const;
+
 export const leadSchema = z.object({
   kind: z.enum(["guide", "webinar"]).optional().default("guide"),
   slug: z.string().max(80).regex(/^[a-z0-9-]+$/),
   prenom: personName,
   nom: personName,
   email: z.string().max(254),
-  tel: z.string().max(40),
-  pays: z.enum(PHONE_COUNTRY_CODES),
-  besoin: z.enum(BESOIN_CODES),
-  horizon: z.enum(HORIZON_CODES),
+  tel: z.string().max(40).optional(),
+  pays: z.enum(PHONE_COUNTRY_CODES).optional(),
+  besoin: z.enum(BESOIN_CODES).optional(),
+  horizon: z.enum(HORIZON_CODES).optional(),
+  entreprise: companyName.optional(),
   /** Opposition explicite aux emails marketing, indépendante des cookies. */
   marketingOpposition: z.boolean().optional().default(false),
   website: z.string().max(200).optional().default(""), // honeypot
@@ -44,7 +60,10 @@ export const leadSchema = z.object({
     .max(60)
     .regex(/^[\w-]*$/)
     .optional(),
-});
+}).superRefine((v, ctx) => {
+  if (v.kind === "webinar") return;
+  for (const field of GUIDE_ONLY) if (v[field] === undefined) ctx.addIssue({ code: "custom", path: [field], message: "required" });
+}).transform((v) => (v.kind === "webinar" ? { ...v, tel: undefined, pays: undefined, besoin: undefined, horizon: undefined } : v));
 
 export type LeadInput = z.infer<typeof leadSchema>;
 
@@ -62,4 +81,5 @@ export const FIELD_MESSAGES: Record<string, string> = {
   pays: "Merci de choisir un indicatif.",
   besoin: "Merci de choisir votre objectif.",
   horizon: "Merci de choisir un horizon.",
+  entreprise: "Merci de vérifier le nom de l’entreprise.",
 };

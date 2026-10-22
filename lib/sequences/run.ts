@@ -5,16 +5,16 @@
  * livraisons. Anciennes inscriptions signées conservées.
  */
 import { templateId } from "@/config/emailTemplates";
-import { getSequence, STEP_STALE_AFTER_HOURS, type SequenceConfig } from "@/config/sequences";
+import { getSequence, type SequenceConfig } from "@/config/sequences";
 import { multiGuidesEnabled, MULTI_GUIDE_LAST_FOLLOWUP } from "@/config/multiGuides";
 import { brevoRequest, getContactById } from "@/lib/brevo/api";
 import { BREVO_EVENTS, sendBrevoEvent } from "@/lib/brevo/events";
 import { sendOnce, type SendOutcome } from "@/lib/brevo/sendOnce";
 import type { SendResult } from "@/lib/brevo/transactional";
 import { deliverySendKey, signEnrollment, stepSendKey, verifyEnrollment, type Enrollment } from "@/lib/sequences/enrollment";
-import { confirmUrl, CTA_URL, resourceParams, unsubscribeLinks } from "@/lib/sequences/links";
+import { confirmUrl, CTA_URL, resourceParams, unsubscribeLinks, webinarContactParams } from "@/lib/sequences/links";
 import { notifyN8n } from "@/lib/sequences/n8n";
-import { decideStep, nextStep, stepAt } from "@/lib/sequences/plan";
+import { decideStep, nextStep, registeredAfter, REPLAY_RETRY_HOURS, staleAfterMs, stepAt } from "@/lib/sequences/plan";
 import { sequencesPaused } from "@/lib/sequences/switch";
 import { guideFollowupDecision, knownGuideRequests } from "@/lib/guides/requests";
 
@@ -101,10 +101,17 @@ export async function runStep(enrollmentId: unknown, stepId: unknown, now = new 
   let sent = false;
   let skipReason: string | undefined;
   const resource = resourceParams(enr.r);
-  if (t > at + STEP_STALE_AFTER_HOURS * HOUR) {
+  const tolerance = staleAfterMs(seq, enr, step);
+  if (t > at + tolerance) {
     skipReason = "stale";
-  } else if (step.requires === "replayUrl" && !resource.REPLAY_URL) {
-    skipReason = "missing_replay";
+  } else if (registeredAfter(enr, step)) {
+    skipReason = "registered_after_reminder";
+  } else if (step.requires === "replayUrl" && !resource.REPLAY_AVAILABLE) {
+    // Enregistrement pas encore publié : nouvel essai plus tard (n8n reboucle sur la même
+    // étape), jusqu'à l'étape suivante. Au-delà, `npm run webinar:replay` le reprend.
+    const retryAt = t + (REPLAY_RETRY_HOURS * HOUR) / (enr.k ?? 1);
+    if (retryAt <= at + tolerance) return wait(step.id, retryAt);
+    skipReason = "replay_pending";
   } else {
     const contact = await getContactById(enr.c);
     const decision = decideStep(contact, step);
@@ -132,7 +139,7 @@ export async function runStep(enrollmentId: unknown, stepId: unknown, now = new 
       const email = contact!.email;
       const links = unsubscribeLinks(email);
       const out = await sendOnce({
-        to: { email }, templateId: id, params: baseParams(email, enr.r, enr.c),
+        to: { email }, templateId: id, params: { ...baseParams(email, enr.r, enr.c), ...webinarContactParams(contact!.attributes, enr.r) },
         tags: [`seq:${seq.id}`, `seq:${seq.id}:${step.id}`, ...(enr.r ? [`guide:${enr.r}`] : [])],
         sendKey: stepSendKey(seq.id, enr.c, step.id), since: new Date(at - 6 * HOUR), now, oneClickUnsubscribeUrl: links?.oneClick,
       });
@@ -160,4 +167,32 @@ export async function runStep(enrollmentId: unknown, stepId: unknown, now = new 
 }
 async function recordSkip(enr: Enrollment, stepId: string, reason: string, now: Date) {
   await sendBrevoEvent(BREVO_EVENTS.SEQUENCE_STEP_SKIPPED, { contact_id: enr.c }, { sequence_id: enr.s, step: stepId, reason, ...(enr.r && { resource: enr.r }) }, now);
+}
+
+export type ReplayCatchUp = "sent" | "already_sent" | "email_unusable" | "replay_not_published" | "failed";
+
+/**
+ * Reprise contrôlée du replay publié après la fenêtre de la séquence
+ * (`npm run webinar:replay`). Même modèle, mêmes paramètres et MÊME clé
+ * d'envoi que l'étape « replay » : un inscrit ne le reçoit jamais deux fois.
+ */
+export async function sendReplayCatchUp(seq: SequenceConfig, contact: { id: number; email: string; attributes: Record<string, unknown> },
+  slug: string, eventAt: Date, now: Date): Promise<ReplayCatchUp> {
+  const step = seq.steps.find((s) => s.requires === "replayUrl");
+  const id = step ? templateId(step.template) : null;
+  if (!step || id === null) return "failed";
+  if (!resourceParams(slug).REPLAY_AVAILABLE) return "replay_not_published";
+  const decision = decideStep({ attributes: contact.attributes as Record<string, never>, emailBlacklisted: false }, step);
+  if (!decision.send) return "email_unusable";
+  const at = eventAt.getTime() + step.offsetHours * HOUR;
+  const links = unsubscribeLinks(contact.email);
+  const out = await sendOnce({
+    to: { email: contact.email }, templateId: id,
+    params: { ...baseParams(contact.email, slug, contact.id), ...webinarContactParams(contact.attributes as Record<string, never>, slug) },
+    tags: [`seq:${seq.id}`, `seq:${seq.id}:${step.id}`, `guide:${slug}`, "replay:reprise"],
+    sendKey: stepSendKey(seq.id, contact.id, step.id), since: new Date(at - 6 * HOUR), now, oneClickUnsubscribeUrl: links?.oneClick,
+  });
+  await recordAttempt(contact.id, out, { sequence_id: seq.id, step: step.id, resource: slug, mode: "reprise" }, now);
+  if (out.status === "SENT") return out.via === "sent" ? "sent" : "already_sent";
+  return "failed";
 }

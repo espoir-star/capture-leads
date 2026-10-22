@@ -1,77 +1,210 @@
-# Webinaires : procédure
+# Webinaires Althoce : exploitation
 
-Mise en place du 15 octobre 2026. Elle réutilise la capture, Brevo, le moteur de séquences, le scoring et le CRM existants. Aucune automation Brevo n'est créée par webinar.
+Version du 20 octobre 2026. Ce document remplace la procédure du 15 octobre.
 
-## Parcours
+Le système réutilise la capture, Brevo (transactionnel), le moteur de séquences, n8n, le scoring et le CRM. **Aucune automation Brevo n'est créée par webinaire.**
+
+> Système techniquement prêt ≠ webinaire ouvert. Un webinaire n'existe qu'une fois son bloc ajouté dans `config/webinars.ts` et ses deux variables Vercel renseignées. Aucune date n'est inventée.
+
+## 1. Parcours
 
 ```
-LinkedIn (post, lien court /l/<code>)  ·  Publicité LinkedIn Ads / Meta Ads (URL suivie)
-        ↓  utm_source / utm_medium / utm_campaign / utm_content (first touch conservé)
-Page d'inscription /w/<slug>  →  /w/<slug>/confirmation (Google Agenda, .ics)
-        ↓  formulaire commun : Turnstile, validation, consentement, score +8
-Brevo (moteur de séquences, modèles 45 à 49)
-        confirmation · rappel J-1 · rappel H-1 · replay J+20 h · suivi J+3 (marketing)
-        ↓  lien de connexion PERSONNEL /w/<slug>/rejoindre
-Google Meet (Business Standard : 150 participants, enregistrement)
-        ↓  présence = clic du lien personnel pendant la fenêtre → score +15,
-        ↓  activité qualifiante WEBINAR_ATTENDED
-CRM Althoce : présent avec projet déclaré ou HOT → « À attribuer » ; suivi J+3 avec prise de RDV
+Post LinkedIn (/l/<code>) · annonce LinkedIn/Meta (URL suivie)   → UTM + first touch
+Page /w/<slug> : formulaire court (prénom, nom, email, entreprise facultative), Turnstile
+   → Brevo : contact + liste « WB - … » + WEBINAR_ACTIVITY (suivi CRM), +8 au score
+   → #45 confirmation (lien personnel, Google Agenda, .ics) ─ email de service
+   → n8n attend → Vercel décide : #46 J-1 · #47 H-1 ─ emails de service
+Lien personnel /w/<slug>/rejoindre → salle Google Meet (lue côté serveur)
+   → « lien de connexion ouvert » noté (signal, AUCUN point)
+Après le direct : présences confirmées (rapport de sondage/Q&R) → +15, WEBINAR_ATTENDED
+   → #48 replay dès sa publication (attente jusqu'à J+3, puis reprise contrôlée)
+   → #49 suivi J+3 (marketing) adapté : présent / non certifié / projet déclaré
+CRM : fiche enrichie (webinar, date, participation, replay, provenance)
 ```
 
-**Lien personnel.** Le jeton est chiffré : il porte le contact, le webinar et l'usage (connexion ou replay). Il ne contient aucune donnée lisible.
+Format : 60 minutes, soit environ 45 minutes de présentation et 15 minutes de questions-réponses (`durationMin: 60`).
 
-**Fenêtre.** Il ouvre la salle de 15 minutes avant le début jusqu'à 30 minutes après la fin. Un antivirus de messagerie qui ouvre le lien à la livraison des rappels tombe hors fenêtre : aucune présence fausse.
+## 2. Règles du parcours
 
-**Hors fenêtre,** une page explique l'état :
-- `bientot` ;
-- `salle-fermee` ;
-- `termine` ;
-- `replay-bientot` ;
-- `lien-invalide`.
+| Situation | Comportement |
+|---|---|
+| **Formulaire** | Prénom, nom et email obligatoires ; entreprise facultative. Pas de téléphone, de besoin ni d'horizon. Des valeurs envoyées malgré tout sont ignorées par le serveur. Le formulaire des guides est inchangé. |
+| **Projet déjà déclaré** | Jamais modifié par une inscription (`BESOIN_PRIORITAIRE`, `HORIZON_PROJET`, `INTENT_UPDATED_AT` intacts). Aucun projet n'est fabriqué. |
+| **Consentement** | Une inscription ne crée jamais `CONSENT`. Le statut marketing suit la règle des captures métier : mention et opposition proposées sur le formulaire, opposition définitive. Confirmation, rappels et replay sont des **emails de service**, envoyés même en cas d'opposition marketing. Le suivi J+3 est **marketing** : il est bloqué pour les opposés et pour les contacts déjà pris en charge. |
+| **Inscription tardive** | Un rappel dont le moment est passé à l'inscription n'est pas envoyé : inscrit la veille au soir, pas de « C'est demain » ; inscrit 30 minutes avant, ni J-1 ni H-1. |
+| **Rappel en retard** (n8n arrêté) | J-1 abandonné au-delà de la veille au soir (12 h après son heure), H-1 au-delà de 30 minutes avant le début. Jamais après le début. |
+| **Double inscription** | Un seul contact. Une seule confirmation par jour (clé d'envoi Brevo). Une seule séquence de rappels (déjà dans la liste = pas de nouvelle séquence). |
+| **Erreur temporaire Brevo** | L'étape renvoie une erreur 5xx ; n8n réessaie toutes les 30 minutes pendant 24 heures. Clé d'idempotence Brevo + journal : aucun doublon. |
+| **Reprise n8n** | Les attentes sont persistées par n8n ; une étape exécutée en retard suit les règles ci-dessus. |
+| **Fuseau** | Dates ISO avec fuseau dans la configuration ; tous les emails et pages affichent l'heure de Paris, en toutes lettres (changement d'heure géré par `Intl`). |
+| **Désinscription** | Le lien « Ne plus recevoir nos conseils » coupe le marketing, pas les emails de service du webinaire demandé. Un désabonnement survenu pendant l'attente est relu au moment de chaque envoi. |
+| **Après le direct** | Inscriptions closes (la page l'annonce ; le serveur répond 410). |
 
-**Salle Meet protégée.** Le lien Meet n'est jamais publié sur la page.
+## 3. Sécurité de la salle et des liens
 
-## Créer un webinaire (≈ 15 minutes)
+- **Le dépôt GitHub est public** : aucune adresse Meet ni aucun enregistrement dans le code. Ils vivent dans les variables Vercel (Production), lues côté serveur :
+  - `WEBINAR_JOIN_URL__<SLUG>` : salle Meet (adresse `meet.google.com` donnée par Google Agenda) ;
+  - `WEBINAR_REPLAY_URL__<SLUG>` : fichier Drive (`…/file/d/…/view`) ou vidéo YouTube non répertoriée.
+  
+  `<SLUG>` : majuscules, tirets remplacés par `_`. Une valeur au mauvais format est ignorée.
+- **Jamais sur une page publique**, dans les métadonnées, le `.ics`, Google Agenda, les UTM ou les URL de partage. Les emails ne contiennent que des liens personnels `/w/<slug>/rejoindre?t=…` et `/w/<slug>/replay?t=…`.
+- **Jeton** : chiffré (AES-256-GCM), lié au contact, au webinaire et à l'usage. Un jeton de connexion n'ouvre pas le replay. Un jeton altéré mène à « lien invalide ».
+- **Fenêtre** : la salle s'ouvre 15 minutes avant le début et se ferme 30 minutes après la fin. Avant : page « pas encore commencé » avec Google Agenda. Après : replay s'il est publié, sinon « terminé ».
+- **Scanners de messagerie** : requêtes `HEAD` (réponse 204, sans redirection) et robots identifiés. Rien n'est noté. Le H-1 part 45 minutes avant l'ouverture de la fenêtre.
+- **Lien transféré** : il ouvre la salle à son destinataire. Le signal « lien ouvert » est rattaché à l'inscrit d'origine, et c'est pour cette raison qu'il ne vaut jamais présence. La salle reste protégée par l'admission Meet (voir § 9).
+- **Contrôle** : `npm run webinar:check -- --slug <slug>` interroge `/api/webinar/status`. Cette route est protégée par `SEQUENCE_API_SECRET` et ne renvoie jamais d'adresse.
 
-1. **Google Agenda** (compte Althoce) : créer l'événement avec Google Meet et copier le lien de la salle. Business Standard permet 150 participants et l'enregistrement.
-2. **Brevo** : créer la liste « WB - <titre> » et noter son ID réel.
-3. **`config/webinars.ts`** : ajouter un bloc. Ne rien inventer ; date ISO avec fuseau.
-   ```ts
-   "ia-cabinet-2026-11": {
-     slug: "ia-cabinet-2026-11", resource: "ia-cabinet-2026-11",
-     brevoListId: ID_REEL, brevoListName: "WB - …",
-     vertical: "FINANCE", subsector: "EXPERTISE_COMPTABLE", note: "Cible annoncée dans le post",
-     title: "…", description: "…", audience: "…",
-     agenda: ["…", "…", "Questions-réponses en direct"],
-     speaker: { name: "Espoir Mwami", role: "Fondateur d'Althoce" },
-     startsAt: "2026-11-20T12:30:00+01:00", durationMin: 45, platform: "google_meet",
-     joinUrl: "https://meet.google.com/…", sequence: "webinar-standard-v1", status: "open",
-   },
+## 4. Participation : cinq états distincts
+
+| État | Source | Score | CRM |
+|---|---|---|---|
+| Inscrit | formulaire | +8 (`webinar_registered`) | activité qualifiante `WEBINAR_REGISTERED` |
+| Lien de connexion ouvert | clic sur le lien personnel pendant la fenêtre | **0** | « présence non certifiée » |
+| Présence confirmée | rapport de sondage ou de Q&R, constat de l'organisateur | +15 une fois (`webinar_attended`) | activité qualifiante `WEBINAR_ATTENDED`, avec sa preuve |
+| Replay consulté | clic sur le lien personnel de replay | 0 | date de consultation, distincte du direct |
+| Présence inconnue | aucun signal suffisant | — | aucune absence conclue |
+
+Avant le 20/10/2026, un clic sur le lien de connexion donnait +15. Aucun webinaire réel n'ayant eu lieu, aucun événement historique n'est concerné. Rien n'a été effacé ni recalculé.
+
+### Confirmer les présences (procédure)
+
+Google Workspace **Business Standard n'a pas de rapport de présence** : il est réservé à Business Plus et aux éditions supérieures. En revanche, le **modérateur reçoit par email, après la réunion**, le rapport des **sondages** (nom et réponse de chaque participant, si le sondage n'est pas anonyme) et celui des **questions-réponses** (noms des auteurs).
+
+1. Pendant le direct, lancez un sondage **non anonyme** au début, par exemple « Quel est votre métier ? ». Relancez-en un à la fin.
+2. Après le direct, copiez dans un fichier les noms du rapport de sondage, une personne par ligne. Ajoutez ceux du rapport de Q&R et les personnes que vous avez vues, avec leur email si vous l'avez.
+3. Lancez la simulation :
+   ```bash
+   npm run webinar:presences -- --slug <slug> --file presences.txt --proof poll
    ```
-4. **Diffusion** :
-   - **Post LinkedIn** : une entrée dans `config/shortLinks.ts`, avec `kind: "webinar"` et `utm_content` au format `LI_<CODE>_<AAAAMMJJ>_<NN>`.
-   - **Annonce** : une URL par annonce, à coller telle quelle comme destination.
-     ```bash
-     npm run utm -- --webinar <slug> --ads meta --code FIN --date 20261105 --n 1 --campaign webinar_ia_finance
-     ```
-     `--ads linkedin` pour LinkedIn Ads. Résultat : `utm_medium=paid_social`, `utm_content=AD_META_FIN_20261105_01`. Aucun pixel avant consentement.
-5. **Contrôles** : `npm run check`, puis vérifier la Preview (page, confirmation, `.ics`), puis fusionner. Faire un test d'inscription avec une adresse QA autorisée.
+   Les noms sont rapprochés des **inscrits** : seule une correspondance unique est retenue, les homonymes et les inconnus sont signalés. Un non-inscrit n'est jamais créé.
+4. Après relecture, relancez la même commande avec `--apply`. La commande est idempotente : la relancer ne rajoute aucun point.
 
-La page de démonstration `/w/demonstration-webinar` n'existe que hors Production (Preview, local). Son formulaire est fermé.
+Alternative : le workflow n8n « Présences » (`POST /api/sequences/event`, `webinar_attended`, `properties: { webinar: <slug>, proof }`).
 
-## Le jour J
+## 5. Replay
 
-- Ouvrir la salle 15 minutes avant et lancer l'enregistrement (manuel en Business Standard).
-- Chaque inscrit entre par son lien personnel : la présence est enregistrée une seule fois par contact.
+1. **Enregistrement** : il se lance à la main en Business Standard et se range dans le Drive de l'organisateur, dossier « Meet Recordings ».
+2. **Permissions** : vérifiez le contenu, puis partagez le fichier en « Tous les utilisateurs disposant du lien », en lecture. Désactivez le téléchargement si besoin. Ne partagez jamais par défaut, et jamais avant d'avoir relu.
+3. **Publication** : ajoutez `WEBINAR_REPLAY_URL__<SLUG>` dans Vercel (Production), puis redéployez. `npm run webinar:check` confirme que l'enregistrement s'ouvre sans compte Google.
+4. **Envoi** : l'email #48 part à J+20 h s'il est publié. Sinon, le moteur réessaie toutes les 3 heures jusqu'au suivi J+3. Rien n'est perdu.
+5. **Publication après J+3** :
+   ```bash
+   npm run webinar:replay -- --slug <slug>
+   ```
+   Lancez d'abord la simulation, puis la même commande avec `--apply`. La commande refuse d'envoyer si le replay n'est pas lisible sans compte. Elle utilise la même clé que la séquence : personne ne le reçoit deux fois.
 
-## Après le live
+L'email de replay dit « Merci de votre participation » **uniquement** si la présence est confirmée ; sinon, il annonce simplement le replay. Il ajoute les ressources annoncées (`resources` dans la configuration, liens publics uniquement).
 
-1. **Replay.** Partager l'enregistrement Drive en « Tous les utilisateurs disposant du lien » (lecture). Renseigner `replayUrl` dans le bloc et passer `status: "done"`, puis **déployer moins de 20 heures après le début**. L'email replay part à J+20 h ; si le lien manque à ce moment, l'étape est ignorée (`missing_replay`).
-2. **Suivi J+3.** C'est un email marketing. Il est bloqué pour les opposés et pour les contacts déjà pris en charge par le CRM.
-3. **CRM.** Les présents qui ont un projet déclaré, ou un score HOT avec activité récente, remontent dans « À attribuer » avec leur priorité. Les alertes P1/HOT s'appliquent.
+## 6. CRM
 
-## Limites connues
+- **Attribut** : `WEBINAR_ACTIVITY` (JSON, dernier webinaire). Il contient le titre, la date, l'inscription et sa provenance (UTM), le lien ouvert, la présence (`UNKNOWN` ou `CONFIRMED` avec sa preuve) et le replay. Écrit au mieux : une erreur Brevo ne bloque ni l'inscription ni l'accès.
+- **Fiche CRM** (« Contexte Brevo ») : lignes Webinar, Participation et Inscription au webinar.
+- **Admission inchangée** (contrat CRM) :
+  - une inscription seule n'est jamais une opportunité ;
+  - un projet déclaré est admis quel que soit le score (P1 si court terme) ;
+  - sans projet, il faut un score de 25 ou plus et une activité qualifiante datée de moins de 30 jours ;
+  - un dossier déjà contacté, avec RDV ou client reste dans son suivi existant : aucune nouvelle tâche, et le suivi J+3 est suspendu.
 
-- **Présence.** Elle vaut « a rejoint par son lien », pas une durée de présence : le rapport de présence natif de Meet exige Business Plus. Un lien transféré compte pour son destinataire d'origine.
-- **Salle Meet.** Après la redirection, le lien de la salle reste visible dans le navigateur de l'inscrit. Garder l'admission des invités externes selon vos réglages Meet.
-- **n8n.** Le workflow « Présences » n'est plus nécessaire pour les présences. Il reste disponible pour marquer des absences (`webinar_no_show`) si besoin.
+## 7. Relances après le direct
+
+| Profil | #48 replay | #49 suivi J+3 (marketing) |
+|---|---|---|
+| Présence confirmée | « Merci de votre participation » + ressources | « Merci d'avoir participé » + proposition d'échange |
+| Inscrit sans preuve de présence | Replay et ressources, sans « vous avez manqué » | « Suite au webinar… » |
+| Projet à court terme déclaré | — | « Parlons de votre projet » + « Échanger sur mon projet » |
+| Déjà pris en charge (RDV, opportunité, client) | Envoyé (service) | **Bloqué** (cycle commercial) |
+| Opposé au marketing | Envoyé (service) | **Bloqué** |
+
+## 8. Créer un webinaire : une seule demande de configuration
+
+Informations à réunir **en une fois** ; ne rien inventer :
+
+1. Titre, description (une phrase), public visé, programme (3 à 5 points), intervenant ou intervenante (nom, rôle).
+2. Date et heure (heure de Paris) ; durée (60 minutes par défaut).
+3. Organisateur Google (compte Althoce) et URL de la salle Meet créée dans Google Agenda.
+4. Liste Brevo « WB - <titre> » créée, avec son ID réel.
+5. Ressources annoncées (liens publics), le cas échéant.
+6. Diffusion : date du post LinkedIn (code court `/l/…`) et annonces éventuelles (`npm run utm -- --webinar <slug> --ads meta|linkedin`).
+
+Mise en place :
+
+1. Ajoutez le bloc dans `config/webinars.ts`, avec `status: "open"` et `sequence: "webinar-standard-v1"`. N'y mettez **aucune URL Meet**.
+2. Dans Vercel (Production), créez `WEBINAR_JOIN_URL__<SLUG>`.
+3. Lancez `npm run check`, poussez, puis vérifiez la Preview : page, confirmation, `.ics`.
+4. Fusionnez, puis lancez `npm run webinar:check -- --slug <slug>` jusqu'au **GO technique**.
+5. Faites un test d'inscription avec une adresse QA : confirmation reçue, lien personnel fonctionnel 15 minutes avant.
+
+La démonstration `/w/demonstration-webinar` n'existe que hors Production, avec le formulaire fermé.
+
+## 9. Google Workspace Business Standard : réglages à vérifier
+
+**Capacités :**
+- 150 participants ;
+- réunions de 24 heures au maximum ;
+- enregistrement dans Drive ;
+- sondages et questions-réponses, avec rapports envoyés au modérateur ;
+- **pas** de rapport de présence (réservé à Business Plus).
+
+**Console d'administration** (Applications > Google Workspace > Google Meet), à vérifier avant le premier webinaire :
+- **Enregistrement** autorisé pour l'organisateur.
+- **Sondages** et **questions-réponses** activés (paramètres de sécurité de Meet).
+- **Participants externes** : autorisés à demander l'accès. Les inscrits n'ont pas de compte Althoce.
+- **Co-organisation** : un co-organisateur Althoce désigné pour admettre les participants et modérer.
+
+**Dans l'événement Agenda** (Options de l'organisateur) :
+- **Accès** : les invités externes « demandent à participer », pour garder le contrôle de la salle même si un lien circule ;
+- **Gestion par l'organisateur** activée ;
+- partage d'écran réservé aux organisateurs ;
+- chat et Q&R ouverts ;
+- **enregistrement** prévu.
+
+## 10. Checklist organisateur
+
+**J-7**
+- [ ] `npm run webinar:check` : GO technique.
+- [ ] Inscription de test avec une adresse QA.
+- [ ] Sondages préparés dans l'événement.
+
+**J-1**
+- [ ] Rappels J-1 partis (journal Brevo, tag `seq:webinar-standard-v1:rappel-j-1`).
+- [ ] Support prêt, ressources publiées.
+
+**H-30 min**
+- [ ] Ouvrir la salle depuis le compte organisateur.
+- [ ] Tester micro, caméra, son et partage d'écran (onglet ou fenêtre, pas l'écran entier).
+- [ ] Co-animateur connecté, rôle de co-organisateur confirmé.
+
+**Ouverture**
+- [ ] Lancer l'**enregistrement**.
+- [ ] Sondage de bienvenue **non anonyme** (preuve de présence).
+- [ ] Rappeler la règle des questions (Q&R).
+
+**Pendant**
+- [ ] Le co-animateur admet les participants qui attendent.
+- [ ] Il modère le chat et les questions, et met en sourdine si besoin.
+- [ ] Réserver 15 minutes aux questions-réponses.
+
+**Panne**
+- **Organisateur déconnecté** : le co-organisateur garde la salle et relance l'enregistrement.
+- **Partage impossible** : envoyer le support dans le chat.
+- **Salle inutilisable** : créer une salle de secours, mettre à jour `WEBINAR_JOIN_URL__<SLUG>` et redéployer. Les liens personnels pointent alors vers la nouvelle salle sans renvoyer d'email.
+
+**Fin**
+- [ ] Sondage de clôture.
+- [ ] Arrêter l'enregistrement.
+
+**Après**
+- [ ] Rapports de sondage et de Q&R, puis `webinar:presences`.
+- [ ] Vérifier le replay, le partager, publier la variable Vercel, puis `webinar:check`.
+- [ ] Après J+3 : `webinar:replay` si besoin.
+- [ ] Passer `status: "done"`.
+
+## 11. Commandes
+
+| Commande | Rôle | Écrit ? |
+|---|---|---|
+| `npm run webinar:check -- --slug <slug>` | Contrôle de préparation, GO / NO-GO | Non |
+| `npm run webinar:presences -- --slug <slug> --file <f> --proof poll\|qa\|manual` | Présences confirmées | Avec `--apply` |
+| `npm run webinar:replay -- --slug <slug>` | Reprise du replay publié après J+3 | Avec `--apply` |
+| `npm run brevo:attributes` | Crée `WEBINAR_ACTIVITY` s'il manque | Avec `--apply` |
+| `npm run brevo:templates` | Compare et publie les modèles #45 à #49 | Avec `--apply` |

@@ -5,6 +5,9 @@
 
 import { getWebinar } from "@/config/webinars";
 import { googleCalendarUrl, personalWebinarLinks } from "@/lib/webinar/access";
+import { readWebinarActivity } from "@/lib/webinar/activity";
+import { webinarReplayUrl } from "@/lib/webinar/urls";
+import type { AttributeValue } from "@/lib/brevo/api";
 import { getRessource } from "@/lib/ressources";
 import { createEmailConfirmToken } from "@/lib/security/emailConfirm";
 import { createMarketingOptoutToken } from "@/lib/marketing/token";
@@ -44,31 +47,51 @@ export function confirmUrl(email: string, emailStatus: unknown): string | undefi
 }
 
 /**
- * Titre, date (heure de Paris), agenda et liens d'un webinar (config/webinars.ts).
- * Avec `contactId`, JOIN_URL et REPLAY_URL deviennent des liens PERSONNELS
- * (présence et replay mesurés) ; sans lui, seule la présence d'un replay compte.
+ * Titre, date et heure (Europe/Paris), ressources et liens d'un webinar (config/webinars.ts).
+ * JOIN_URL et REPLAY_URL sont TOUJOURS des liens personnels /w/<slug>/… (avec
+ * `contactId`) : la salle Meet et l'enregistrement ne figurent jamais dans un email.
+ * REPLAY_AVAILABLE indique que l'enregistrement est publié (variable Vercel).
  */
 export function webinarParams(slug: string | undefined, contactId?: number): Record<string, string> | null {
   const w = slug ? getWebinar(slug) : undefined;
   if (!w) return null;
-  const date = new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "full",
-    timeStyle: "short",
-    timeZone: "Europe/Paris",
-  }).format(new Date(w.startsAt));
+  const start = new Date(w.startsAt);
+  const date = new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Paris" }).format(start);
+  const time = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }).format(start);
   const base = siteUrl();
+  const resources = Object.fromEntries((w.resources ?? []).slice(0, 2).flatMap((r, i) => [
+    [`RESOURCE_${i + 1}_TITLE`, r.title], [`RESOURCE_${i + 1}_URL`, r.url],
+  ]));
   return {
     WEBINAR_TITLE: w.title,
     WEBINAR_DATE: date,
+    WEBINAR_TIME: time.replace(":", " h "),
     WEBINAR_DURATION: `${w.durationMin} min`,
     WEBINAR_PAGE_URL: `${base}/w/${w.slug}`,
     CALENDAR_GOOGLE_URL: googleCalendarUrl(w, base),
     CALENDAR_ICS_URL: `${base}/w/${w.slug}/agenda.ics`,
-    // Repli sans secret de signature : lien direct (jamais affiché sur la page publique).
-    ...(w.joinUrl && { JOIN_URL: w.joinUrl }),
-    ...(w.replayUrl && { REPLAY_URL: w.replayUrl }),
+    ...(webinarReplayUrl(w.slug) && { REPLAY_AVAILABLE: "true" }),
+    ...resources,
     ...(contactId && personalWebinarLinks(w, contactId, base)),
   };
+}
+
+/** Projet à court terme déclaré (formulaire guide) : met en avant un échange adapté. */
+const SHORT_TERM = new Set(["IMMEDIAT", "MOINS_3_MOIS", "TROIS_SIX_MOIS"]);
+
+/**
+ * Variantes des emails replay et suivi, lues sur la fiche AU MOMENT de l'envoi :
+ * ATTENDED seulement si la présence est CONFIRMÉE pour ce webinar (jamais
+ * « vous avez manqué » sans preuve) ; HAS_PROJECT si un projet à court terme est déclaré.
+ */
+export function webinarContactParams(
+  attributes: Record<string, AttributeValue | undefined>, slug: string | undefined
+): Record<string, string> {
+  if (!slug || !getWebinar(slug)) return {};
+  const activity = readWebinarActivity(attributes);
+  const attended = activity?.slug === slug && activity.attendance === "CONFIRMED";
+  const project = SHORT_TERM.has(String(attributes.HORIZON_PROJET ?? ""));
+  return { ...(attended && { ATTENDED: "true" }), ...(project && { HAS_PROJECT: "true" }) };
 }
 
 /** Paramètres de la ressource (guide ou webinar) ; liens personnels si le contact est connu */

@@ -49,6 +49,7 @@ export const NEW_ATTRIBUTES: NewAttribute[] = [
   { name: "IS_QA", type: "boolean", description: "Contact de recette exclu de la file commerciale réelle" },
   { name: "LAST_QUALIFYING_ACTIVITY_AT", type: "text", description: "Date ISO UTC du dernier événement qualifiant prouvé" },
   { name: "LAST_QUALIFYING_ACTIVITY_TYPE", type: "text", description: "Type d'événement, indépendant de modifiedAt et des ouvertures" },
+  { name: "WEBINAR_ACTIVITY", type: "text", description: "Dernier webinar (JSON) : inscription, lien ouvert, présence confirmée ou inconnue, replay (lu par le CRM)" },
   { name: "VERTICAL", type: "text", description: "Verticale métier (FINANCE, MARKETING…)" },
   { name: "SUBSECTOR", type: "text", description: "Sous-secteur (EXPERTISE_COMPTABLE, DAF_FINANCE…)" },
   { name: "BESOIN_PRIORITAIRE", type: "text", description: "Objectif IA déclaré au formulaire" },

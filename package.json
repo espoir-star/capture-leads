@@ -22,7 +22,10 @@
     "brevo:domain": "tsx --env-file-if-exists=.env scripts/brevo/domain.ts",
     "brevo:templates": "tsx --env-file-if-exists=.env scripts/brevo/templates.ts",
     "brevo:webhooks": "tsx --env-file-if-exists=.env scripts/brevo/setup-webhooks.ts",
-    "brevo:delete-test-contact": "tsx --env-file-if-exists=.env scripts/brevo/delete-test-contact.ts"
+    "brevo:delete-test-contact": "tsx --env-file-if-exists=.env scripts/brevo/delete-test-contact.ts",
+    "webinar:check": "tsx --env-file-if-exists=.env scripts/webinar/check.ts",
+    "webinar:presences": "tsx --env-file-if-exists=.env scripts/webinar/presences.ts",
+    "webinar:replay": "tsx --env-file-if-exists=.env scripts/webinar/replay.ts"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",

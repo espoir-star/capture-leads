@@ -19,8 +19,11 @@ export const BREVO_EVENTS = {
   SERVICE_PAGE_VIEWED: "service_page_viewed",
   CASE_STUDY_VIEWED: "case_study_viewed",
   BOOKING_PAGE_VIEWED: "booking_page_viewed",
-  /* Préparés : webinars (plateforme à définir, via n8n) */
+  /* Webinars (docs/WEBINAIRES.md) */
   WEBINAR_REGISTERED: "webinar_registered",
+  /** Lien de connexion personnel ouvert pendant la fenêtre : signal, présence NON certifiée */
+  WEBINAR_JOIN_CLICKED: "webinar_join_clicked",
+  /** Présence CONFIRMÉE (rapport de sondage ou de Q&R Meet, constat humain) */
   WEBINAR_ATTENDED: "webinar_attended",
   WEBINAR_NO_SHOW: "webinar_no_show",
   WEBINAR_REPLAY_CLICKED: "webinar_replay_clicked",

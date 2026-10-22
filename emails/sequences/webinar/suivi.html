@@ -21,12 +21,13 @@
           </tr>
           <tr>
             <td style="background-color:#111311;border:1px solid #1E221E;border-radius:14px;padding:36px 32px;">
-              <p style="margin:0;color:#FFFFFF;font-size:22px;font-weight:bold;line-height:1.3;">Et maintenant, on l'applique chez vous ?</p>
-              <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">Suite au webinar <strong style="color:#FFFFFF;">{{ params.WEBINAR_TITLE }}</strong>, nous pouvons regarder en 30 minutes ce que l'IA peut automatiser dans votre organisation. Sans engagement.</p>
+              <p style="margin:0;color:#FFFFFF;font-size:22px;font-weight:bold;line-height:1.3;">{% if params.HAS_PROJECT %}Parlons de votre projet{% else %}Et maintenant, on l'applique chez vous ?{% endif %}</p>
+              <p style="margin:18px 0 0;color:#A0A0A0;font-size:15px;line-height:1.6;">{% if params.ATTENDED %}Merci d'avoir participé à <strong style="color:#FFFFFF;">{{ params.WEBINAR_TITLE }}</strong>.{% else %}Suite au webinar <strong style="color:#FFFFFF;">{{ params.WEBINAR_TITLE }}</strong>,{% endif %}
+              {% if params.HAS_PROJECT %}{% if params.ATTENDED %}Vous{% else %}vous{% endif %} nous avez indiqué un projet IA à court terme : en 30 minutes, nous regardons votre cas (processus concernés, données, sécurité, premières étapes). Sans engagement.{% else %}{% if params.ATTENDED %}Nous{% else %}nous{% endif %} pouvons regarder en 30 minutes ce que l'IA peut automatiser dans votre organisation. Sans engagement.{% endif %}</p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 0;">
                 <tr>
                   <td style="background-color:#1D9E75;border-radius:8px;">
-                    <a href="{{ params.CTA_URL }}" target="_blank" style="display:inline-block;padding:14px 28px;color:#FFFFFF;font-size:15px;font-weight:bold;text-decoration:none;">Réserver 30 min →</a>
+                    <a href="{{ params.CTA_URL }}" target="_blank" style="display:inline-block;padding:14px 28px;color:#FFFFFF;font-size:15px;font-weight:bold;text-decoration:none;">{% if params.HAS_PROJECT %}Échanger sur mon projet →{% else %}Réserver 30 min →{% endif %}</a>
                   </td>
                 </tr>
               </table>

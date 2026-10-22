@@ -6,17 +6,20 @@
  * Enregistre un événement Brevo de la liste blanche ci-dessous (participation
  * webinar, replay, pages commerciales…) sur la fiche du contact.
  *
- * `webinar_attended` avec `properties.webinar` (slug) alimente aussi le
- * scoring comportemental (+15, une fois par webinar et par contact).
+ * `webinar_attended` avec `properties.webinar` (slug d'un webinar connu) est
+ * une PRÉSENCE CONFIRMÉE (rapport de sondage / Q&R Meet, constat humain) :
+ * scoring +15 une fois par webinar et par contact, WEBINAR_ACTIVITY pour le CRM.
+ * `properties.proof` : poll | qa | manual (défaut manual). Un clic sur le lien
+ * de connexion n'arrive jamais ici (lib/webinar/events.ts).
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getWebinar } from "@/config/webinars";
 import { getContactByEmail } from "@/lib/brevo/api";
 import { BREVO_EVENTS, sendBrevoEvent, type BrevoEventName, type EventProperties } from "@/lib/brevo/events";
-import { applyBehaviorScores } from "@/lib/scoring/apply";
-import { makeEvent } from "@/lib/scoring/behavior";
-import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
 import { bearerMatches } from "@/lib/security/bearer";
+import { confirmWebinarAttendance } from "@/lib/webinar/events";
+import type { AttendanceProof } from "@/lib/webinar/activity";
 import { isValidEmailSyntax, normalizeEmail } from "@/lib/validation/email";
 import { readBodyLimited } from "@/lib/security/body";
 
@@ -57,22 +60,20 @@ export async function POST(req: NextRequest) {
       if (["string", "number", "boolean"].includes(typeof v)) props[k] = v as string | number | boolean;
     }
   }
-  const ok = await sendBrevoEvent(event, { email_id: email }, props);
-  if (!ok) return NextResponse.json({ ok }, { status: 502 });
-
   const slug = typeof props.webinar === "string" && /^[a-z0-9-]{1,80}$/.test(props.webinar) ? props.webinar : "";
-  if (event === BREVO_EVENTS.WEBINAR_ATTENDED && slug && ledgerConfigured()) {
+  const webinar = slug ? getWebinar(slug) : undefined;
+  if (event === BREVO_EVENTS.WEBINAR_ATTENDED && webinar && webinar.status !== "draft") {
+    const proof: AttendanceProof = props.proof === "poll" || props.proof === "qa" ? props.proof : "manual";
     try {
       const contact = await getContactByEmail(email);
-      if (contact) {
-        const r = await recordEvents([makeEvent("webinar_attended", contact.id, slug, "webinar", new Date())]);
-        if (!r.ok) return NextResponse.json({ ok: false, reason: "journal" }, { status: 502 });
-        await applyBehaviorScores(r.rows).catch((e) => console.error("Scoring présence : écriture différée :", e instanceof Error ? e.message : e));
-      }
+      if (!contact) return NextResponse.json({ ok: false, reason: "contact_absent" }, { status: 404 });
+      const r = await confirmWebinarAttendance(contact.id, webinar, proof, new Date());
+      return r.ok ? NextResponse.json({ ok: true, scored: r.scored }) : NextResponse.json({ ok: false, reason: r.reason }, { status: 502 });
     } catch (e) {
-      console.error("Scoring présence :", e instanceof Error ? e.message : e);
+      console.error("Présence webinar :", e instanceof Error ? e.message : e);
       return NextResponse.json({ ok: false, reason: "brevo" }, { status: 502 });
     }
   }
-  return NextResponse.json({ ok });
+  const ok = await sendBrevoEvent(event, { email_id: email }, props);
+  return NextResponse.json({ ok }, { status: ok ? 200 : 502 });
 }

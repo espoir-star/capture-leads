@@ -19,10 +19,48 @@ export function stepAt(enr: Enrollment, step: SequenceStep): number | null {
   return base === undefined ? null : base + (step.offsetHours * HOUR) / (enr.k ?? 1);
 }
 
+/** Rappel avant l'événement (J-1, H-1) : il n'a de sens qu'avant le direct. */
+export function isPreEventReminder(step: Pick<SequenceStep, "anchor" | "offsetHours">): boolean {
+  return step.anchor === "event" && step.offsetHours < 0;
+}
+
+/** Pas de nouvel essai du replay plus souvent que toutes les 3 heures (avant compression QA). */
+export const REPLAY_RETRY_HOURS = 3;
+/** Sans étape suivante, attendre la publication du replay au plus 14 jours. */
+const REPLAY_WAIT_MAX_HOURS = 14 * 24;
+
 /**
- * Prochaine étape à attendre après `afterStepId` (ou la première), en
- * sautant celles dont la date est dépassée de plus de STEP_STALE_AFTER_HOURS
- * (inscription tardive à un webinar : pas de rappel J-1 envoyé après coup).
+ * Retard toléré avant de renoncer à une étape :
+ *  - rappel avant l'événement : la moitié de son avance, au plus 12 h
+ *    (J-1 jusqu'à la veille au soir, H-1 jusqu'à 30 min avant ; jamais après le début) ;
+ *  - replay : jusqu'à l'étape suivante (suivi J+3), le temps que l'enregistrement soit publié ;
+ *  - autres étapes : STEP_STALE_AFTER_HOURS.
+ */
+export function staleAfterMs(seq: SequenceConfig, enr: Enrollment, step: SequenceStep): number {
+  const k = enr.k ?? 1;
+  if (isPreEventReminder(step)) return Math.min(STEP_STALE_AFTER_HOURS * HOUR, (-step.offsetHours * HOUR) / 2) / k;
+  if (step.requires === "replayUrl") {
+    const at = stepAt(enr, step);
+    const following = seq.steps.slice(seq.steps.indexOf(step) + 1).map((s) => stepAt(enr, s)).find((v) => v !== null);
+    if (at !== null && following !== undefined && following !== null) return Math.max(STEP_STALE_AFTER_HOURS * HOUR, following - at);
+    return (REPLAY_WAIT_MAX_HOURS * HOUR) / k;
+  }
+  return STEP_STALE_AFTER_HOURS * HOUR;
+}
+
+/**
+ * Rappel inutile pour CET inscrit : son moment était déjà passé à l'inscription
+ * (inscription la veille au soir : pas de « C'est demain » juste après la confirmation).
+ */
+export function registeredAfter(enr: Enrollment, step: SequenceStep): boolean {
+  const at = stepAt(enr, step);
+  return isPreEventReminder(step) && at !== null && at < enr.t;
+}
+
+/**
+ * Prochaine étape à attendre après `afterStepId` (ou la première), en sautant
+ * les étapes trop en retard (staleAfterMs) et les rappels antérieurs à
+ * l'inscription (inscription tardive à un webinar).
  */
 export function nextStep(
   seq: SequenceConfig,
@@ -37,7 +75,8 @@ export function nextStep(
     if (opts.transactionalOnly && step.category !== "transactional") continue;
     const at = stepAt(enr, step);
     if (at === null) continue;
-    if (at < now - STEP_STALE_AFTER_HOURS * HOUR) continue;
+    if (at < now - staleAfterMs(seq, enr, step)) continue;
+    if (registeredAfter(enr, step)) continue;
     return { step, at };
   }
   return null;

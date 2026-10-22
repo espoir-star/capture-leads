@@ -4,7 +4,9 @@
  * tests/contactUpdate.test.ts.
  *
  * Règles :
- *  - identité (PRENOM, NOM, SMS) et intention (BESOIN, HORIZON) : dernière saisie
+ *  - identité (PRENOM, NOM, SMS, ENTREPRISE si renseignée) et intention
+ *    (BESOIN, HORIZON) : dernière saisie. Sans besoin/horizon (formulaire court
+ *    des webinars), la déclaration existante n'est jamais touchée.
  *  - RESSOURCE : dernière ressource demandée (l'historique est dans les listes)
  *  - SOURCE_INSCRIPTION : renseigné si vide. DATE_OPTIN historique conservé,
  *    jamais créé en absence de consentement explicite.
@@ -46,8 +48,11 @@ export interface CaptureData {
   kind?: "guide" | "webinar";
   prenom: string;
   nom: string;
-  besoin: Besoin;
-  horizon: Horizon;
+  /** Entreprise déclarée (facultative) ; jamais déduite d'un domaine */
+  entreprise?: string;
+  /** Absents d'une inscription webinar : aucune intention n'est alors écrite */
+  besoin?: Besoin;
+  horizon?: Horizon;
   /** L'utilisateur s'oppose explicitement aux communications marketing */
   marketingOpposition: boolean;
   /** Jeton de désinscription chiffré */
@@ -86,6 +91,7 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
   /* Identité */
   a.PRENOM = data.prenom;
   a.NOM = data.nom;
+  if (data.entreprise) a.ENTREPRISE = data.entreprise;
   if (data.phone.e164) a.SMS = data.phone.e164;
 
   /* Ressource (guides uniquement) et provenance d'inscription */
@@ -118,9 +124,12 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
    * PAS_DE_PROJET) : jamais par un clic, un recalcul de score ou un retour CRM.
    * FORM_SCORE/LEAD_SCORE gardent leur maximum historique : cette date permet
    * au CRM de distinguer un projet actuel d'un ancien score élevé. */
-  a.BESOIN_PRIORITAIRE = data.besoin;
-  a.HORIZON_PROJET = data.horizon;
-  a.INTENT_UPDATED_AT = data.now.toISOString();
+  const declared = data.besoin !== undefined && data.horizon !== undefined;
+  if (declared) {
+    a.BESOIN_PRIORITAIRE = data.besoin!;
+    a.HORIZON_PROJET = data.horizon!;
+    a.INTENT_UPDATED_AT = data.now.toISOString();
+  }
   const previousActivity = Date.parse(String(ex.LAST_QUALIFYING_ACTIVITY_AT ?? ""));
   if (!Number.isFinite(previousActivity) || data.now.getTime() > previousActivity) {
     a.LAST_QUALIFYING_ACTIVITY_AT = data.now.toISOString();
@@ -154,7 +163,7 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
   }
 
   /* Score et cycle de vie */
-  const formScore = formIntentScore(data.besoin, data.horizon);
+  const formScore = declared ? formIntentScore(data.besoin!, data.horizon!) : 0;
   const bestForm = Math.max(toScore(ex.FORM_SCORE), formScore);
   if (isEmptyValue(ex.FORM_SCORE) || bestForm !== toScore(ex.FORM_SCORE)) a.FORM_SCORE = bestForm;
   const leadScore = mergeScore(ex.LEAD_SCORE, Math.min(SCORE_CAP, bestForm + toScore(ex.BEHAVIOR_SCORE)));

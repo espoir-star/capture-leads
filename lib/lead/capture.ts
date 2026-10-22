@@ -11,7 +11,7 @@ import { getSequence } from "@/config/sequences";
 import { getWebinar } from "@/config/webinars";
 import { multiGuidesEnabled } from "@/config/multiGuides";
 import { checkEmail, emailErrorMessage } from "@/lib/data-quality/email";
-import { checkPhone, PHONE_ERROR_MESSAGE } from "@/lib/data-quality/phone";
+import { checkPhone, PHONE_ERROR_MESSAGE, type PhoneCheck } from "@/lib/data-quality/phone";
 import { getApiKey } from "@/lib/brevo/api";
 import { BREVO_EVENTS, BrevoWriteError, getContactByEmail, sendBrevoEvent, upsertContact } from "@/lib/brevo/server";
 import { buildContactUpdate, withoutRejectedSms, type CaptureSource } from "@/lib/lead/contactUpdate";
@@ -28,14 +28,20 @@ import { makeEvent } from "@/lib/scoring/behavior";
 import { ledgerConfigured, recordEvents } from "@/lib/scoring/ledger";
 import { signLeadRef } from "@/lib/security/leadToken";
 import { cleanTouch, resolveAttribution } from "@/lib/tracking/utm";
+import { registrationOpen } from "@/lib/webinar/access";
+import { writeWebinarActivity } from "@/lib/webinar/activity";
 import type { LeadInput } from "@/lib/validation/leadSchema";
 
 export type CaptureOutcome =
   | { ok: true; leadRef?: string; marketingOpposed?: boolean; followUp?: () => Promise<unknown> }
   | { ok: false; status: number; field?: string; message: string };
 
-export function resolveCaptureSource(kind: LeadInput["kind"], slug: string): CaptureSource | undefined {
-  if (kind === "webinar") { const w = getWebinar(slug); return w && w.status === "open" ? w : undefined; }
+/** Formulaire court des webinars : aucun numéro demandé, donc aucun écrit. */
+const NO_PHONE: PhoneCheck = { status: "INVALID", reason: "empty" };
+
+export function resolveCaptureSource(kind: LeadInput["kind"], slug: string, now: Date = new Date()): CaptureSource | undefined {
+  // Webinar : ouvert, et jusqu'à la fin du direct (une inscription pendant le live reste utile).
+  if (kind === "webinar") { const w = getWebinar(slug); return w && w.status === "open" && registrationOpen(w, now) ? w : undefined; }
   return getLeadMagnet(slug);
 }
 
@@ -45,17 +51,22 @@ export async function captureLead(
 ): Promise<CaptureOutcome> {
   const now = ctx.now ?? new Date();
   const log = { slug: input.slug, sessionId: input.sessionId, ip: maskIp(ctx.ip) };
-  const source = resolveCaptureSource(input.kind, input.slug);
-  if (!source) return { ok: false, status: 404, message: "Ressource inconnue." };
   const isWebinar = input.kind === "webinar";
+  const source = resolveCaptureSource(input.kind, input.slug, now);
+  if (!source) {
+    const ended = isWebinar && getWebinar(input.slug)?.status === "open";
+    return ended
+      ? { ok: false, status: 410, message: "Les inscriptions à ce webinar sont closes." }
+      : { ok: false, status: 404, message: "Ressource inconnue." };
+  }
   const email = await checkEmail(input.email);
   if (!email.accepted) {
     logLead("rejet", { ...log, motif: `email_${email.reason}`, valeur: maskEmail(email.email) });
     return { ok: false, status: 400, field: "email", message: emailErrorMessage(email) };
   }
-  const phone = checkPhone(input.tel, input.pays);
-  if (phone.status === "INVALID") {
-    logLead("rejet", { ...log, motif: `tel_${phone.reason}`, valeur: maskPhone(input.tel) });
+  const phone = isWebinar ? NO_PHONE : checkPhone(input.tel, input.pays);
+  if (!isWebinar && phone.status === "INVALID") {
+    logLead("rejet", { ...log, motif: `tel_${phone.reason}`, valeur: maskPhone(input.tel ?? "") });
     return { ok: false, status: 400, field: "tel", message: PHONE_ERROR_MESSAGE };
   }
   if (!getApiKey()) {
@@ -75,7 +86,7 @@ export async function captureLead(
   try {
     const existing = await getContactByEmail(email.email);
     const update = buildContactUpdate(existing, {
-      kind: input.kind, prenom: input.prenom, nom: input.nom,
+      kind: input.kind, prenom: input.prenom, nom: input.nom, entreprise: input.entreprise,
       besoin: input.besoin, horizon: input.horizon,
       marketingOpposition: input.marketingOpposition,
       marketingOptoutToken: createMarketingOptoutToken(email.email),
@@ -142,9 +153,15 @@ export async function captureLead(
         if (r.ok) await applyBehaviorScores(r.rows, now).catch(() => undefined);
         else logLead("erreur", { ...log, motif: "scoring_webinar", code: r.reason });
       }
+      // Suivi CRM : thème, date, provenance de l'inscription (WEBINAR_ACTIVITY), sans bloquer.
+      if (webinar && result.contactId && !ctx.degraded) {
+        const written = await writeWebinarActivity(result.contactId, webinar, { registeredAt: now, source: touch }, now, existing?.attributes);
+        if (!written) logLead("erreur", { ...log, motif: "webinar_activity" });
+      }
       return sendBrevoEvent(isWebinar ? BREVO_EVENTS.WEBINAR_REGISTERED : BREVO_EVENTS.LEAD_MAGNET_SUBMITTED, identifiers, {
         resource: source.resource, vertical: source.vertical, subsector: source.subsector,
-        besoin: input.besoin, horizon: input.horizon, form_score: update.formScore, lead_score: update.leadScore,
+        ...(input.besoin && { besoin: input.besoin }), ...(input.horizon && { horizon: input.horizon }),
+        form_score: update.formScore, lead_score: update.leadScore,
         is_new_contact: update.isNew, marketing_status: update.marketingStatus,
         phone_status: result.phoneRejected ? undefined : update.phoneStatus,
         utm_source: touch.utm_source, utm_medium: touch.utm_medium, utm_campaign: touch.utm_campaign, utm_content: touch.utm_content,
