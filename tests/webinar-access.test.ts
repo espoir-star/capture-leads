@@ -22,7 +22,10 @@ const BASE = "https://qa.althoce.example";
 test("lien personnel : jeton chiffré, lié au contact, au webinar et à l'usage", () => {
   const t = createWebinarToken(42, W.slug, "join")!;
   assert.match(t, /^w1\.[A-Za-z0-9_-]+$/);
-  assert.doesNotMatch(t, /42|ia-cabinet/);
+  // Jeton aléatoire : il peut contenir « 42 » par hasard. On vérifie que le contenu chiffré ne révèle ni contact ni webinar.
+  const raw = Buffer.from(t.slice(3), "base64url").toString("latin1");
+  for (const plain of ['"c":42', "ia-cabinet", '"p":"join"']) assert.equal(raw.includes(plain), false, plain);
+  assert.doesNotMatch(t, /ia-cabinet/);
   assert.equal(readWebinarToken(t, W.slug, "join"), 42);
   assert.equal(readWebinarToken(t, "autre-webinar", "join"), null, "autre webinar");
   assert.equal(readWebinarToken(t, W.slug, "replay"), null, "autre usage");
