@@ -71,7 +71,7 @@ test("démonstration : visible hors Production seulement, jamais ouverte aux ins
   assert.equal(DEMO_WEBINAR.status, "draft");
   assert.equal(getWebinar(DEMO_WEBINAR.slug, { VERCEL_ENV: "preview" })?.slug, DEMO_WEBINAR.slug);
   assert.equal(getWebinar(DEMO_WEBINAR.slug, { VERCEL_ENV: "production" }), undefined);
-  assert.deepEqual(getWebinarPageSlugs({ VERCEL_ENV: "production" }), []);
+  assert.equal(getWebinarPageSlugs({ VERCEL_ENV: "production" }).includes(DEMO_WEBINAR.slug), false);
   assert.ok(getWebinarPageSlugs({ VERCEL_ENV: "preview" }).includes(DEMO_WEBINAR.slug));
 });
 

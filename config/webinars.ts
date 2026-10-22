@@ -62,9 +62,48 @@ export interface WebinarConfig {
   /** Parcours email du moteur (ex. "webinar-standard-v1") ; absent = automation Brevo sur la liste */
   sequence?: SequenceId;
   status: "draft" | "open" | "closed" | "done";
+  /**
+   * Recette interne : inscriptions réservées aux adresses Althoce (et ALTHOCE_SEQUENCE_QA_EMAILS),
+   * contacts marqués IS_QA (exclus du CRM), page non indexée et bandeau « recette ».
+   */
+  internalTest?: boolean;
 }
 
-export const WEBINARS: Record<string, WebinarConfig> = {};
+/** Domaines autorisés à s'inscrire à un webinar de recette interne. */
+export const INTERNAL_TEST_DOMAINS = ["contact.althoce.com", "althoce.fr", "althoce.com"] as const;
+
+export function isInternalTester(email: string, env: Record<string, string | undefined> = process.env): boolean {
+  const e = email.trim().toLowerCase();
+  const domain = e.split("@")[1] ?? "";
+  const qa = new Set((env.ALTHOCE_SEQUENCE_QA_EMAILS ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean));
+  return (INTERNAL_TEST_DOMAINS as readonly string[]).includes(domain) || qa.has(e);
+}
+
+export const WEBINARS: Record<string, WebinarConfig> = {
+  /* Recette interne du parcours complet (22 → 26/10/2026), demandée par Espoir le 22/10.
+   * Salle Meet : variable Vercel WEBINAR_JOIN_URL__TEST_PARCOURS_WEBINAIRE (jamais ici). */
+  "test-parcours-webinaire": {
+    slug: "test-parcours-webinaire",
+    resource: "test-parcours-webinaire",
+    brevoListId: 20,
+    brevoListName: "WB - TEST Parcours webinaire (recette interne)",
+    vertical: "FINANCE",
+    subsector: null,
+    note: "Recette interne : inscriptions réservées aux adresses Althoce, contacts IS_QA.",
+    title: "TEST — Parcours webinaire Althoce",
+    description: "Recette interne du parcours : inscription, rappels, salle Meet par lien personnel, présence, replay et suivi.",
+    audience: "Équipe Althoce (recette interne)",
+    agenda: ["Inscription et confirmation", "Rappels la veille et une heure avant", "Connexion par le lien personnel", "Sondage de présence, replay et suivi"],
+    speaker: { name: "Espoir Mwami", role: "Fondateur d'Althoce" },
+    startsAt: "2026-10-23T17:00:00+02:00",
+    durationMin: 30,
+    platform: "google_meet",
+    resources: [{ title: "Guide Claude × Pennylane (ressource d'exemple)", url: "https://guide-gratuit-pi.vercel.app/g/claude-pennylane" }],
+    sequence: "webinar-standard-v1",
+    status: "open",
+    internalTest: true,
+  },
+};
 
 /**
  * Démonstration du gabarit, visible seulement hors Production (Preview Vercel, local).

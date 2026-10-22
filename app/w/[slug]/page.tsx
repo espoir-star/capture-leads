@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${w.title} — Webinar Althoce`,
     description: w.description,
     openGraph: { title: w.title, description: w.description, type: "website", locale: "fr_FR" },
-    ...(w.status === "draft" && { robots: { index: false, follow: false } }),
+    ...((w.status === "draft" || w.internalTest) && { robots: { index: false, follow: false } }),
   };
 }
 
@@ -65,7 +65,7 @@ export default async function PageWebinar({ params }: Props) {
               Althoce<span className="text-accent">.</span>
             </p>
             <span className="rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent">
-              WEBINAR GRATUIT · EN LIGNE
+              {w.internalTest ? "RECETTE INTERNE · RÉSERVÉ À L’ÉQUIPE ALTHOCE" : "WEBINAR GRATUIT · EN LIGNE"}
             </span>
           </div>
           <h1 className="mt-5 font-display text-[26px] font-bold leading-snug text-balance sm:text-4xl sm:leading-tight">
