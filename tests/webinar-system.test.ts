@@ -217,3 +217,16 @@ test("enregistrement annoncé avant l'inscription et dans la confirmation (conse
     assert.match(readFileSync(f, "utf8").replace(/\s+/g, " "), /webinar est enregistré/, f);
   }
 });
+
+test("webinar de recette interne : réservé aux adresses Althoce, contacts QA, page non indexée", async () => {
+  const { isInternalTester, WEBINARS: all } = await import("@/config/webinars");
+  for (const ok of ["espoir+webinartest@contact.althoce.com", "Tony@Althoce.fr", "x@althoce.com"]) assert.equal(isInternalTester(ok, {}), true, ok);
+  for (const no of ["prospect@cabinet.fr", "espoir@contact.althoce.com.evil.example", "althoce.fr@gmail.com"]) assert.equal(isInternalTester(no, {}), false, no);
+  assert.equal(isInternalTester("qa@cabinet.fr", { ALTHOCE_SEQUENCE_QA_EMAILS: "qa@cabinet.fr" }), true);
+  const t = all["test-parcours-webinaire"];
+  assert.equal(t.internalTest, true);
+  assert.equal(t.brevoListId, 20);
+  assert.match(t.startsAt, /\+02:00$/, "23/10 : heure d'été");
+  assert.match(readFileSync("app/w/[slug]/page.tsx", "utf8"), /w\.internalTest\) && \{ robots: \{ index: false/);
+  assert.match(readFileSync("lib/lead/capture.ts", "utf8"), /internalTest\) update\.attributes\.IS_QA = true/);
+});

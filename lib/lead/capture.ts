@@ -8,7 +8,7 @@
 import "server-only";
 import { getLeadMagnet } from "@/config/leadMagnets";
 import { getSequence } from "@/config/sequences";
-import { getWebinar } from "@/config/webinars";
+import { getWebinar, isInternalTester } from "@/config/webinars";
 import { multiGuidesEnabled } from "@/config/multiGuides";
 import { checkEmail, emailErrorMessage } from "@/lib/data-quality/email";
 import { checkPhone, PHONE_ERROR_MESSAGE, type PhoneCheck } from "@/lib/data-quality/phone";
@@ -64,6 +64,11 @@ export async function captureLead(
     logLead("rejet", { ...log, motif: `email_${email.reason}`, valeur: maskEmail(email.email) });
     return { ok: false, status: 400, field: "email", message: emailErrorMessage(email) };
   }
+  const testWebinar = isWebinar ? getWebinar(source.slug) : undefined;
+  if (testWebinar?.internalTest && !isInternalTester(email.email)) {
+    logLead("rejet", { ...log, motif: "webinar_recette_interne", valeur: maskEmail(email.email) });
+    return { ok: false, status: 403, field: "email", message: "Ce webinar de recette est réservé à l’équipe Althoce." };
+  }
   const phone = isWebinar ? NO_PHONE : checkPhone(input.tel, input.pays);
   if (!isWebinar && phone.status === "INVALID") {
     logLead("rejet", { ...log, motif: `tel_${phone.reason}`, valeur: maskPhone(input.tel ?? "") });
@@ -93,6 +98,8 @@ export async function captureLead(
       confirmToken: createEmailConfirmToken(email.email), phone, attribution, source, now,
     });
     const webinar = isWebinar ? getWebinar(source.slug) : undefined;
+    // Recette interne : contact exclu des files commerciales du CRM.
+    if (webinar?.internalTest) update.attributes.IS_QA = true;
     const sequence = active?.seq ?? (lm ? null : webinarSequence(webinar));
     const opposed = update.marketingStatus === "OPPOSED";
     const legacyOpposed = !!lm && !sequence && opposed;
