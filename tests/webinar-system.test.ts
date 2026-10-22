@@ -211,3 +211,9 @@ test("inscriptions : ouvertes jusqu'à la fin du direct ; recette E2E jamais en 
   assert.equal(getWebinar("webinar-e2e", { VERCEL_ENV: "preview" }), undefined);
   assert.equal(getWebinar("webinar-e2e", { WEBINAR_E2E_STARTS_AT: "2026-11-20T12:30:00+01:00" })?.status, "open");
 });
+
+test("enregistrement annoncé avant l'inscription et dans la confirmation (consentement Meet exigé)", () => {
+  for (const f of ["app/w/[slug]/page.tsx", "app/w/[slug]/confirmation/page.tsx", "emails/sequences/webinar/confirmation.html"]) {
+    assert.match(readFileSync(f, "utf8").replace(/\s+/g, " "), /webinar est enregistré/, f);
+  }
+});

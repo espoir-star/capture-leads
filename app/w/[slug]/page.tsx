@@ -108,7 +108,8 @@ export default async function PageWebinar({ params }: Props) {
         <section className="rounded-2xl border border-bordure bg-carte p-6 shadow-2xl sm:p-8">
           <h2 className="font-display text-xl font-bold">Réserver ma place</h2>
           <p className="mt-2 text-sm leading-relaxed text-secondaire">
-            Votre lien de connexion personnel arrive par email, avec un rappel la veille et une heure avant.
+            Votre lien de connexion personnel arrive par email, avec un rappel la veille et une heure avant. Le webinar
+            est enregistré : le replay est envoyé aux inscrits.
           </p>
           <div className="mt-5">
             {preview ? (
