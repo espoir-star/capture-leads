@@ -227,6 +227,11 @@ test("webinar de recette interne : réservé aux adresses Althoce, contacts QA, 
   assert.equal(t.internalTest, true);
   assert.equal(t.brevoListId, 20);
   assert.match(t.startsAt, /\+02:00$/, "23/10 : heure d'été");
+  const t2 = all["test-parcours-webinaire-2"];
+  assert.equal(t2.internalTest, true);
+  assert.equal(t2.brevoListId, 21);
+  assert.match(t2.startsAt, /^2026-10-26T09:15:00\+01:00$/, "26/10 : lendemain du passage à l'heure d'hiver");
+  assert.equal(new Set(Object.values(all).map((w) => w.brevoListId)).size, Object.keys(all).length, "une liste Brevo par webinar");
   assert.match(readFileSync("app/w/[slug]/page.tsx", "utf8"), /w\.internalTest\) && \{ robots: \{ index: false/);
   assert.match(readFileSync("lib/lead/capture.ts", "utf8"), /internalTest\) update\.attributes\.IS_QA = true/);
 });
