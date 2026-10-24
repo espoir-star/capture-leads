@@ -103,6 +103,30 @@ export const WEBINARS: Record<string, WebinarConfig> = {
     status: "open",
     internalTest: true,
   },
+  /* Recette n° 2 (26/10/2026, demandée par Espoir le 24/10) : la n° 1 a validé inscription et rappels,
+   * mais personne n'est entré pendant la fenêtre. Celle-ci couvre salle, sondage de présence et replay.
+   * Salle Meet : variable Vercel WEBINAR_JOIN_URL__TEST_PARCOURS_WEBINAIRE_2 (jamais ici). */
+  "test-parcours-webinaire-2": {
+    slug: "test-parcours-webinaire-2",
+    resource: "test-parcours-webinaire-2",
+    brevoListId: 21,
+    brevoListName: "WB - TEST Parcours webinaire 2 (recette interne)",
+    vertical: "FINANCE",
+    subsector: null,
+    note: "Recette interne n° 2 : inscriptions réservées aux adresses Althoce, contacts IS_QA.",
+    title: "TEST 2 — Parcours webinaire Althoce",
+    description: "Recette interne n° 2 : entrée dans la salle Meet par le lien personnel, sondage de présence, replay et suivi.",
+    audience: "Équipe Althoce (recette interne)",
+    agenda: ["Connexion par le lien personnel dès 9 h 00", "Enregistrement avec accord des participants", "Sondage de présence non anonyme", "Replay et suivi"],
+    speaker: { name: "Espoir Mwami", role: "Fondateur d'Althoce" },
+    startsAt: "2026-10-26T09:15:00+01:00",
+    durationMin: 15,
+    platform: "google_meet",
+    resources: [{ title: "Guide Claude × Pennylane (ressource d'exemple)", url: "https://guide-gratuit-pi.vercel.app/g/claude-pennylane" }],
+    sequence: "webinar-standard-v1",
+    status: "open",
+    internalTest: true,
+  },
 };
 
 /**
