@@ -53,6 +53,10 @@ export const IGNORED_URL_PATTERNS: readonly RegExp[] = [
   /\/confirmer-email\b/i,
   /\/(mentions-legales|confidentialite|politique-de-confidentialite)\b/i,
   /unsubscribe|optout|opt-out/i,
+  // Liens de service des webinars : connexion, replay et agenda sont suivis à part
+  // (lien ouvert / replay consulté, sans point) ; un clic n'est pas une présence.
+  /\/w\/[a-z0-9-]+\/(rejoindre|replay|agenda\.ics)\b/i,
+  /^https:\/\/calendar\.google\.com\//i,
 ];
 
 /**
