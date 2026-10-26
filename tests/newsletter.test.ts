@@ -75,16 +75,16 @@ test("newsletters Althoce du vendredi : la ressource mène à l'échange, pas de
   }
 });
 
-test("annonce du connecteur Pennylane : toute la base envoyable, mardi 27/10 à 9 h, un seul CTA vers althoce.com", () => {
+test("annonce du connecteur Pennylane : toute la base envoyable, mardi 27/10 à 9 h, un seul CTA : rendez-vous avec un conseiller", () => {
   const nl = loadNewsletter("content/newsletters/2026-10-27-annonce.md");
   assert.equal(nl.meta.audience, "annonce");
   assert.equal(nl.meta.scheduledAt, "2026-10-27T09:00:00+01:00", "27/10 : heure d'hiver");
-  assert.equal(nl.meta.cta?.url, "https://althoce.com/connecteurs/pennylane/");
+  assert.equal(nl.meta.cta?.url, "https://calendar.app.google/m6thfjDsXzEqKdkKA", "calendrier dédié aux connecteurs");
   assert.equal(AUDIENCES.annonce.segment, undefined);
   assert.equal(AUDIENCES.annonce.list?.name, "ANNONCES — BASE ENVOYABLE");
   assert.deepEqual(AUDIENCES.annonce.exclude.map((s) => s.name), ["DATA QUALITY — REJECTED"]);
   const html = renderNewsletterHtml(nl);
-  assert.equal((html.match(/althoce\.com\/connecteurs\/pennylane\//g) ?? []).length, 1, "un seul lien vers la page");
+  assert.equal((html.match(/calendar\.app\.google\/m6thfjDsXzEqKdkKA/g) ?? []).length, 1, "un seul lien de rendez-vous");
   assert.match(html, /utm_campaign=lancement_connecteur_pennylane_20261027/);
   assert.doesNotMatch(nl.body, /—/, "pas de tiret long dans le corps");
 });
