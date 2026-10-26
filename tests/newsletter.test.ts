@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadNewsletter, renderMarkdown, renderNewsletterHtml } from "@/lib/newsletter";
+import { AUDIENCES } from "@/config/newsletter";
+import { isAnnouncementRecipient, listDiff } from "@/lib/newsletter/audienceList";
 
 test("exemple versionné : frontmatter valide, statut brouillon", () => {
   const nl = loadNewsletter("content/newsletters/2026-11-03-finance.md");
@@ -71,4 +73,36 @@ test("newsletters Althoce du vendredi : la ressource mène à l'échange, pas de
     const html = renderNewsletterHtml(loadNewsletter(`content/newsletters/${date}-finance.md`));
     assert.doesNotMatch(html, /cal\.com/);
   }
+});
+
+test("annonce du connecteur Pennylane : toute la base envoyable, mardi 27/10 à 9 h, un seul CTA vers althoce.com", () => {
+  const nl = loadNewsletter("content/newsletters/2026-10-27-annonce.md");
+  assert.equal(nl.meta.audience, "annonce");
+  assert.equal(nl.meta.scheduledAt, "2026-10-27T09:00:00+01:00", "27/10 : heure d'hiver");
+  assert.equal(nl.meta.cta?.url, "https://althoce.com/connecteurs/pennylane/");
+  assert.equal(AUDIENCES.annonce.segment, undefined);
+  assert.equal(AUDIENCES.annonce.list?.name, "ANNONCES — BASE ENVOYABLE");
+  assert.deepEqual(AUDIENCES.annonce.exclude.map((s) => s.name), ["DATA QUALITY — REJECTED"]);
+  const html = renderNewsletterHtml(nl);
+  assert.equal((html.match(/althoce\.com\/connecteurs\/pennylane\//g) ?? []).length, 1, "un seul lien vers la page");
+  assert.match(html, /utm_campaign=lancement_connecteur_pennylane_20261027/);
+  assert.doesNotMatch(nl.body, /—/, "pas de tiret long dans le corps");
+});
+
+test("liste d'annonce : seuls les contacts autorisés au marketing, hors recette ; le diff retire les opposés", () => {
+  const c = (id: number, a: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+    ({ id, email: `c${id}@cabinet.fr`, emailBlacklisted: false, listIds: [] as number[], attributes: a, ...extra }) as never;
+  const contacts = [
+    c(1, { MARKETING_STATUS: "B2B_ELIGIBLE", VERTICAL: "FINANCE" }),
+    c(2, { MARKETING_STATUS: "CONSENT", VERTICAL: "MARKETING" }),
+    c(3, { MARKETING_STATUS: "TO_REVIEW" }),
+    c(4, { MARKETING_STATUS: "OPPOSED" }, { listIds: [77] }),
+    c(5, { MARKETING_STATUS: "B2B_ELIGIBLE" }, { emailBlacklisted: true }),
+    c(6, { MARKETING_STATUS: "B2B_ELIGIBLE", EMAIL_STATUS: "BOUNCED" }),
+    c(7, { MARKETING_STATUS: "B2B_ELIGIBLE", IS_QA: true }),
+    c(8, { MARKETING_STATUS: "CONSENT" }, { listIds: [77] }),
+  ];
+  assert.deepEqual(contacts.filter(isAnnouncementRecipient).map((x: { id: number }) => x.id), [1, 2, 8]);
+  assert.deepEqual(listDiff(contacts, 77), { add: [1, 2], remove: [4] });
+  assert.deepEqual(listDiff(contacts, null), { add: [1, 2, 8], remove: [] }, "liste à créer : tout est à ajouter");
 });
