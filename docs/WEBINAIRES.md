@@ -77,9 +77,10 @@ Google Workspace **Business Standard n'a pas de rapport de présence** : il est 
    npm run webinar:presences -- --slug <slug> --file presences.txt --proof poll
    ```
    Les noms sont rapprochés des **inscrits** : seule une correspondance unique est retenue, les homonymes et les inconnus sont signalés. Un non-inscrit n'est jamais créé.
-4. Après relecture, relancez la même commande avec `--apply`. La commande est idempotente : la relancer ne rajoute aucun point.
+4. Les +15 passent par le journal de scoring, dont le jeton ne vit que dans Vercel et n8n. Sur un poste sans ce jeton (cas normal), la commande **n'écrit rien** et affiche les emails retenus. Collez-les, un par ligne, dans « Config — Webinar » du workflow n8n **« ALTHOCE | Webinar | Présences confirmées — v2 »**, avec le slug et la preuve, puis cliquez sur « Execute workflow ». Le nœud « Bilan » donne une ligne par personne et échoue (alerte email) si une présence est refusée ou comptée sans points.
+5. Le workflow appelle `POST /api/sequences/event` (`webinar_attended`, `properties: { webinar: <slug>, proof }`). Vercel refuse une adresse qui n'est pas inscrite à **ce** webinar (`404 non_inscrit`) et ne compte jamais deux fois les +15 : relancer est sans risque.
 
-Alternative : le workflow n8n « Présences » (`POST /api/sequences/event`, `webinar_attended`, `properties: { webinar: <slug>, proof }`).
+Recette du 26/10/2026 : le rapport de sondage Meet ne contenait que l'onglet « Décomptes », sans noms, car le seul répondant était l'organisateur. Vérifier avec un vrai participant que l'onglet nominatif apparaît ; à défaut, utiliser le rapport de Q&R ou la preuve `manual`.
 
 ## 5. Replay
 
@@ -196,7 +197,7 @@ Les participants sont informés de l'enregistrement sur la page d'inscription, l
 - [ ] Arrêter l'enregistrement.
 
 **Après**
-- [ ] Rapports de sondage et de Q&R, puis `webinar:presences`.
+- [ ] Rapports de sondage et de Q&R, puis `webinar:presences` (simulation) et le workflow n8n « Présences confirmées » (écriture, +15).
 - [ ] Vérifier le replay, le partager en lecture **avec le téléchargement désactivé** (partage du fichier Drive), publier la variable Vercel, puis `webinar:check`.
 - [ ] Après J+3 : `webinar:replay` si besoin.
 - [ ] Passer `status: "done"`.
@@ -206,7 +207,7 @@ Les participants sont informés de l'enregistrement sur la page d'inscription, l
 | Commande | Rôle | Écrit ? |
 |---|---|---|
 | `npm run webinar:check -- --slug <slug>` | Contrôle de préparation, GO / NO-GO | Non |
-| `npm run webinar:presences -- --slug <slug> --file <f> --proof poll\|qa\|manual` | Présences confirmées | Avec `--apply` |
+| `npm run webinar:presences -- --slug <slug> --file <f> --proof poll\|qa\|manual` | Rapprochement des noms ; écrit avec `--apply` seulement si le journal de scoring est configuré, sinon affiche les emails pour n8n | — |
 | `npm run webinar:replay -- --slug <slug>` | Reprise du replay publié après J+3 | Avec `--apply` |
 | `npm run brevo:attributes` | Crée `WEBINAR_ACTIVITY` s'il manque | Avec `--apply` |
 | `npm run brevo:templates` | Compare et publie les modèles #45 à #49 | Avec `--apply` |
