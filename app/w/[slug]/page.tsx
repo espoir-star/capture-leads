@@ -81,7 +81,7 @@ export default async function PageWebinar({ params }: Props) {
           </ul>
           {w.audience && (
             <p className="mt-4 text-sm text-secondaire">
-              <span className="font-semibold text-white">Pour : </span>
+              <span className="font-semibold text-white">Pour&nbsp;: </span>
               {w.audience}
             </p>
           )}
@@ -109,7 +109,7 @@ export default async function PageWebinar({ params }: Props) {
           <h2 className="font-display text-xl font-bold">Réserver ma place</h2>
           <p className="mt-2 text-sm leading-relaxed text-secondaire">
             Votre lien de connexion personnel arrive par email, avec un rappel la veille et une heure avant. Le webinar
-            est enregistré : le replay est envoyé aux inscrits.
+            est enregistré&nbsp;: le replay est envoyé aux inscrits.
           </p>
           <div className="mt-5">
             {preview ? (
@@ -124,7 +124,7 @@ export default async function PageWebinar({ params }: Props) {
               </>
             ) : closed ? (
               <p role="status" className="rounded-xl border border-bordure bg-fond p-4 text-sm leading-relaxed">
-                Ce webinar a eu lieu : les inscriptions sont closes. Les inscrits reçoivent le replay par email.
+                Ce webinar a eu lieu&nbsp;: les inscriptions sont closes. Les inscrits reçoivent le replay par email.
               </p>
             ) : (
               <CaptureForm slug={w.slug} kind="webinar" cta="Je réserve ma place" redirectTo={`/w/${w.slug}/confirmation`} />

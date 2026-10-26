@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  WEBINARS → BREVO  (mécanique en place, aucun webinar réel défini)
+ *  WEBINARS → BREVO  (premier webinar réel : 5 novembre 2026)
  * ═══════════════════════════════════════════════════════════════
  *
  *  Parcours (docs/WEBINAIRES.md) :
@@ -126,6 +126,36 @@ export const WEBINARS: Record<string, WebinarConfig> = {
     sequence: "webinar-standard-v1",
     status: "open",
     internalTest: true,
+  },
+  /* Premier webinar réel, demandé par Espoir le 27/10/2026 à partir de son post LinkedIn
+   * (« Commentez WEBINAIRE », lien d'inscription envoyé en privé : lien court wb1).
+   * Événement Agenda espoir@contact.althoce.com avec Meet ; salle dans la variable Vercel
+   * WEBINAR_JOIN_URL__CONNECTEURS_MCP_CABINETS (jamais ici). */
+  "connecteurs-mcp-cabinets": {
+    slug: "connecteurs-mcp-cabinets",
+    resource: "webinar-connecteurs-mcp-2026-11",
+    brevoListId: 23,
+    brevoListName: "WB - Connecteurs MCP en écriture (05/11/2026)",
+    vertical: "FINANCE",
+    subsector: "EXPERTISE_COMPTABLE",
+    note: "Webinar du 05/11/2026 : connecteurs MCP sur mesure (ACD, Cegid Quadra, Cegid Loop, Sage, AGIRIS), lecture et écriture.",
+    title: "Connecteurs MCP\u00a0: votre IA branchée sur vos logiciels, en lecture et en écriture",
+    description:
+      "Votre logiciel de production n'a pas de connecteur IA officiel, ou il est limité à la lecture\u00a0? On vous montre comment connecter vos dossiers en écriture, et ce que votre IA peut faire une fois branchée.",
+    audience: "Experts-comptables, collaborateurs et dirigeants de cabinets",
+    agenda: [
+      "La démo en direct\u00a0: Claude qui travaille dans un dossier, en lecture et en écriture",
+      "Comment on branche ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS",
+      "Ce que votre IA peut lire et faire une fois branchée",
+      "Les premiers usages à lancer dans votre cabinet",
+      "Ce qui ne marche pas encore, et les règles à respecter sur les données clients",
+    ],
+    speaker: { name: "Espoir Mwami", role: "Fondateur d'Althoce" },
+    startsAt: "2026-11-05T11:00:00+01:00",
+    durationMin: 60,
+    platform: "google_meet",
+    sequence: "webinar-standard-v1",
+    status: "open",
   },
 };
 

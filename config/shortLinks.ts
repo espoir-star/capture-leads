@@ -52,6 +52,16 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     utm_campaign: "12_cas_usage_experts_comptables",
     utm_content: "LI_EC_20261012_01",
   },
+  wb1: {
+    kind: "webinar",
+    slug: "connecteurs-mcp-cabinets",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "webinar_connecteurs_mcp_20261105",
+    // Post « Commentez WEBINAIRE » (webinar du 05/11) : lien envoyé en message privé.
+    // Date du post supposée au 27/10/2026 (non précisée par Espoir) : la corriger ici si besoin.
+    utm_content: "LI_EC_20261027_01",
+  },
 };
 
 /** Chemin cible (relatif) d'un code, ou null s'il est inconnu */

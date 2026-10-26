@@ -36,7 +36,7 @@ export default async function ConfirmationWebinar({ params }: Props) {
         </p>
         <p className="mt-4 leading-relaxed text-secondaire">
           Votre lien de connexion personnel arrive par email dans quelques instants (vérifiez vos spams si besoin).
-          Un rappel vous sera envoyé la veille et une heure avant. Le webinar est enregistré : vous recevrez aussi le replay.
+          Un rappel vous sera envoyé la veille et une heure avant. Le webinar est enregistré&nbsp;: vous recevrez aussi le replay.
         </p>
         <div className="mt-8 rounded-2xl border border-bordure bg-carte p-5 sm:p-6">
           <h2 className="font-semibold">Bloquez le créneau dès maintenant</h2>
