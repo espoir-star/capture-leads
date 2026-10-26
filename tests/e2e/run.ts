@@ -638,8 +638,13 @@ async function main() {
   });
 
   await scenario("SC6 · présence CONFIRMÉE (rapport de sondage → /api/sequences/event) → +15 une fois, suivi CRM", async () => {
-    await seed({ email: "present@cabinet.fr", attributes: { LEAD_SCORE: 8 } });
+    await seed({ email: "present@cabinet.fr", listIds: [9_999], attributes: { LEAD_SCORE: 8 } });
+    await seed({ email: "pas-inscrit@cabinet.fr", attributes: { LEAD_SCORE: 8 } });
     const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
+    const outsider = await post("/api/sequences/event", { email: "pas-inscrit@cabinet.fr", event: "webinar_attended", properties: { webinar: "webinar-e2e" } }, auth);
+    assert.equal(outsider.status, 404, "contact non inscrit au webinar : refusé");
+    assert.equal(outsider.body.reason, "non_inscrit");
+    assert.equal((await contactOf("pas-inscrit@cabinet.fr"))!.attributes.LEAD_SCORE, 8, "aucun point hors inscription");
     const evt = { email: "present@cabinet.fr", event: "webinar_attended", properties: { webinar: "webinar-e2e", proof: "poll" } };
     assert.equal((await post("/api/sequences/event", evt, auth)).status, 200);
     assert.equal((await post("/api/sequences/event", evt, auth)).status, 200);

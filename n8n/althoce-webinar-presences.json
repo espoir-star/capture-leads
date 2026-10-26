@@ -1,5 +1,5 @@
 {
-  "name": "ALTHOCE | Webinar | Présences vers Brevo — v1",
+  "name": "ALTHOCE | Webinar | Présences confirmées — v2",
   "settings": {
     "executionOrder": "v1",
     "errorWorkflow": "XDp4BEtctA5ogbDg"
@@ -7,22 +7,22 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## ALTHOCE | Webinar | Présences vers Brevo — v1\nAprès un webinar : présences / absences → événements Brevo (webinar_attended / webinar_no_show) via Vercel (/api/sequences/event), pour le scoring et le suivi commercial. Les rappels et le replay sont envoyés par le moteur de séquences.\n\n**Avant usage** : renseigner le slug dans « Config — Webinar », brancher la source des présences, rattacher « Althoce · n8n → Vercel (Bearer) ».",
-        "height": 220,
-        "width": 700
+        "content": "## ALTHOCE | Webinar | Présences confirmées — v2\nAprès un webinar : présences CONFIRMÉES (rapport de sondage ou de Q&R, constat de l'organisateur) → Vercel (/api/sequences/event, webinar_attended) : preuve notée sur la fiche, +15 une seule fois par contact et par webinar.\n\n1. `npm run webinar:presences -- --slug <slug> --file presences.txt --proof poll` rapproche les noms des inscrits et affiche leurs emails.\n2. Coller ces emails (un par ligne), le slug et la preuve dans « Config — Webinar », puis « Execute workflow ».\nRelancer est sans risque : aucun point n'est compté deux fois. Un email non inscrit est refusé (404).",
+        "height": 260,
+        "width": 760
       },
-      "id": "e9bfc4f5-8d89-41d9-997d-eaea9b8f0247",
-      "name": "Note ab5b",
+      "id": "1c0eb598-8664-4eca-bec6-d613c182af15",
+      "name": "Note b8ae",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         -40,
-        -60
+        -100
       ]
     },
     {
       "parameters": {},
-      "id": "6ddd3cd3-9bd4-44e3-bb1c-6f8b828101b8",
+      "id": "7092fb1b-6a95-481f-a1db-6c05cf83c6b0",
       "name": "Lancer après le webinar",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -36,13 +36,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "c8d37bf0-c7d0-4add-a856-e33f580f33a0",
+              "id": "49314a22-b37f-4e59-b14a-aaf8a917815f",
               "name": "webinarSlug",
               "value": "slug-du-webinar",
               "type": "string"
             },
             {
-              "id": "2b1ee7f2-0fb5-4d50-bdfd-6fe21aa53593",
+              "id": "cb7b23c0-657e-46d1-95c5-2e9e08bb442b",
+              "name": "proof",
+              "value": "poll",
+              "type": "string"
+            },
+            {
+              "id": "ecc7c605-b070-4fcc-8b78-d33d2ebde3d6",
+              "name": "emails",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "9cb6e159-b83a-4253-b32a-e6cfe24b0112",
               "name": "eventUrl",
               "value": "https://guide-gratuit-pi.vercel.app/api/sequences/event",
               "type": "string"
@@ -51,7 +63,7 @@
         },
         "options": {}
       },
-      "id": "424a4f4b-e159-4a51-84dc-6807f5b99ff1",
+      "id": "123a3fb9-6565-43d5-9172-fd8a2c413ba8",
       "name": "Config — Webinar",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -62,10 +74,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// À ADAPTER à la plateforme (Zoom, Livestorm, Teams…) : un item par inscrit,\n// { email, attended: true|false }. Laisser vide tant qu'aucun webinar réel n'a eu lieu.\nconst cfg = $('Config — Webinar').first().json;\nconst participants = []; // ← brancher ici l'export ou l'API de la plateforme\nreturn participants.map((p) => ({ json: {\n  email: String(p.email).trim().toLowerCase(),\n  event: p.attended ? 'webinar_attended' : 'webinar_no_show',\n  properties: { webinar: cfg.webinarSlug },\n} }));"
+        "jsCode": "// Présences CONFIRMÉES (docs/WEBINAIRES.md § 4) : un email par ligne dans « Config — Webinar ».\n// Vercel (/api/sequences/event) vérifie l'inscription, note la preuve et compte +15 une seule fois.\nconst cfg = $('Config — Webinar').first().json;\nconst slug = String(cfg.webinarSlug ?? '').trim();\nconst proof = String(cfg.proof ?? '').trim();\nif (!/^[a-z0-9-]{1,80}$/.test(slug) || slug === 'slug-du-webinar') throw new Error('Renseigner le slug du webinar dans « Config — Webinar »');\nif (!['poll', 'qa', 'manual'].includes(proof)) throw new Error('Preuve attendue : poll, qa ou manual');\nconst emails = [...new Set((String(cfg.emails ?? '').match(/[^\\s,;<>\"]+@[^\\s,;<>\"]+\\.[a-z]{2,}/gi) ?? []).map((e) => e.toLowerCase()))];\nif (!emails.length) throw new Error('Aucun email dans « Config — Webinar » (un par ligne, sortie de npm run webinar:presences)');\nreturn emails.map((email) => ({ json: { email, event: 'webinar_attended', properties: { webinar: slug, proof } } }));"
       },
-      "id": "f4214c2f-55a0-49f0-989c-2cf74fd35beb",
-      "name": "Lister les présences (à adapter)",
+      "id": "c1630318-5a23-4c66-9461-a966a6ba61b5",
+      "name": "Préparer les présences",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -89,26 +101,42 @@
               "batchInterval": 1000
             }
           },
-          "timeout": 20000
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
         }
       },
-      "id": "47a1af68-ffc9-43b7-88cc-9f4eccc3ed41",
-      "name": "Enregistrer l'événement Brevo (Vercel)",
+      "id": "a84fbfd3-74a5-4dc7-a6ff-edea5124a8e5",
+      "name": "Confirmer la présence (Vercel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         660,
         240
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "Fvh73Wb5raBHpxBa",
           "name": "Althoce · n8n → Vercel (Bearer)"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Une ligne par présence : confirmée (+15 comptés une fois), déjà comptée ou en échec.\nconst mask = (e) => String(e).replace(/^(.).*(@.*)$/, '$1***$2');\nconst sent = $('Préparer les présences').all();\nconst lines = $input.all().map((r, i) => {\n  const email = mask(sent[i]?.json.email ?? '?');\n  const code = r.json.statusCode ?? 0;\n  const body = r.json.body ?? {};\n  if (code === 200 && body.ok) return { email, statut: body.scored ? 'confirmée' : 'confirmée SANS points (journal de scoring absent sur Vercel)' };\n  return { email, statut: `échec ${code} ${body.reason ?? ''}`.trim() };\n});\nconst failed = lines.filter((l) => !l.statut.startsWith('confirmée'));\nconst unscored = lines.filter((l) => l.statut.includes('SANS points'));\nif (failed.length || unscored.length) throw new Error(`Présences : ${failed.length} échec(s), ${unscored.length} sans points — ` + JSON.stringify(lines));\nreturn lines.map((l) => ({ json: l }));"
+      },
+      "id": "ae03b8a9-ac41-45fa-b722-a9c957745623",
+      "name": "Bilan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        240
+      ]
     }
   ],
   "connections": {
@@ -127,18 +155,29 @@
       "main": [
         [
           {
-            "node": "Lister les présences (à adapter)",
+            "node": "Préparer les présences",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Lister les présences (à adapter)": {
+    "Préparer les présences": {
       "main": [
         [
           {
-            "node": "Enregistrer l'événement Brevo (Vercel)",
+            "node": "Confirmer la présence (Vercel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmer la présence (Vercel)": {
+      "main": [
+        [
+          {
+            "node": "Bilan",
             "type": "main",
             "index": 0
           }

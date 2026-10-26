@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
     try {
       const contact = await getContactByEmail(email);
       if (!contact) return NextResponse.json({ ok: false, reason: "contact_absent" }, { status: 404 });
+      // Seul un inscrit peut être présent : une adresse mal recopiée ne donne jamais +15 à un autre contact.
+      if (!contact.listIds?.includes(webinar.brevoListId)) return NextResponse.json({ ok: false, reason: "non_inscrit" }, { status: 404 });
       const r = await confirmWebinarAttendance(contact.id, webinar, proof, new Date());
       return r.ok ? NextResponse.json({ ok: true, scored: r.scored }) : NextResponse.json({ ok: false, reason: r.reason }, { status: 502 });
     } catch (e) {

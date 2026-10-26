@@ -13,10 +13,16 @@
  * aucun point (clé du journal = contact + webinar).
  *
  * --proof : poll (rapport de sondage), qa (rapport de questions), manual (constat de l'organisateur).
+ *
+ * Les +15 passent par le journal de scoring (n8n), dont le jeton ne vit que
+ * dans Vercel et n8n. Sans lui, la commande n'écrit RIEN (sinon la présence
+ * serait notée sans ses points) : elle affiche les emails retenus, à coller
+ * dans le workflow n8n « Présences confirmées » qui passe par Vercel.
  */
 import { readFileSync } from "node:fs";
 import { getWebinar } from "@/config/webinars";
 import { brevoRequest, getApiKey } from "@/lib/brevo/api";
+import { ledgerConfigured } from "@/lib/scoring/ledger";
 import { confirmWebinarAttendance } from "@/lib/webinar/events";
 import type { AttendanceProof } from "@/lib/webinar/activity";
 
@@ -70,6 +76,14 @@ async function main() {
   console.log(`  Inscrits : ${members.length} · lignes lues : ${lines.length} · présences retenues : ${confirmed.size}`);
   for (const m of confirmed.values()) console.log(`  ✓ ${mask(m.email)}`);
   for (const i of issues) console.log(`  · ${i}`);
+  if (!ledgerConfigured()) {
+    console.log("\nJournal de scoring absent sur ce poste : rien n'a été écrit (les +15 ne seraient pas comptés).");
+    console.log(`Collez ces emails dans « Config — Webinar » du workflow n8n « Présences confirmées » (slug ${slug}, preuve ${proof}) :\n`);
+    for (const m of confirmed.values()) console.log(m.email);
+    console.log("");
+    if (APPLY) process.exitCode = 1;
+    return;
+  }
   if (!APPLY) { console.log("\nRien n'a été écrit. Relancer avec --apply après relecture.\n"); return; }
 
   let ok = 0, failed = 0;

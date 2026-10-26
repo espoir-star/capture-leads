@@ -141,33 +141,54 @@ def alerts(name):
          "retryOnFail": True, "maxTries": 3, "waitBetweenTries": 5000},
     ], "connections": {"Capter l'erreur": {"main": [[c("Préparer l'alerte")]]}, "Préparer l'alerte": {"main": [[c("Envoyer l'alerte (Vercel)")]]}}}
 
-PRESENCES = r"""// À ADAPTER à la plateforme (Zoom, Livestorm, Teams…) : un item par inscrit,
-// { email, attended: true|false }. Laisser vide tant qu'aucun webinar réel n'a eu lieu.
+PRESENCES = r"""// Présences CONFIRMÉES (docs/WEBINAIRES.md § 4) : un email par ligne dans « Config — Webinar ».
+// Vercel (/api/sequences/event) vérifie l'inscription, note la preuve et compte +15 une seule fois.
 const cfg = $('Config — Webinar').first().json;
-const participants = []; // ← brancher ici l'export ou l'API de la plateforme
-return participants.map((p) => ({ json: {
-  email: String(p.email).trim().toLowerCase(),
-  event: p.attended ? 'webinar_attended' : 'webinar_no_show',
-  properties: { webinar: cfg.webinarSlug },
-} }));"""
+const slug = String(cfg.webinarSlug ?? '').trim();
+const proof = String(cfg.proof ?? '').trim();
+if (!/^[a-z0-9-]{1,80}$/.test(slug) || slug === 'slug-du-webinar') throw new Error('Renseigner le slug du webinar dans « Config — Webinar »');
+if (!['poll', 'qa', 'manual'].includes(proof)) throw new Error('Preuve attendue : poll, qa ou manual');
+const emails = [...new Set((String(cfg.emails ?? '').match(/[^\s,;<>"]+@[^\s,;<>"]+\.[a-z]{2,}/gi) ?? []).map((e) => e.toLowerCase()))];
+if (!emails.length) throw new Error('Aucun email dans « Config — Webinar » (un par ligne, sortie de npm run webinar:presences)');
+return emails.map((email) => ({ json: { email, event: 'webinar_attended', properties: { webinar: slug, proof } } }));"""
+
+BILAN = r"""// Une ligne par présence : confirmée (+15 comptés une fois), déjà comptée ou en échec.
+const mask = (e) => String(e).replace(/^(.).*(@.*)$/, '$1***$2');
+const sent = $('Préparer les présences').all();
+const lines = $input.all().map((r, i) => {
+  const email = mask(sent[i]?.json.email ?? '?');
+  const code = r.json.statusCode ?? 0;
+  const body = r.json.body ?? {};
+  if (code === 200 && body.ok) return { email, statut: body.scored ? 'confirmée' : 'confirmée SANS points (journal de scoring absent sur Vercel)' };
+  return { email, statut: `échec ${code} ${body.reason ?? ''}`.trim() };
+});
+const failed = lines.filter((l) => !l.statut.startsWith('confirmée'));
+const unscored = lines.filter((l) => l.statut.includes('SANS points'));
+if (failed.length || unscored.length) throw new Error(`Présences : ${failed.length} échec(s), ${unscored.length} sans points — ` + JSON.stringify(lines));
+return lines.map((l) => ({ json: l }));"""
 
 def presences(name):
     return {"name": name, "settings": {"executionOrder": "v1"}, "nodes": [
-        sticky(f"## {name}\nAprès un webinar : présences / absences → événements Brevo (webinar_attended / webinar_no_show) via Vercel "
-               "(/api/sequences/event), pour le scoring et le suivi commercial. Les rappels et le replay sont envoyés par le moteur de séquences.\n\n"
-               f"**Avant usage** : renseigner le slug dans « Config — Webinar », brancher la source des présences, rattacher « {CRED_OUT} ».", [-40, -60], 700, 220),
+        sticky(f"## {name}\nAprès un webinar : présences CONFIRMÉES (rapport de sondage ou de Q&R, constat de l'organisateur) → Vercel "
+               "(/api/sequences/event, webinar_attended) : preuve notée sur la fiche, +15 une seule fois par contact et par webinar.\n\n"
+               "1. `npm run webinar:presences -- --slug <slug> --file presences.txt --proof poll` rapproche les noms des inscrits et affiche leurs emails.\n"
+               "2. Coller ces emails (un par ligne), le slug et la preuve dans « Config — Webinar », puis « Execute workflow ».\n"
+               "Relancer est sans risque : aucun point n'est compté deux fois. Un email non inscrit est refusé (404).", [-40, -100], 760, 260),
         {"parameters": {}, "id": U(), "name": "Lancer après le webinar", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 240]},
         {"parameters": {"assignments": {"assignments": [{"id": U(), "name": "webinarSlug", "value": "slug-du-webinar", "type": "string"},
+                                                        {"id": U(), "name": "proof", "value": "poll", "type": "string"},
+                                                        {"id": U(), "name": "emails", "value": "", "type": "string"},
                                                         {"id": U(), "name": "eventUrl", "value": f"{BASE_PROD}/api/sequences/event", "type": "string"}]}, "options": {}},
          "id": U(), "name": "Config — Webinar", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [220, 240]},
-        {"parameters": {"jsCode": PRESENCES}, "id": U(), "name": "Lister les présences (à adapter)", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [440, 240]},
+        {"parameters": {"jsCode": PRESENCES}, "id": U(), "name": "Préparer les présences", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [440, 240]},
         {"parameters": {"method": "POST", "url": "={{ $('Config — Webinar').first().json.eventUrl }}", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth",
                         "sendBody": True, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ email: $json.email, event: $json.event, properties: $json.properties }) }}",
-                        "options": {"batching": {"batch": {"batchSize": 5, "batchInterval": 1000}}, "timeout": 20000}},
-         "id": U(), "name": "Enregistrer l'événement Brevo (Vercel)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [660, 240],
-         "retryOnFail": True, "maxTries": 3, "waitBetweenTries": 5000},
-    ], "connections": {"Lancer après le webinar": {"main": [[c("Config — Webinar")]]}, "Config — Webinar": {"main": [[c("Lister les présences (à adapter)")]]},
-                       "Lister les présences (à adapter)": {"main": [[c("Enregistrer l'événement Brevo (Vercel)")]]}}}
+                        "options": {"batching": {"batch": {"batchSize": 5, "batchInterval": 1000}}, "timeout": 20000,
+                                    "response": {"response": {"fullResponse": True, "neverError": True}}}},
+         "id": U(), "name": "Confirmer la présence (Vercel)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [660, 240]},
+        {"parameters": {"jsCode": BILAN}, "id": U(), "name": "Bilan", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [880, 240]},
+    ], "connections": {"Lancer après le webinar": {"main": [[c("Config — Webinar")]]}, "Config — Webinar": {"main": [[c("Préparer les présences")]]},
+                       "Préparer les présences": {"main": [[c("Confirmer la présence (Vercel)")]]}, "Confirmer la présence (Vercel)": {"main": [[c("Bilan")]]}}}
 
 FAUX = r"""// Faux /api/sequences/step pour tester la boucle du moteur sans Vercel.
 const b = $json.body ?? {};
@@ -393,7 +414,7 @@ def maintenance(name, url, trigger=None, with_auth=True):
 NAMES = {
     "althoce-sequences.json": "ALTHOCE | Marketing | Séquences guides et webinars — v1",
     "althoce-alertes-sequences.json": "ALTHOCE | Marketing | Alertes n8n — v1",
-    "althoce-webinar-presences.json": "ALTHOCE | Webinar | Présences vers Brevo — v1",
+    "althoce-webinar-presences.json": "ALTHOCE | Webinar | Présences confirmées — v2",
     "althoce-journal-evenements.json": "ALTHOCE | Marketing | Journal des événements — v1",
     "althoce-recalcul-scores.json": "ALTHOCE | Marketing | Recalcul des scores — v1",
     "althoce-quota-rdv.json": "ALTHOCE | Marketing | Quota Brevo et RDV — v1",
