@@ -106,3 +106,9 @@ test("liste d'annonce : seuls les contacts autorisés au marketing, hors recette
   assert.deepEqual(listDiff(contacts, 77), { add: [1, 2], remove: [4] });
   assert.deepEqual(listDiff(contacts, null), { add: [1, 2, 8], remove: [] }, "liste à créer : tout est à ajouter");
 });
+
+test("annonce du connecteur : vente sur rendez-vous, aucun prix ni essai dans le mail", () => {
+  const nl = loadNewsletter("content/newsletters/2026-10-27-annonce.md");
+  assert.doesNotMatch(nl.body, /€|essai|Tarif/i);
+  assert.match(nl.body, /Un conseiller Althoce le branche avec vous sur votre cabinet/);
+});
