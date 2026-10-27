@@ -1,7 +1,7 @@
 ---
 rubric: "Webinar gratuit · 5 novembre"
-title: "Votre IA dans ACD, Cegid, Sage ou AGIRIS : on vous montre comment, en direct."
-subject: "Webinar 5/11 : votre IA branchée sur ACD, Quadra ou Sage"
+title: "Votre IA dans Pennylane, ACD, Cegid, Sage ou AGIRIS : on vous montre comment, en direct."
+subject: "Webinar 5/11 : votre IA dans Pennylane, ACD, Quadra ou Sage"
 previewText: "Jeudi 5 novembre à 11 h. Démo en direct, en lecture et en écriture. Gratuit."
 scheduledAt: "2026-10-29T09:00:00+01:00"
 audience: annonce
@@ -24,7 +24,7 @@ Jeudi 5 novembre à 11 h, je vous montre en direct comment brancher votre IA sur
 ## Au programme
 
 - Démo en direct : Claude dans un dossier, en lecture et en écriture
-- Brancher ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS
+- Brancher Pennylane, ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS
 - Ce que votre IA peut lire et faire, et les premiers usages au cabinet
 - Ce qui ne marche pas encore, et les règles sur les données clients
 

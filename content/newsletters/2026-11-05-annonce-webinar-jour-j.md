@@ -19,6 +19,6 @@ Bonjour,
 
 Le webinar sur les connecteurs MCP commence ce matin à 11 h, sur Google Meet.
 
-Au programme : une démo en direct de Claude dans un dossier, en lecture et en écriture, puis comment brancher ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS.
+Au programme : une démo en direct de Claude dans un dossier, en lecture et en écriture, puis comment brancher Pennylane, ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS.
 
 Il est encore temps de vous inscrire. Votre lien de connexion arrive par email et s'active 15 minutes avant le début.

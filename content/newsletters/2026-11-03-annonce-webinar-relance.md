@@ -24,5 +24,5 @@ Aujourd'hui, votre IA lit les documents que vous lui donnez. Branchée sur votre
 En une heure :
 
 - une démo en direct, en lecture et en écriture
-- comment brancher ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS
+- comment brancher Pennylane, ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS
 - ce qui ne marche pas encore, et les règles sur les données clients
