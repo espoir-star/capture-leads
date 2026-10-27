@@ -38,20 +38,20 @@ export default async function ConfirmationWebinar({ params }: Props) {
           Votre lien de connexion personnel arrive par email dans quelques instants (vérifiez vos spams si besoin).
           Un rappel vous sera envoyé la veille et une heure avant. Le webinar est enregistré.
         </p>
-        <div className="mt-8 rounded-2xl border border-bordure bg-carte p-5 sm:p-6">
+        <div className="mt-8 rounded-[18px] border border-bordure bg-carte p-5 sm:p-6">
           <h2 className="font-semibold">Bloquez le créneau dès maintenant</h2>
           <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
             <a
               href={googleCalendarUrl(w, base)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-black hover:opacity-90"
+              className="rounded-full bg-action px-5 py-2.5 text-sm font-medium text-white hover:bg-action-hover"
             >
               Ajouter à Google Agenda
             </a>
             <a
               href={`/w/${w.slug}/agenda.ics`}
-              className="rounded-lg border border-bordure px-4 py-2.5 text-sm font-semibold hover:border-accent"
+              className="rounded-full border border-bordure-forte px-5 py-2.5 text-sm font-medium hover:bg-carte-2"
             >
               Outlook, Apple (.ics)
             </a>

@@ -34,7 +34,7 @@ export const LEAD_REF_KEY = "althoce_lead_ref:";
 export const OPPOSITION_KEY = "althoce_marketing_opposed:";
 
 const FIELD =
-  "w-full rounded-lg border bg-fond px-4 py-3.5 placeholder:text-secondaire focus:border-accent transition-colors";
+  "w-full rounded-xl border bg-carte-2 px-4 py-3.5 text-[15px] placeholder:text-discret focus:border-accent/55 focus:outline-none transition-colors";
 const INPUT = `${FIELD} text-white`;
 /** Menu déroulant : gris tant que la question (placeholder) est affichée, blanc une fois choisi */
 const selectClass = (value: string, err?: string) =>
@@ -299,7 +299,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
           Numéro de mobile
         </label>
         <div
-          className={`flex items-stretch rounded-lg border bg-fond focus-within:border-accent transition-colors ${borderFor(errors.tel)}`}
+          className={`flex items-stretch rounded-xl border bg-carte-2 focus-within:border-accent/55 transition-colors ${borderFor(errors.tel)}`}
         >
           <label htmlFor="pays" className="sr-only">
             Pays
@@ -446,7 +446,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
       <button
         type="submit"
         disabled={envoi}
-        className="w-full rounded-lg bg-accent px-6 py-4 font-semibold text-white hover:bg-accent-clair active:scale-[0.99] transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full rounded-full bg-action px-6 py-4 font-semibold text-white hover:bg-action-hover active:scale-[0.99] transition disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {envoi ? "Envoi en cours..." : cta}
       </button>

@@ -22,7 +22,8 @@ for (const family of ["guide-12-cas-ec", "generique"]) {
     });
     test(`${path} : guide, RDV, désabonnement et confidentialité conservés`, () => {
       const html = readFileSync(path, "utf8");
-      const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+      // Liens cliquables seulement : la feuille de style de la police (Geist) n'est pas un lien du mail.
+      const links = [...html.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((match) => match[1]);
       assert.deepEqual(links, [isGeneric ? "{{ params.GUIDE_URL }}" : guide, isGeneric ? "{{ params.CTA_URL }}" : booking, "{{ params.UNSUBSCRIBE_URL }}", privacy]);
       assert.match(html, /Se désinscrire/);
       assert.doesNotMatch(html, /CONFIRM_URL|EMAIL_CONFIRM_TOKEN|confirmer-email|Confirmer mon adresse/i);

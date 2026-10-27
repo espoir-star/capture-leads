@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getWebinar } from "@/config/webinars";
 import { siteUrl } from "@/lib/sequences/links";
 import { googleCalendarUrl } from "@/lib/webinar/access";
+import BrandLogo from "@/components/BrandLogo";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -43,10 +44,8 @@ export default async function AccesWebinar({ params, searchParams }: Props) {
   const date = new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Paris" }).format(new Date(w.startsAt));
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg rounded-2xl border border-bordure bg-carte p-6 text-center sm:p-8">
-        <p className="font-display text-lg font-semibold">
-          Althoce<span className="text-accent">.</span>
-        </p>
+      <div className="w-full max-w-lg rounded-[18px] border border-bordure bg-carte p-6 text-center sm:p-8">
+        <BrandLogo size={26}/>
         <h1 className="mt-4 font-display text-2xl font-bold text-balance">{m.titre}</h1>
         <p className="mt-2 text-sm text-accent first-letter:uppercase">{w.title} · {date}</p>
         <p className="mt-4 leading-relaxed text-secondaire">{m.texte}</p>
@@ -55,7 +54,7 @@ export default async function AccesWebinar({ params, searchParams }: Props) {
             href={googleCalendarUrl(w, siteUrl())}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-6 inline-block rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-black hover:opacity-90"
+            className="mt-6 inline-block rounded-full bg-action px-5 py-2.5 text-sm font-medium text-white hover:bg-action-hover"
           >
             Ajouter à Google Agenda
           </a>

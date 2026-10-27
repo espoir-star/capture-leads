@@ -2,23 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Rôles de couleur communs (standard davinci) : ressources, fiches, webinars.
+ * Version sombre de la palette d'althoce.com : neutres zinc, accent bleu du site
+ * (#2563eb pour les actions, #8cb6ff pour les repères sur fond sombre, comme le pied du site).
+ * Les variables *-rgb alimentent Tailwind (opacités : bg-accent/10…).
+ */
 :root {
   color-scheme: dark;
+  --bg-rgb: 9 9 11;
+  --surface-rgb: 17 17 19;
+  --surface-2-rgb: 24 24 27;
+  --fg-rgb: 250 250 250;
+  --fg-muted-rgb: 161 161 170;
+  --fg-subtle-rgb: 133 133 143; /* #85858f : contraste ≥ 4,5 sur fond, cartes et champs (AA) */
+  --accent-rgb: 140 182 255;
+  --action-rgb: 37 99 235;
+  --action-hover-rgb: 29 78 216;
+  --warn-rgb: 242 160 123;
+
+  --bg: rgb(var(--bg-rgb));
+  --surface: rgb(var(--surface-rgb));
+  --surface-2: rgb(var(--surface-2-rgb));
+  --fg: rgb(var(--fg-rgb));
+  --fg-muted: rgb(var(--fg-muted-rgb));
+  --fg-subtle: rgb(var(--fg-subtle-rgb));
+  --border: rgb(var(--fg-rgb) / 0.08);
+  --border-strong: rgb(var(--fg-rgb) / 0.15);
+  --accent: rgb(var(--accent-rgb));
+  --accent-fill: rgb(var(--action-rgb));
+  --warn: rgb(var(--warn-rgb));
 }
 
 body {
-  @apply bg-fond text-white antialiased;
+  @apply bg-fond text-texte antialiased;
+}
+
+.font-display {
+  letter-spacing: -0.03em;
 }
 
 ::selection {
-  background: #1d9e75;
+  background: rgb(var(--action-rgb));
   color: #fff;
 }
 
 input:focus-visible,
 button:focus-visible,
-a:focus-visible {
-  outline: 2px solid #26c08f;
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid rgb(var(--accent-rgb));
   outline-offset: 2px;
 }
 

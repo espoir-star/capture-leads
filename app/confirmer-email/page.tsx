@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import ConfirmEmail from "@/components/ConfirmEmail";
 import { maskEmail } from "@/lib/lead/log";
 import { readEmailConfirmToken } from "@/lib/security/emailConfirm";
+import BrandLogo from "@/components/BrandLogo";
 
 export const metadata: Metadata = {
   title: "Confirmer votre adresse — Althoce",
@@ -28,10 +29,8 @@ export default async function PageConfirmerEmail({
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[720px] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
       />
-      <div className="relative w-full max-w-lg rounded-2xl border border-bordure bg-carte p-6 sm:p-10 shadow-2xl">
-        <p className="font-display text-lg font-semibold tracking-tight">
-          Althoce<span className="text-accent">.</span>
-        </p>
+      <div className="relative w-full max-w-lg rounded-[18px] border border-bordure bg-carte p-6 sm:p-10 shadow-2xl">
+        <BrandLogo size={26}/>
         {email && token ? (
           <ConfirmEmail token={token} maskedEmail={maskEmail(email)} />
         ) : (

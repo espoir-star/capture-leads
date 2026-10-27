@@ -1,5 +1,8 @@
 import type { Config } from "tailwindcss";
 
+/* Couleurs = rôles définis dans app/globals.css (palette d'althoce.com, version sombre). */
+const role = (name: string) => `rgb(var(--${name}-rgb) / <alpha-value>)`;
+
 const config: Config = {
   content: [
     "./app/**/*.{ts,tsx}",
@@ -8,16 +11,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        fond: "#0A0A0A",
-        carte: "#111311",
-        bordure: "#1E221E",
-        accent: "#1D9E75",
-        "accent-clair": "#26C08F",
-        secondaire: "#A0A0A0",
+        fond: role("bg"),
+        carte: role("surface"),
+        "carte-2": role("surface-2"),
+        texte: role("fg"),
+        secondaire: role("fg-muted"),
+        discret: role("fg-subtle"),
+        bordure: "rgb(var(--fg-rgb) / 0.08)",
+        "bordure-forte": "rgb(var(--fg-rgb) / 0.15)",
+        accent: role("accent"),
+        action: role("action"),
+        "action-hover": role("action-hover"),
+        alerte: role("warn"),
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        display: ["var(--font-space)", "system-ui", "sans-serif"],
+        sans: ["var(--font-geist)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-geist)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
     },
   },

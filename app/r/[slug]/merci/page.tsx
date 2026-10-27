@@ -59,21 +59,21 @@ export default async function PageMerci({ params }: Props) {
         <OppositionNotice slug={r.slug} />
 
         {/* Accès direct à la ressource */}
-        <div className="mt-9 rounded-2xl border border-bordure bg-carte p-8">
+        <div className="mt-9 rounded-[18px] border border-bordure bg-carte p-8">
           <p className="font-display text-xl font-semibold">
             Accédez au guide maintenant
           </p>
           <GuideLink
             href={r.urlRessource}
             slug={r.slug}
-            className="mt-5 inline-block w-full rounded-lg bg-accent px-6 py-4 font-semibold text-white hover:bg-accent-clair transition sm:w-auto sm:px-10"
+            className="mt-5 inline-block w-full rounded-full bg-action px-6 py-4 font-semibold text-white hover:bg-action-hover transition sm:w-auto sm:px-10"
           >
             Lire le guide gratuitement ↗
           </GuideLink>
         </div>
 
         {/* Deuxième conversion : le call */}
-        <div className="mt-5 rounded-2xl border border-accent/25 bg-accent/5 p-8">
+        <div className="mt-5 rounded-[18px] border border-accent/25 bg-accent/5 p-8">
           <p className="font-display text-xl font-semibold">{ctaTitre}</p>
           {ctaTexte && (
             <p className="mx-auto mt-3 max-w-md text-sm text-secondaire leading-relaxed">
@@ -84,7 +84,7 @@ export default async function PageMerci({ params }: Props) {
             href={CAL_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-5 inline-block rounded-lg border border-accent px-8 py-3.5 font-semibold text-accent hover:bg-accent hover:text-white transition"
+            className="mt-5 inline-block rounded-full border border-bordure-forte px-8 py-3.5 font-medium text-texte hover:bg-carte-2 transition"
           >
             Réserver 30 min
           </a>

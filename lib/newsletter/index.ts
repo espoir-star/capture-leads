@@ -7,6 +7,9 @@
  *   :::usecase Titre du cas d'usage      :::insight Titre de l'insight
  *   texte Markdown…                      texte Markdown…
  *   :::                                  :::
+ *
+ * Annonce de webinar (frontmatter `webinar: <slug>`) : encadré date, horaire,
+ * intervenant et badges repris de config/webinars.ts, au-dessus du bouton.
  */
 
 import { readFileSync } from "node:fs";
@@ -15,7 +18,10 @@ import matter from "gray-matter";
 import { Marked, type Tokens } from "marked";
 import { z } from "zod";
 import { AUDIENCES, CAMPAIGN_TAGS } from "@/config/newsletter";
+import { WEBINARS } from "@/config/webinars";
+import { siteUrl } from "@/lib/sequences/links";
 import { addUtmToUrl, type Utm } from "@/lib/tracking/utm";
+import { webinarDay, webinarHours } from "@/lib/webinar/format";
 
 /* ── Frontmatter ─────────────────────────────────────────────────────── */
 
@@ -39,6 +45,8 @@ export const frontmatterSchema = z.object({
   status: z.enum(["draft", "ready", "created", "scheduled"]),
   cta: z.object({ label: z.string().min(2).max(60), url: z.string().url() }).optional(),
   signature: z.string().max(300).optional(),
+  /** Webinar annoncé : encadré dans l'email, inscrits exclus de la campagne (liste Brevo du webinar) */
+  webinar: z.string().refine((slug) => slug in WEBINARS, "webinar inconnu (config/webinars.ts)").optional(),
   brevoCampaignId: z.number().int().positive().optional(),
 });
 
@@ -69,10 +77,10 @@ export function loadNewsletter(path: string): Newsletter {
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-const P = "margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:26px;color:#2B2F2B;";
-const H2 = "margin:28px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:19px;line-height:26px;font-weight:bold;color:#0A0A0A;";
-const H3 = "margin:22px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;font-weight:bold;color:#0A0A0A;";
-const LINK = "color:#157A5B;text-decoration:underline;";
+const P = "margin:16px 0 0;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:16px;line-height:26px;color:#D4D4D8;";
+const H2 = "margin:28px 0 0;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:19px;line-height:26px;font-weight:bold;color:#FAFAFA;";
+const H3 = "margin:22px 0 0;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;font-weight:bold;color:#FAFAFA;";
+const LINK = "color:#8CB6FF;text-decoration:underline;";
 
 function createMarked(utm: Utm) {
   const m = new Marked({ gfm: true, breaks: false });
@@ -98,22 +106,22 @@ function createMarked(utm: Utm) {
               `<li style="margin:8px 0 0;padding-left:4px;">${this.parser.parse(it.tokens).replace(/^<p style="[^"]*">|<\/p>$/g, "")}</li>`
           )
           .join("");
-        return `<${tag} style="margin:14px 0 0;padding-left:22px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:25px;color:#2B2F2B;">${items}</${tag}>`;
+        return `<${tag} style="margin:14px 0 0;padding-left:22px;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:16px;line-height:25px;color:#D4D4D8;">${items}</${tag}>`;
       },
       strong({ tokens }: Tokens.Strong) {
-        return `<strong style="color:#0A0A0A;">${this.parser.parseInline(tokens)}</strong>`;
+        return `<strong style="color:#FAFAFA;">${this.parser.parseInline(tokens)}</strong>`;
       },
       blockquote({ tokens }: Tokens.Blockquote) {
-        return `<div style="margin:18px 0 0;padding:2px 0 2px 16px;border-left:3px solid #1D9E75;">${this.parser.parse(tokens)}</div>`;
+        return `<div style="margin:18px 0 0;padding:2px 0 2px 16px;border-left:3px solid #2563EB;">${this.parser.parse(tokens)}</div>`;
       },
       hr() {
-        return `<hr style="margin:28px 0 0;border:0;border-top:1px solid #E3E6E2;" />`;
+        return `<hr style="margin:28px 0 0;border:0;border-top:1px solid #27272A;" />`;
       },
       image({ href, text }: Tokens.Image) {
         return `<img src="${esc(href)}" alt="${esc(text)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;margin:18px 0 0;border:0;border-radius:8px;" />`;
       },
       codespan({ text }: Tokens.Codespan) {
-        return `<code style="font-family:Menlo,Consolas,monospace;font-size:14px;background:#F3F4F2;padding:1px 5px;border-radius:4px;">${text}</code>`;
+        return `<code style="font-family:Menlo,Consolas,monospace;font-size:14px;background:#18181B;padding:1px 5px;border-radius:4px;">${text}</code>`;
       },
       html() {
         return ""; // pas de HTML brut dans le Markdown : le template reste maîtrisé
@@ -127,12 +135,12 @@ const BLOCK = /^:::(usecase|insight)[ \t]*(.*)\n([\s\S]*?)\n:::[ \t]*$/gm;
 
 function renderBlock(kind: "usecase" | "insight", title: string, innerHtml: string): string {
   const label = kind === "usecase" ? "CAS D’USAGE" : "INSIGHT";
-  const bg = kind === "usecase" ? "#F1F8F5" : "#F6F6F4";
-  const border = kind === "usecase" ? "#BFE3D5" : "#E3E6E2";
+  const bg = kind === "usecase" ? "#1B1E26" : "#18181B";
+  const border = kind === "usecase" ? "#2F3A4E" : "#27272A";
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0;background-color:${bg};border:1px solid ${border};border-radius:10px;">
 <tr><td style="padding:18px 20px 20px;">
-<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;font-weight:bold;letter-spacing:1px;color:#157A5B;">${label}</p>
-${title ? `<p style="margin:6px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:24px;font-weight:bold;color:#0A0A0A;">${esc(title)}</p>` : ""}
+<p style="margin:0;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;font-weight:bold;letter-spacing:1px;color:#8CB6FF;">${label}</p>
+${title ? `<p style="margin:6px 0 0;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;line-height:24px;font-weight:bold;color:#FAFAFA;">${esc(title)}</p>` : ""}
 ${innerHtml.replace("margin:16px 0 0", "margin:8px 0 0")}
 </td></tr></table>`;
 }
@@ -149,6 +157,37 @@ export function renderMarkdown(body: string, utm: Utm): string {
   }
   parts.push(marked.parse(body.slice(last), { async: false }) as string);
   return parts.join("\n").replace(/^\s*<p style="margin:16px 0 0;/, '<p style="margin:12px 0 0;');
+}
+
+const PLATFORMS: Record<string, string> = { google_meet: "Google Meet", zoom: "Zoom", teams: "Microsoft Teams", livestorm: "Livestorm" };
+const CARD_FONT = "font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;";
+
+/** Encadré du webinar annoncé : mêmes informations que la page d'inscription et les emails du parcours. */
+export function renderWebinarCard(slug: string, base = siteUrl()): string {
+  const w = WEBINARS[slug];
+  const platform = PLATFORMS[w.platform];
+  const when = `${webinarDay(new Date(w.startsAt))}&nbsp;· ${webinarHours(w)} (heure de Paris)${platform ? `&nbsp;· ${platform}` : ""}`;
+  const speaker = w.speaker
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 0;"><tr>
+${w.speaker.photo ? `<td width="56" valign="middle" style="padding:0 12px 0 0;"><img src="${esc(base + w.speaker.photo)}" width="44" height="44" alt="${esc(w.speaker.name)}" style="display:block;width:44px;height:44px;border:0;border-radius:22px;" /></td>\n` : ""}<td valign="middle" style="${CARD_FONT}">
+<p style="margin:0;font-size:12px;line-height:16px;color:#A1A1AA;">Animé par</p>
+<p style="margin:2px 0 0;font-size:14px;line-height:20px;font-weight:bold;color:#FAFAFA;">${esc(w.speaker.name)}</p>
+<p style="margin:1px 0 0;font-size:13px;line-height:18px;color:#A1A1AA;">${esc(w.speaker.role)}</p>
+</td></tr></table>`
+    : "";
+  return `<tr><td class="px" style="padding:26px 40px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#1B1E26;border:1px solid #2F3A4E;border-radius:10px;">
+<tr><td style="padding:18px 20px 20px;${CARD_FONT}">
+<p style="margin:0;font-size:11px;line-height:16px;font-weight:bold;letter-spacing:1px;color:#8CB6FF;">WEBINAR GRATUIT&nbsp;· EN DIRECT</p>
+<p style="margin:6px 0 0;font-size:17px;line-height:24px;font-weight:bold;color:#FAFAFA;">${esc(w.title)}</p>
+<p style="margin:8px 0 0;font-size:15px;line-height:22px;font-weight:bold;color:#8CB6FF;">${when}</p>
+${speaker}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 0;"><tr>
+<td style="background-color:#FFFFFF;border:1px solid #27272A;border-radius:8px;padding:5px;"><img src="${esc(base)}/webinar/activateur-france-num.png" width="44" height="40" alt="Activateur France Num" style="display:block;border:0;" /></td>
+<td width="8" style="font-size:0;line-height:0;">&nbsp;</td>
+<td style="background-color:#FFFFFF;border:1px solid #27272A;border-radius:8px;padding:4px;"><img src="${esc(base)}/webinar/french-tech-bordeaux.png" width="42" height="42" alt="La French Tech Bordeaux" style="display:block;border:0;" /></td>
+</tr></table>
+</td></tr></table></td></tr>`;
 }
 
 export function campaignUtm(meta: NewsletterFrontmatter): Utm {
@@ -168,8 +207,8 @@ export function renderNewsletterHtml(nl: Newsletter, templatePath = TEMPLATE_PAT
   const cta = nl.meta.cta
     ? `<tr><td class="px" style="padding:30px 40px 0;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="background-color:#1D9E75;border-radius:8px;">
-<a href="${esc(addUtmToUrl(nl.meta.cta.url, { ...utm, utm_content: utm.utm_content ?? "cta" }))}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#FFFFFF;text-decoration:none;">${esc(nl.meta.cta.label)}</a>
+<td style="background-color:#2563EB;border-radius:999px;">
+<a href="${esc(addUtmToUrl(nl.meta.cta.url, { ...utm, utm_content: utm.utm_content ?? "cta" }))}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#FFFFFF;text-decoration:none;">${esc(nl.meta.cta.label)}</a>
 </td></tr></table></td></tr>`
     : "";
   const signature = esc(nl.meta.signature ?? "Espoir Mwami\nAlthoce").replace(/\n/g, "<br />");
@@ -180,11 +219,11 @@ export function renderNewsletterHtml(nl: Newsletter, templatePath = TEMPLATE_PAT
     .replace(
       "%%RUBRIC%%",
       nl.meta.rubric
-        ? `<p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#157A5B;">${esc(nl.meta.rubric)}</p>`
+        ? `<p style="margin:0 0 10px;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#8CB6FF;">${esc(nl.meta.rubric)}</p>`
         : ""
     )
     .replaceAll("%%PREVIEW_TEXT%%", esc(nl.meta.previewText))
     .replace("%%CONTENT%%", renderMarkdown(nl.body, utm))
-    .replace("%%CTA%%", cta)
+    .replace("%%CTA%%", (nl.meta.webinar ? renderWebinarCard(nl.meta.webinar) : "") + cta)
     .replace("%%SIGNATURE%%", signature);
 }
