@@ -35,7 +35,7 @@ test("liens courts : cible exacte, code inconnu et clés du prototype refusés",
   );
   assert.equal(
     shortLinkTarget("wb1"),
-    "/w/connecteurs-mcp-cabinets?utm_source=linkedin&utm_medium=organic&utm_campaign=webinar_connecteurs_mcp_20261105&utm_content=LI_EC_20261027_01"
+    "/w/connecteurs-mcp-cabinets?utm_source=linkedin&utm_medium=organic&utm_campaign=webinar_connecteurs_mcp_20261105&utm_content=LI_EC_20261028_01"
   );
   assert.equal(shortLinkTarget("inconnu"), null);
   assert.equal(shortLinkTarget("toString"), null);
