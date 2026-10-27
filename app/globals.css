@@ -15,7 +15,7 @@
   --surface-2-rgb: 24 24 27;
   --fg-rgb: 250 250 250;
   --fg-muted-rgb: 161 161 170;
-  --fg-subtle-rgb: 113 113 122;
+  --fg-subtle-rgb: 133 133 143; /* #85858f : contraste ≥ 4,5 sur fond, cartes et champs (AA) */
   --accent-rgb: 140 182 255;
   --action-rgb: 37 99 235;
   --action-hover-rgb: 29 78 216;
