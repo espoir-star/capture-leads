@@ -132,6 +132,8 @@ test("annonces du webinar du 5/11 : toute la base envoyable sauf les inscrits, a
     assert.equal(nl.meta.utmContent, utmContent);
     assert.equal(nl.meta.cta?.url, "https://guide-gratuit-pi.vercel.app/w/connecteurs-mcp-cabinets");
     assert.doesNotMatch(nl.body, /—/, `${file} : pas de tiret long`);
+    // Objectif : la présence en direct. Le replay n'est jamais mis en avant dans les invitations (demande d'Espoir, 27/10).
+    assert.doesNotMatch(`${nl.meta.previewText} ${nl.body}`, /replay|enregistr/i, `${file} : pas de raison de ne pas venir`);
     const html = renderNewsletterHtml(nl);
     assert.equal((html.match(/background-color:#1D9E75;border-radius:8px/g) ?? []).length, 1, `${file} : un seul bouton`);
     assert.match(html, /w\/connecteurs-mcp-cabinets\?utm_source=brevo&amp;utm_medium=email&amp;utm_campaign=webinar_connecteurs_mcp_20261105&amp;utm_content=email_/);

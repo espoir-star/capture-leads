@@ -28,4 +28,4 @@ Jeudi 5 novembre à 11 h, je vous montre en direct comment brancher votre IA sur
 - Ce que votre IA peut lire et faire, et les premiers usages au cabinet
 - Ce qui ne marche pas encore, et les règles sur les données clients
 
-Une heure, gratuit, sur Google Meet. Vous ne pouvez pas être là jeudi ? Inscrivez-vous quand même : le replay est envoyé aux inscrits.
+Une heure, gratuit, sur Google Meet.

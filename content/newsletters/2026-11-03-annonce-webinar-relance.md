@@ -2,7 +2,7 @@
 rubric: "Webinar · jeudi 11 h"
 title: "Jeudi 11 h : on branche l'IA sur vos logiciels de production, en direct."
 subject: "Jeudi 11 h : votre IA qui agit dans vos logiciels, en direct"
-previewText: "Webinar gratuit d'une heure. Pas disponible ? Le replay est envoyé aux inscrits."
+previewText: "Webinar gratuit d'une heure. Démo en direct, en lecture et en écriture."
 scheduledAt: "2026-11-03T09:00:00+01:00"
 audience: annonce
 webinar: connecteurs-mcp-cabinets
@@ -26,5 +26,3 @@ En une heure :
 - une démo en direct, en lecture et en écriture
 - comment brancher ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS
 - ce qui ne marche pas encore, et les règles sur les données clients
-
-Vous ne pouvez pas être là jeudi ? Inscrivez-vous quand même : le replay est envoyé aux inscrits.
