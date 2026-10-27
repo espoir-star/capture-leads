@@ -50,8 +50,8 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     utm_source: "linkedin",
     utm_medium: "organic",
     utm_campaign: "agent_surveillance_cabinets",
-    // Code réservé : activé avec LI_EC_<AAAAMMJJ>_01 dès qu'Espoir donne la date de publication du post.
-    utm_content: null,
+    // Post « agent Surveillance » publié le 27/10/2026 (date donnée par Espoir).
+    utm_content: "LI_EC_20261027_01",
   },
   ec1: {
     slug: "12-cas-usage-experts-comptables",

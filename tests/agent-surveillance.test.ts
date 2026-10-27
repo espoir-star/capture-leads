@@ -75,7 +75,7 @@ test("Agent Surveillance : relevé à la main = dossiers × portails × minutes 
   assert.deepEqual(manualReviewHours({ files: Number.NaN, portals: 3, minutes: 3, perMonth: 4 }), { month: 0, year: 0 });
 });
 
-test("Agent Surveillance : capture, liste Brevo 24, séquence dédiée, lecteur interne dans les emails, lien sv1 réservé", () => {
+test("Agent Surveillance : capture, liste Brevo 24, séquence dédiée, lecteur interne dans les emails, lien sv1 du post du 27/10", () => {
   const r = getRessource("agent-surveillance-cabinets")!;
   assert.equal(r.urlRessource, "/g/agent-surveillance");
   assert.equal(r.resourceCard?.titre, "Agent Surveillance : la fiche complète");
@@ -86,9 +86,10 @@ test("Agent Surveillance : capture, liste Brevo 24, séquence dédiée, lecteur 
   assert.equal(lm.legacy.automationId, 0, "aucune automation Brevo");
   assert.equal(getSequence(lm.sequence)?.delivery, "generique.delivery");
   assert.equal(SHORT_LINKS.sv1.slug, "agent-surveillance-cabinets");
-  // Date du post non confirmée : le code est réservé, jamais diffusé avec une date inventée.
-  assert.equal(SHORT_LINKS.sv1.utm_content, null);
-  assert.equal(shortLinkTarget("sv1"), null);
+  assert.equal(
+    shortLinkTarget("sv1"),
+    "/r/agent-surveillance-cabinets?utm_source=linkedin&utm_medium=organic&utm_campaign=agent_surveillance_cabinets&utm_content=LI_EC_20261027_01"
+  );
   const before = process.env.SITE_URL;
   try {
     process.env.SITE_URL = "https://qa.althoce.example";
