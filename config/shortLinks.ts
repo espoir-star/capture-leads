@@ -58,9 +58,9 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     utm_source: "linkedin",
     utm_medium: "organic",
     utm_campaign: "webinar_connecteurs_mcp_20261105",
-    // Post « Commentez WEBINAIRE » (webinar du 05/11) : lien envoyé en message privé.
-    // Date du post supposée au 27/10/2026 (non précisée par Espoir) : la corriger ici si besoin.
-    utm_content: "LI_EC_20261027_01",
+    // Post « Commentez WEBINAIRE » (webinar du 05/11), publié le 28/10/2026 (date donnée par Espoir) :
+    // lien envoyé en message privé.
+    utm_content: "LI_EC_20261028_01",
   },
 };
 
