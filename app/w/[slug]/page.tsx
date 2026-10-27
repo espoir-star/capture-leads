@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import CaptureForm from "@/components/CaptureForm";
 import { getWebinar, getWebinarPageSlugs } from "@/config/webinars";
@@ -34,16 +35,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-function dateLongue(iso: string): string {
-  return new Intl.DateTimeFormat("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Paris",
-  }).format(new Date(iso));
+const PARIS = "Europe/Paris";
+
+/** « jeudi 5 novembre » */
+function jour(d: Date): string {
+  return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: PARIS }).format(d);
 }
+
+/** « 11 h », « 11 h 30 » (heure de Paris) */
+function heure(d: Date): string {
+  const parts = new Intl.DateTimeFormat("fr-FR", { hour: "numeric", minute: "2-digit", timeZone: PARIS }).formatToParts(d);
+  const h = parts.find((p) => p.type === "hour")?.value ?? "";
+  const m = parts.find((p) => p.type === "minute")?.value ?? "00";
+  return m === "00" ? `${Number(h)}\u00a0h` : `${Number(h)}\u00a0h\u00a0${m}`;
+}
+
+function Icone({ d }: { d: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-accent" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
+}
+
+const ICONES = {
+  agenda: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z",
+  heure: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+  video: "M15 10l5-3v10l-5-3M4 6h11v12H4z",
+};
 
 export default async function PageWebinar({ params }: Props) {
   const { slug } = await params;
@@ -51,71 +70,101 @@ export default async function PageWebinar({ params }: Props) {
   if (!w || (w.status !== "open" && w.status !== "draft")) notFound();
   const preview = w.status === "draft";
   const closed = !preview && !registrationOpen(w, new Date());
+  const debut = new Date(w.startsAt);
+  const fin = new Date(debut.getTime() + w.durationMin * 60_000);
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:py-14">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[720px] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
       />
-      <div className="relative grid w-full max-w-5xl items-start gap-6 lg:grid-cols-[1.1fr_1fr] lg:gap-10">
+      <div className="relative grid w-full max-w-5xl items-start gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-12">
         <section>
           <div className="flex flex-wrap items-center gap-3">
             <p className="font-display text-lg font-semibold tracking-tight">
               Althoce<span className="text-accent">.</span>
             </p>
             <span className="rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent">
-              {w.internalTest ? "RECETTE INTERNE · RÉSERVÉ À L’ÉQUIPE ALTHOCE" : "WEBINAR GRATUIT · EN LIGNE"}
+              {w.internalTest ? "RECETTE INTERNE · RÉSERVÉ À L’ÉQUIPE ALTHOCE" : "WEBINAR GRATUIT · EN DIRECT"}
             </span>
           </div>
-          <h1 className="mt-5 font-display text-[26px] font-bold leading-snug text-balance sm:text-4xl sm:leading-tight">
-            {w.title}
-          </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-secondaire sm:text-base">{w.description}</p>
-          <ul className="mt-5 flex flex-wrap gap-2 text-sm">
-            <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5 font-medium first-letter:uppercase">
-              {dateLongue(w.startsAt)} (heure de Paris)
+          {w.audience && <p className="mt-6 text-sm font-medium text-accent-clair">{w.audience}</p>}
+          <h1 className="mt-2 font-display text-[28px] font-bold leading-tight text-balance sm:text-[40px]">{w.title}</h1>
+          <p className="mt-4 text-base leading-relaxed text-secondaire sm:text-lg">{w.description}</p>
+
+          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-3 rounded-xl border border-bordure bg-carte px-4 py-3.5">
+            <li className="flex items-center gap-2 whitespace-nowrap text-sm font-medium">
+              <Icone d={ICONES.agenda} />
+              <span className="first-letter:uppercase">{jour(debut)}</span>
             </li>
-            <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5">{w.durationMin} min</li>
-            <li className="rounded-lg border border-bordure bg-carte px-3 py-1.5">Google Meet</li>
+            <li className="flex items-center gap-2 whitespace-nowrap text-sm font-medium">
+              <Icone d={ICONES.heure} />
+              <span>
+                {heure(debut)} – {heure(fin)} <span className="font-normal text-secondaire">(Paris)</span>
+              </span>
+            </li>
+            <li className="flex items-center gap-2 whitespace-nowrap text-sm font-medium">
+              <Icone d={ICONES.video} />
+              <span>Google Meet</span>
+            </li>
           </ul>
-          {w.audience && (
-            <p className="mt-4 text-sm text-secondaire">
-              <span className="font-semibold text-white">Pour&nbsp;: </span>
-              {w.audience}
-            </p>
+          {!preview && !closed && (
+            <a
+              href="#inscription"
+              className="mt-5 flex w-full items-center justify-center rounded-lg bg-accent px-6 py-3.5 font-semibold text-white transition hover:bg-accent-clair lg:hidden"
+            >
+              Je réserve ma place
+            </a>
           )}
+
           {w.agenda && w.agenda.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-8">
               <h2 className="text-xs font-bold tracking-widest text-accent">AU PROGRAMME</h2>
-              <ul className="mt-3 space-y-2">
+              <ul className="mt-3 space-y-2.5">
                 {w.agenda.map((item) => (
-                  <li key={item} className="flex gap-2 text-[15px] leading-relaxed">
-                    <span aria-hidden className="text-accent">→</span>
+                  <li key={item} className="flex gap-3 text-[15px] leading-relaxed">
+                    <span aria-hidden className="mt-0.5 font-bold text-accent">✓</span>
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
+
           {w.speaker && (
-            <p className="mt-6 text-sm text-secondaire">
-              Animé par <span className="font-semibold text-white">{w.speaker.name}</span>, {w.speaker.role}
-            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-bordure pt-6">
+              {w.speaker.photo && (
+                <Image src={w.speaker.photo} alt={w.speaker.name} width={56} height={56} className="h-14 w-14 rounded-full object-cover" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-secondaire">Animé par</p>
+                <p className="font-semibold">{w.speaker.name}</p>
+                <p className="text-sm text-secondaire">{w.speaker.role}</p>
+              </div>
+              <a
+                href="https://www.francenum.gouv.fr/activateurs/althoce-conseil"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Althoce, Activateur France Num (programme du gouvernement)"
+                className="rounded-lg bg-white p-1.5 transition-opacity hover:opacity-80"
+              >
+                <Image src="/webinar/activateur-france-num.png" alt="Activateur France Num" width={52} height={47} />
+              </a>
+            </div>
           )}
         </section>
 
-        <section className="rounded-2xl border border-bordure bg-carte p-6 shadow-2xl sm:p-8">
+        <section id="inscription" className="scroll-mt-6 rounded-2xl border border-bordure bg-carte p-6 shadow-2xl sm:p-8">
           <h2 className="font-display text-xl font-bold">Réserver ma place</h2>
           <p className="mt-2 text-sm leading-relaxed text-secondaire">
-            Votre lien de connexion personnel arrive par email, avec un rappel la veille et une heure avant. Le webinar
-            est enregistré&nbsp;: le replay est envoyé aux inscrits.
+            Gratuit. Votre lien de connexion arrive par email. Le webinar est enregistré&nbsp;: le replay est envoyé aux inscrits.
           </p>
           <div className="mt-5">
             {preview ? (
               <>
                 <p role="status" className="mb-4 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm leading-relaxed">
-                  Aperçu de démonstration : inscriptions fermées. Le formulaire ci-dessous est désactivé.
+                  Aperçu de démonstration&nbsp;: inscriptions fermées. Le formulaire ci-dessous est désactivé.
                 </p>
                 {/* Formulaire réel, inactif : la capture refuse de toute façon un webinar « draft ». */}
                 <fieldset disabled aria-disabled className="opacity-70">

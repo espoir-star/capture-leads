@@ -46,7 +46,8 @@ export interface WebinarConfig {
   /** Programme : 3 à 5 points concrets */
   agenda?: string[];
   /** Intervenant affiché sur la landing */
-  speaker?: { name: string; role: string };
+  /** `photo` : image publique du dossier public/, ex. "/webinar/espoir-mwami.jpg" */
+  speaker?: { name: string; role: string; photo?: string };
   /** Date ISO avec fuseau, ex. "2026-11-20T12:30:00+01:00" (heure de Paris) */
   startsAt: string;
   /** Durée totale annoncée : 60 = 45 min de présentation + 15 min de questions-réponses */
@@ -139,18 +140,17 @@ export const WEBINARS: Record<string, WebinarConfig> = {
     vertical: "FINANCE",
     subsector: "EXPERTISE_COMPTABLE",
     note: "Webinar du 05/11/2026 : connecteurs MCP sur mesure (ACD, Cegid Quadra, Cegid Loop, Sage, AGIRIS), lecture et écriture.",
-    title: "Connecteurs MCP\u00a0: votre IA branchée sur vos logiciels, en lecture et en écriture",
+    title: "Connecteurs MCP\u00a0: votre IA lit et agit dans vos logiciels",
     description:
-      "Votre logiciel de production n'a pas de connecteur IA officiel, ou il est limité à la lecture\u00a0? On vous montre comment connecter vos dossiers en écriture, et ce que votre IA peut faire une fois branchée.",
+      "Votre logiciel de production n'a pas de connecteur IA officiel, ou seulement en lecture\u00a0? On vous montre comment le brancher, en écriture.",
     audience: "Experts-comptables, collaborateurs et dirigeants de cabinets",
     agenda: [
-      "La démo en direct\u00a0: Claude qui travaille dans un dossier, en lecture et en écriture",
-      "Comment on branche ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS",
-      "Ce que votre IA peut lire et faire une fois branchée",
-      "Les premiers usages à lancer dans votre cabinet",
-      "Ce qui ne marche pas encore, et les règles à respecter sur les données clients",
+      "Démo en direct\u00a0: Claude dans un dossier, en lecture et en écriture",
+      "Brancher ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS",
+      "Ce que votre IA peut lire et faire, et les premiers usages au cabinet",
+      "Ce qui ne marche pas encore, et les règles sur les données clients",
     ],
-    speaker: { name: "Espoir Mwami", role: "Fondateur d'Althoce" },
+    speaker: { name: "Espoir Mwami", role: "Fondateur d'Althoce, cabinet de conseil et d'intégration IA", photo: "/webinar/espoir-mwami.jpg" },
     startsAt: "2026-11-05T11:00:00+01:00",
     durationMin: 60,
     platform: "google_meet",

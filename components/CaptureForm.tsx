@@ -413,14 +413,18 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
 
       {/* Information métier et opposition au marketing, distinctes des cookies. */}
       <div className="space-y-1.5 text-xs leading-relaxed text-secondaire">
-        <p>
-          Dans le cadre de votre activité professionnelle, Althoce pourra vous adresser des
-          conseils, actualités IA et invitations en lien avec votre métier. Vous pouvez vous y
-          opposer dès maintenant, puis vous désinscrire à tout moment :{" "}
-          {isWebinar
-            ? "la confirmation, les rappels et le replay de ce webinar restent envoyés."
-            : "le guide reste envoyé."}
-        </p>
+        {isWebinar ? (
+          <p>
+            Althoce pourra aussi vous adresser des conseils et invitations liés à votre métier.
+            Désinscription à tout moment.
+          </p>
+        ) : (
+          <p>
+            Dans le cadre de votre activité professionnelle, Althoce pourra vous adresser des
+            conseils, actualités IA et invitations en lien avec votre métier. Vous pouvez vous y
+            opposer dès maintenant, puis vous désinscrire à tout moment : le guide reste envoyé.
+          </p>
+        )}
         <button
           type="button"
           aria-pressed={marketingOpposition}
@@ -449,10 +453,8 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
 
       <p className="text-xs leading-relaxed text-secondaire">
         {isWebinar
-          ? "Vous recevrez votre lien de connexion personnel et les rappels par email."
-          : "Vous recevrez le guide par email."}{" "}
-        Althoce peut vous recontacter au sujet de votre demande. Vos données ne sont jamais
-        revendues.{" "}
+          ? "Althoce peut vous recontacter au sujet du webinar. Données jamais revendues."
+          : "Vous recevrez le guide par email. Althoce peut vous recontacter au sujet de votre demande. Vos données ne sont jamais revendues."}{" "}
         <a
           href="https://althoce.com/confidentialite/"
           target="_blank"
