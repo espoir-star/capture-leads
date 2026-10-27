@@ -142,15 +142,20 @@ export default async function PageWebinar({ params }: Props) {
                 <p className="font-semibold">{w.speaker.name}</p>
                 <p className="text-sm text-secondaire">{w.speaker.role}</p>
               </div>
-              <a
-                href="https://www.francenum.gouv.fr/activateurs/althoce-conseil"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Althoce, Activateur France Num (programme du gouvernement)"
-                className="rounded-lg bg-white p-1.5 transition-opacity hover:opacity-80"
-              >
-                <Image src="/webinar/activateur-france-num.png" alt="Activateur France Num" width={52} height={47} />
-              </a>
+              <div className="flex items-center gap-2">
+                <a
+                  href="https://www.francenum.gouv.fr/activateurs/althoce-conseil"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Althoce, Activateur France Num (programme du gouvernement)"
+                  className="rounded-lg bg-white p-1.5 transition-opacity hover:opacity-80"
+                >
+                  <Image src="/webinar/activateur-france-num.png" alt="Activateur France Num" width={52} height={47} />
+                </a>
+                <span className="rounded-lg bg-white p-1">
+                  <Image src="/webinar/french-tech-bordeaux.png" alt="La French Tech Bordeaux" width={51} height={51} />
+                </span>
+              </div>
             </div>
           )}
         </section>
