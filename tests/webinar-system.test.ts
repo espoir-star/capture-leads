@@ -273,6 +273,7 @@ test("webinar du 5 novembre 2026 : ouvert, public, 11 h heure de Paris, liste Br
   assert.equal(w.sequence, "webinar-standard-v1");
   assert.equal(w.platform, "google_meet");
   assert.ok(w.agenda && w.agenda.length >= 3 && w.agenda.length <= 5);
+  assert.ok(w.agenda.includes("Brancher Pennylane, ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS"), "Pennylane cité avec les autres logiciels (demande d'Espoir, 27/10)");
   assert.doesNotMatch(JSON.stringify(w), /meet\.google|drive\.google|youtu/, "aucune salle ni replay dans le dépôt public");
   assert.equal(registrationOpen(w, new Date("2026-11-05T11:59:00+01:00")), true);
   assert.equal(registrationOpen(w, new Date("2026-11-05T12:00:00+01:00")), false);

@@ -139,14 +139,14 @@ export const WEBINARS: Record<string, WebinarConfig> = {
     brevoListName: "WB - Connecteurs MCP en écriture (05/11/2026)",
     vertical: "FINANCE",
     subsector: "EXPERTISE_COMPTABLE",
-    note: "Webinar du 05/11/2026 : connecteurs MCP sur mesure (ACD, Cegid Quadra, Cegid Loop, Sage, AGIRIS), lecture et écriture.",
+    note: "Webinar du 05/11/2026 : connecteurs MCP sur mesure (Pennylane, ACD, Cegid Quadra, Cegid Loop, Sage, AGIRIS), lecture et écriture.",
     title: "Connecteurs MCP\u00a0: votre IA lit et agit dans vos logiciels",
     description:
       "Votre logiciel de production n'a pas de connecteur IA officiel, ou seulement en lecture\u00a0? On vous montre comment le brancher, en écriture.",
     audience: "Experts-comptables, collaborateurs et dirigeants de cabinets",
     agenda: [
       "Démo en direct\u00a0: Claude dans un dossier, en lecture et en écriture",
-      "Brancher ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS",
+      "Brancher Pennylane, ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS",
       "Ce que votre IA peut lire et faire, et les premiers usages au cabinet",
       "Ce qui ne marche pas encore, et les règles sur les données clients",
     ],
