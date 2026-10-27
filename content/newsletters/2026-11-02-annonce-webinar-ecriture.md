@@ -9,7 +9,7 @@ webinar: connecteurs-mcp-cabinets
 tag: WEBINAR_FINANCE
 utmCampaign: webinar_connecteurs_mcp_20261105
 utmContent: email_ecriture
-status: created
+status: scheduled
 cta:
   label: "Je réserve ma place"
   url: "https://guide-gratuit-pi.vercel.app/w/connecteurs-mcp-cabinets"

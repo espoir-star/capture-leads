@@ -117,7 +117,7 @@ test("annonce du connecteur : vente sur rendez-vous, aucun prix ni essai dans le
 const WEBINAR_MAILS = [
   ["2026-10-29-annonce-webinar", "2026-10-29T09:00:00+01:00", "email_annonce"],
   ["2026-11-02-annonce-webinar-ecriture", "2026-11-02T09:00:00+01:00", "email_ecriture"],
-  ["2026-11-03-annonce-webinar-relance", "2026-11-03T09:00:00+01:00", "email_relance"],
+  ["2026-11-04-annonce-webinar-veille", "2026-11-04T09:00:00+01:00", "email_veille"],
   ["2026-11-05-annonce-webinar-jour-j", "2026-11-05T08:00:00+01:00", "email_jour_j"],
 ] as const;
 
