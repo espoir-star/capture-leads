@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { leadSchema } from "@/lib/validation/leadSchema";
 import { buildContactUpdate } from "@/lib/lead/contactUpdate";
 import { checkPhone } from "@/lib/data-quality/phone";
@@ -148,6 +148,30 @@ test("emails : liens personnels uniquement, heure de Paris, replay signalé seul
   assert.equal(p.WEBINAR_TIME, "12 h 30");
   assert.match(p.WEBINAR_DATE, /décembre 2026/);
   assert.doesNotMatch(JSON.stringify(p), /meet\.google|drive\.google/);
+});
+
+test("emails : date, horaire, intervenant et badges repris de la page d'inscription", async () => {
+  const { webinarDay, webinarHours } = await import("@/lib/webinar/format");
+  const p = webinarParams("connecteurs-mcp-cabinets", 42)!;
+  assert.equal(p.WEBINAR_DAY, "Jeudi 5 novembre");
+  assert.equal(p.WEBINAR_HOURS, "11\u00a0h – 12\u00a0h");
+  assert.equal(p.SPEAKER_NAME, "Espoir Mwami");
+  assert.match(p.SPEAKER_PHOTO_URL, /^https:\/\/.+\/webinar\/espoir-mwami\.jpg$/, "image publique, adresse absolue");
+  assert.match(p.SITE_URL, /^https:\/\//);
+  assert.equal(webinarDay(new Date("2026-12-03T12:30:00+01:00")), "Jeudi 3 décembre");
+  assert.equal(webinarHours({ startsAt: "2026-12-03T12:30:00+01:00", durationMin: 60 }), "12\u00a0h\u00a030 – 13\u00a0h\u00a030");
+  for (const f of ["espoir-mwami.jpg", "activateur-france-num.png", "french-tech-bordeaux.png"]) assert.ok(existsSync(`public/webinar/${f}`), f);
+  for (const f of ["confirmation", "rappel-j-1", "rappel-h-1", "replay", "suivi"]) {
+    const html = readFileSync(`emails/sequences/webinar/${f}.html`, "utf8");
+    assert.equal((html.match(/\{%\s*if\b/g) ?? []).length, (html.match(/\{%\s*endif\s*%\}/g) ?? []).length, f);
+    assert.match(html, /\{% if params\.SPEAKER_NAME %\}/, f);
+    assert.match(html, /\{% if params\.SITE_URL %\}[\s\S]*activateur-france-num\.png[\s\S]*french-tech-bordeaux\.png[\s\S]*\{% endif %\}/, `${f} : badges seulement si SITE_URL est fourni`);
+    assert.doesNotMatch(html, /data:image|<script/i, f);
+    assert.ok(Buffer.byteLength(html) < 30_000, f);
+  }
+  for (const f of ["confirmation", "rappel-j-1", "rappel-h-1"]) {
+    assert.match(readFileSync(`emails/sequences/webinar/${f}.html`, "utf8"), /\{% if params\.WEBINAR_HOURS %\}[\s\S]*\{% else %\}[\s\S]*params\.WEBINAR_(DATE|TIME)/, `${f} : repli sur l'ancien format de date`);
+  }
 });
 
 /* ── Participation ────────────────────────────────────────────────── */
