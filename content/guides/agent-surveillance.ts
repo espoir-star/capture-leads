@@ -6,21 +6,25 @@
  * exemple fictif ; le calcul du relevé manuel part des chiffres saisis par le lecteur.
  */
 
+export type PortalIcon = "landmark" | "building" | "newspaper" | "receipt";
+
 export interface SurveillanceSource {
   id: string;
   name: string;
+  icon: PortalIcon;
   /** Où l'agent passe, pour chaque dossier */
   where: string;
   /** Ce qu'il relève (proposition Althoce) */
   reads: string[];
-  /** Précision de la proposition Althoce */
-  detail?: string;
 }
 
 export interface Stake {
   /** Portail et pièce concernée */
   source: string;
+  icon: PortalIcon;
   event: string;
+  /** Le chiffre ou le délai à retenir, affiché en badge */
+  key: string;
   /** Délai ou conséquence, vérifié */
   rule: string;
   /** Numéros des sources officielles */
@@ -44,42 +48,43 @@ const sources: SurveillanceSource[] = [
   {
     id: "impots",
     name: "Impôts",
+    icon: "landmark",
     where: "Espace professionnel de chaque client",
     reads: ["Avis de CFE et de taxe foncière", "Compte fiscal : dettes, relances, mises en demeure", "Messages de l'administration"],
   },
   {
     id: "urssaf",
     name: "URSSAF",
+    icon: "building",
     where: "Compte URSSAF de chaque client",
     reads: ["Avis à payer", "Dettes et mises en demeure", "Messages et documents du compte"],
-    detail: "Chaque pièce est rangée dans le dossier d'échange de son client.",
   },
   {
     id: "registres",
     name: "INPI et BODACC",
+    icon: "newspaper",
     where: "Registres publics, à partir du SIREN",
-    reads: ["Annonces légales", "Procédures collectives", "Dirigeants et associés au registre"],
-    detail: "Avec la source et la date du relevé.",
+    reads: ["Annonces légales", "Procédures collectives", "Dirigeants et associés, avec la date du relevé"],
   },
   {
     id: "facturation",
     name: "Facturation électronique",
+    icon: "receipt",
     where: "Annuaire des plateformes",
-    reads: ["Plateforme déclarée contre plateforme relevée", "Mandats", "Raccordement de chaque client"],
-    detail: "Avec le prochain geste à poser.",
+    reads: ["Plateforme déclarée contre plateforme relevée", "Mandats", "Raccordement et prochain geste à poser"],
   },
 ];
 
 export const AGENT_SURVEILLANCE = {
   edition: "27 octobre 2026",
   intro:
-    "Chaque matin, vos collaborateurs ouvrent l'espace impôts, puis l'URSSAF, puis le BODACC. Client par client. L'agent Surveillance le fait pendant la nuit et vous remet, le matin, uniquement ce qui est nouveau.",
+    "Impôts, URSSAF, BODACC : l'agent passe chaque nuit sur les espaces officiels de vos clients. Le matin, vous ne recevez que le nouveau.",
   stakes: [
-    { source: "Impôts", event: "Avis de CFE", rule: "Pas envoyé par courrier : il est déposé dans l'espace professionnel. Solde dû au 15 décembre, puis majoration de 5\u00a0%.", refs: [1, 2] },
-    { source: "Impôts", event: "Avis de taxe foncière", rule: "Tout retard de paiement entraîne une majoration de 10\u00a0%.", refs: [3] },
-    { source: "URSSAF", event: "Mise en demeure", rule: "Étape obligatoire avant toute action ou poursuite. Elle chiffre les sommes, les majorations et les pénalités.", refs: [4, 5] },
-    { source: "BODACC", event: "Procédure collective d'un client", rule: "Les créanciers, dont le cabinet s'il lui reste des honoraires dus, ont deux mois après la publication au BODACC pour déclarer leur créance.", refs: [6] },
-    { source: "Facturation électronique", event: "Client sans plateforme agréée", rule: "Réception obligatoire depuis le 1er septembre 2026. À défaut, mise en demeure de se conformer sous trois mois, puis amende.", refs: [7] },
+    { source: "Impôts", icon: "landmark", event: "Avis de CFE", key: "+5\u00a0%", rule: "Pas envoyé par courrier : il est déposé dans l'espace professionnel. Solde dû au 15 décembre, puis majoration de 5\u00a0%.", refs: [1, 2] },
+    { source: "Impôts", icon: "landmark", event: "Avis de taxe foncière", key: "+10\u00a0%", rule: "Tout retard de paiement entraîne une majoration de 10\u00a0%.", refs: [3] },
+    { source: "URSSAF", icon: "building", event: "Mise en demeure", key: "Avant poursuite", rule: "Étape obligatoire avant toute action ou poursuite. Elle chiffre les sommes, les majorations et les pénalités.", refs: [4, 5] },
+    { source: "BODACC", icon: "newspaper", event: "Procédure collective d'un client", key: "2 mois", rule: "Les créanciers, dont le cabinet s'il lui reste des honoraires dus, ont deux mois après la publication au BODACC pour déclarer leur créance.", refs: [6] },
+    { source: "Facturation électronique", icon: "receipt", event: "Client sans plateforme agréée", key: "3 mois", rule: "Réception obligatoire depuis le 1er septembre 2026. À défaut, mise en demeure de se conformer sous trois mois, puis amende.", refs: [7] },
   ] satisfies Stake[],
   sources,
   /** Exemple fictif : dossiers anonymes, aucune donnée réelle */
@@ -90,10 +95,10 @@ export const AGENT_SURVEILLANCE = {
     { portal: "Facturation électronique", file: "Dossier 008 · SARL", event: "Aucune plateforme relevée", status: "Prochain geste : choisir une plateforme", alert: false },
   ] satisfies MorningItem[],
   morning: [
-    { title: "Le neuf seulement", text: "Chaque pièce arrive rangée au bon dossier, par date, avec le fichier ouvrable." },
-    { title: "Les alertes restent visibles", text: "Une dette, une mise en demeure ou une procédure collective reste signalée jusqu'à ce que vous la marquiez traitée." },
-    { title: "Un seul point du matin", text: "Portails, production et boîte mail du cabinet réunis dans la même page." },
-    { title: "Votre assistant le sait", text: "Il liste la récolte de la nuit, ouvre la fiche d'un dossier ou relance un relevé, à la demande." },
+    { title: "Le neuf seulement", text: "Rangé au bon dossier, avec le fichier." },
+    { title: "Les alertes restent", text: "Jusqu'à ce que vous les marquiez traitées." },
+    { title: "Un seul point du matin", text: "Portails, production et boîte mail réunis." },
+    { title: "Votre assistant le sait", text: "Il liste la récolte et relance un relevé." },
   ] satisfies TitledText[],
   steps: [
     { title: "Votre liste de clients", text: "Vous la collez. Chaque société sans SIREN est cherchée au registre public." },
