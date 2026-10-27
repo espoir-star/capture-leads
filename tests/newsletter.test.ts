@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadNewsletter, renderMarkdown, renderNewsletterHtml } from "@/lib/newsletter";
+import { frontmatterSchema, loadNewsletter, renderMarkdown, renderNewsletterHtml } from "@/lib/newsletter";
+import { WEBINARS } from "@/config/webinars";
 import { AUDIENCES } from "@/config/newsletter";
 import { isAnnouncementRecipient, listDiff } from "@/lib/newsletter/audienceList";
 
@@ -111,4 +112,43 @@ test("annonce du connecteur : vente sur rendez-vous, aucun prix ni essai dans le
   const nl = loadNewsletter("content/newsletters/2026-10-27-annonce.md");
   assert.doesNotMatch(nl.body, /€|essai|Tarif/i);
   assert.match(nl.body, /Un conseiller Althoce le branche avec vous sur votre cabinet/);
+});
+
+const WEBINAR_MAILS = [
+  ["2026-10-29-annonce-webinar", "2026-10-29T09:00:00+01:00", "email_annonce"],
+  ["2026-11-03-annonce-webinar-relance", "2026-11-03T09:00:00+01:00", "email_relance"],
+  ["2026-11-05-annonce-webinar-jour-j", "2026-11-05T08:00:00+01:00", "email_jour_j"],
+] as const;
+
+test("annonces du webinar du 5/11 : toute la base envoyable sauf les inscrits, avant le direct, encadré repris de la page", () => {
+  const w = WEBINARS["connecteurs-mcp-cabinets"];
+  for (const [file, scheduledAt, utmContent] of WEBINAR_MAILS) {
+    const nl = loadNewsletter(`content/newsletters/${file}.md`);
+    assert.equal(nl.meta.audience, "annonce", file);
+    assert.equal(nl.meta.webinar, "connecteurs-mcp-cabinets", `${file} : inscrits exclus (liste ${w.brevoListId})`);
+    assert.equal(nl.meta.scheduledAt, scheduledAt, file);
+    assert.ok(Date.parse(scheduledAt) < Date.parse(w.startsAt), `${file} : avant le direct`);
+    assert.equal(nl.meta.utmCampaign, "webinar_connecteurs_mcp_20261105", "même campagne que le lien LinkedIn wb1");
+    assert.equal(nl.meta.utmContent, utmContent);
+    assert.equal(nl.meta.cta?.url, "https://guide-gratuit-pi.vercel.app/w/connecteurs-mcp-cabinets");
+    assert.doesNotMatch(nl.body, /—/, `${file} : pas de tiret long`);
+    const html = renderNewsletterHtml(nl);
+    assert.equal((html.match(/background-color:#1D9E75;border-radius:8px/g) ?? []).length, 1, `${file} : un seul bouton`);
+    assert.match(html, /w\/connecteurs-mcp-cabinets\?utm_source=brevo&amp;utm_medium=email&amp;utm_campaign=webinar_connecteurs_mcp_20261105&amp;utm_content=email_/);
+    assert.ok(html.includes("Jeudi 5 novembre&nbsp;· 11\u00a0h – 12\u00a0h (heure de Paris)&nbsp;· Google Meet"), `${file} : date et horaire`);
+    assert.match(html, /Espoir Mwami/);
+    for (const img of ["/webinar/espoir-mwami.jpg", "/webinar/activateur-france-num.png", "/webinar/french-tech-bordeaux.png"]) {
+      assert.ok(html.includes(`https://guide-gratuit-pi.vercel.app${img}`), `${file} : ${img} en URL absolue`);
+    }
+    assert.doesNotMatch(html, /%%[A-Z_]+%%/);
+  }
+  const annonce = loadNewsletter("content/newsletters/2026-10-29-annonce-webinar.md");
+  assert.equal(w.agenda?.length, 4);
+  for (const item of w.agenda ?? []) assert.ok(annonce.body.includes(item.replace(/\u00a0/g, " ")), `programme de la page : ${item}`);
+});
+
+test("frontmatter : un webinar inconnu est refusé", () => {
+  const base = { title: "Titre", subject: "Objet", audience: "annonce", tag: "WEBINAR_FINANCE", utmCampaign: "x_1", status: "draft" };
+  assert.equal(frontmatterSchema.safeParse({ ...base, webinar: "connecteurs-mcp-cabinets" }).success, true);
+  assert.equal(frontmatterSchema.safeParse({ ...base, webinar: "inexistant" }).success, false);
 });
