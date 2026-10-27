@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  WEBINARS → BREVO  (mécanique en place, aucun webinar réel défini)
+ *  WEBINARS → BREVO  (premier webinar réel : 5 novembre 2026)
  * ═══════════════════════════════════════════════════════════════
  *
  *  Parcours (docs/WEBINAIRES.md) :
@@ -46,7 +46,8 @@ export interface WebinarConfig {
   /** Programme : 3 à 5 points concrets */
   agenda?: string[];
   /** Intervenant affiché sur la landing */
-  speaker?: { name: string; role: string };
+  /** `photo` : image publique du dossier public/, ex. "/webinar/espoir-mwami.jpg" */
+  speaker?: { name: string; role: string; photo?: string };
   /** Date ISO avec fuseau, ex. "2026-11-20T12:30:00+01:00" (heure de Paris) */
   startsAt: string;
   /** Durée totale annoncée : 60 = 45 min de présentation + 15 min de questions-réponses */
@@ -126,6 +127,35 @@ export const WEBINARS: Record<string, WebinarConfig> = {
     sequence: "webinar-standard-v1",
     status: "open",
     internalTest: true,
+  },
+  /* Premier webinar réel, demandé par Espoir le 27/10/2026 à partir de son post LinkedIn
+   * (« Commentez WEBINAIRE », lien d'inscription envoyé en privé : lien court wb1).
+   * Événement Agenda espoir@contact.althoce.com avec Meet ; salle dans la variable Vercel
+   * WEBINAR_JOIN_URL__CONNECTEURS_MCP_CABINETS (jamais ici). */
+  "connecteurs-mcp-cabinets": {
+    slug: "connecteurs-mcp-cabinets",
+    resource: "webinar-connecteurs-mcp-2026-11",
+    brevoListId: 23,
+    brevoListName: "WB - Connecteurs MCP en écriture (05/11/2026)",
+    vertical: "FINANCE",
+    subsector: "EXPERTISE_COMPTABLE",
+    note: "Webinar du 05/11/2026 : connecteurs MCP sur mesure (ACD, Cegid Quadra, Cegid Loop, Sage, AGIRIS), lecture et écriture.",
+    title: "Connecteurs MCP\u00a0: votre IA lit et agit dans vos logiciels",
+    description:
+      "Votre logiciel de production n'a pas de connecteur IA officiel, ou seulement en lecture\u00a0? On vous montre comment le brancher, en écriture.",
+    audience: "Experts-comptables, collaborateurs et dirigeants de cabinets",
+    agenda: [
+      "Démo en direct\u00a0: Claude dans un dossier, en lecture et en écriture",
+      "Brancher ACD, Cegid Quadra, Cegid Loop, Sage et AGIRIS",
+      "Ce que votre IA peut lire et faire, et les premiers usages au cabinet",
+      "Ce qui ne marche pas encore, et les règles sur les données clients",
+    ],
+    speaker: { name: "Espoir Mwami", role: "Fondateur d'Althoce, cabinet de conseil et d'intégration IA", photo: "/webinar/espoir-mwami.jpg" },
+    startsAt: "2026-11-05T11:00:00+01:00",
+    durationMin: 60,
+    platform: "google_meet",
+    sequence: "webinar-standard-v1",
+    status: "open",
   },
 };
 

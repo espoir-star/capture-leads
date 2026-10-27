@@ -236,6 +236,24 @@ test("webinar de recette interne : réservé aux adresses Althoce, contacts QA, 
   assert.match(readFileSync("lib/lead/capture.ts", "utf8"), /internalTest\) update\.attributes\.IS_QA = true/);
 });
 
+test("webinar du 5 novembre 2026 : ouvert, public, 11 h heure de Paris, liste Brevo dédiée, parcours standard", async () => {
+  const { WEBINARS: all } = await import("@/config/webinars");
+  const w = all["connecteurs-mcp-cabinets"];
+  assert.equal(w.status, "open");
+  assert.equal(w.internalTest, undefined, "inscriptions publiques, contacts réels");
+  assert.equal(w.brevoListId, 23);
+  assert.match(w.brevoListName, /^WB - /);
+  assert.equal(w.startsAt, "2026-11-05T11:00:00+01:00", "novembre : heure d'hiver");
+  assert.equal(new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }).format(new Date(w.startsAt)), "11:00");
+  assert.equal(w.durationMin, 60);
+  assert.equal(w.sequence, "webinar-standard-v1");
+  assert.equal(w.platform, "google_meet");
+  assert.ok(w.agenda && w.agenda.length >= 3 && w.agenda.length <= 5);
+  assert.doesNotMatch(JSON.stringify(w), /meet\.google|drive\.google|youtu/, "aucune salle ni replay dans le dépôt public");
+  assert.equal(registrationOpen(w, new Date("2026-11-05T11:59:00+01:00")), true);
+  assert.equal(registrationOpen(w, new Date("2026-11-05T12:00:00+01:00")), false);
+});
+
 test("score : les liens de service d'un webinar (connexion, replay, agenda) ne rapportent aucun point de clic", async () => {
   const { classifyClick } = await import("@/lib/scoring/behavior");
   for (const url of [
