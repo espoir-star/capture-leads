@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import CookieConsent from "@/components/CookieConsent";
 
-const inter = Inter({
+/* Police commune (standard davinci) : Geist, nombres en chiffres tabulaires. */
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-geist",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const space = Space_Grotesk({
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-space",
+  variable: "--font-geist-mono",
+  weight: ["400", "500"],
   display: "swap",
 });
 
@@ -27,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${inter.variable} ${space.variable}`}>
+    <html lang="fr" className={`${geist.variable} ${geistMono.variable}`}>
       <body>
         {/* GA4, Meta Pixel, tracker Brevo : chargés seulement après « Tout accepter » (components/CookieConsent.tsx) */}
         {children}

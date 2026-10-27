@@ -55,7 +55,7 @@ export default function ConfirmEmail({ token, maskedEmail }: { token: string; ma
         type="button"
         onClick={confirm}
         disabled={state === "sending"}
-        className="mt-5 w-full rounded-lg bg-accent px-6 py-4 font-semibold text-white hover:bg-accent-clair active:scale-[0.99] transition disabled:opacity-60"
+        className="mt-5 w-full rounded-full bg-action px-6 py-4 font-semibold text-white hover:bg-action-hover active:scale-[0.99] transition disabled:opacity-60"
       >
         {state === "sending" ? "Confirmation…" : "Confirmer mon adresse"}
       </button>

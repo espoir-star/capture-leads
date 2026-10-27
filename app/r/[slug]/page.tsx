@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getRessource, getAllSlugs } from "@/lib/ressources";
 import CaptureForm from "@/components/CaptureForm";
+import BrandLogo from "@/components/BrandLogo";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -161,9 +162,7 @@ function Pills({ pills }: { pills: string[] }) {
 
 function Logo() {
   return (
-    <p className="font-display text-lg font-semibold tracking-tight">
-      Althoce<span className="text-accent">.</span>
-    </p>
+    <BrandLogo size={26}/>
   );
 }
 
@@ -187,7 +186,7 @@ export default async function PageCapture({ params }: Props) {
           aria-hidden
           className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[720px] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
         />
-        <div className="relative w-full max-w-lg rounded-2xl border border-bordure bg-carte p-6 sm:p-10 shadow-2xl">
+        <div className="relative w-full max-w-lg rounded-[18px] border border-bordure bg-carte p-6 sm:p-10 shadow-2xl">
           <div className="mb-5 sm:mb-6 flex items-center justify-between">
             <Logo />
             <span className="rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent">
@@ -253,7 +252,7 @@ export default async function PageCapture({ params }: Props) {
           </div>
         </div>
         <div className="lg:pt-2">
-          <div className="rounded-2xl border border-bordure bg-carte p-8 shadow-2xl">
+          <div className="rounded-[18px] border border-bordure bg-carte p-8 shadow-2xl">
             <p className="mb-6 font-display text-lg font-semibold">
               Recevez le guide par email
             </p>

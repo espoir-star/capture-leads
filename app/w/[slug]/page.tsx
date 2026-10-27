@@ -5,6 +5,7 @@ import CaptureForm from "@/components/CaptureForm";
 import { getWebinar, getWebinarPageSlugs } from "@/config/webinars";
 import { registrationOpen } from "@/lib/webinar/access";
 import { webinarDay, webinarHours } from "@/lib/webinar/format";
+import BrandLogo from "@/components/BrandLogo";
 
 /**
  * Landing d'inscription webinar : formulaire court (prénom, nom, email,
@@ -66,14 +67,12 @@ export default async function PageWebinar({ params }: Props) {
       <div className="relative grid w-full max-w-5xl items-start gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-12">
         <section>
           <div className="flex flex-wrap items-center gap-3">
-            <p className="font-display text-lg font-semibold tracking-tight">
-              Althoce<span className="text-accent">.</span>
-            </p>
+            <BrandLogo size={26}/>
             <span className="rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent">
               {w.internalTest ? "RECETTE INTERNE · RÉSERVÉ À L’ÉQUIPE ALTHOCE" : "WEBINAR GRATUIT · EN DIRECT"}
             </span>
           </div>
-          {w.audience && <p className="mt-6 text-sm font-medium text-accent-clair">{w.audience}</p>}
+          {w.audience && <p className="mt-6 text-sm font-medium text-accent">{w.audience}</p>}
           <h1 className="mt-2 font-display text-[28px] font-bold leading-tight text-balance sm:text-[40px]">{w.title}</h1>
           <p className="mt-4 text-base leading-relaxed text-secondaire sm:text-lg">{w.description}</p>
 
@@ -96,7 +95,7 @@ export default async function PageWebinar({ params }: Props) {
           {!preview && !closed && (
             <a
               href="#inscription"
-              className="mt-5 flex w-full items-center justify-center rounded-lg bg-accent px-6 py-3.5 font-semibold text-white transition hover:bg-accent-clair lg:hidden"
+              className="mt-5 flex w-full items-center justify-center rounded-full bg-action px-6 py-3.5 font-semibold text-white transition hover:bg-action-hover lg:hidden"
             >
               Je réserve ma place
             </a>
@@ -144,7 +143,7 @@ export default async function PageWebinar({ params }: Props) {
           )}
         </section>
 
-        <section id="inscription" className="scroll-mt-6 rounded-2xl border border-bordure bg-carte p-6 shadow-2xl sm:p-8">
+        <section id="inscription" className="scroll-mt-6 rounded-[18px] border border-bordure bg-carte p-6 shadow-2xl sm:p-8">
           <h2 className="font-display text-xl font-bold">Réserver ma place</h2>
           <p className="mt-2 text-sm leading-relaxed text-secondaire">
             Gratuit. Votre lien de connexion arrive par email. Le webinar est enregistré.

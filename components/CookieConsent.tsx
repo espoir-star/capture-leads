@@ -79,7 +79,7 @@ export default function CookieConsent() {
           aria-describedby="cookie-text"
           className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 sm:px-4 sm:pb-4"
         >
-          <div className="mx-auto w-full max-w-2xl rounded-2xl border border-bordure bg-carte p-5 shadow-2xl sm:p-6">
+          <div className="mx-auto w-full max-w-2xl rounded-[18px] border border-bordure bg-carte p-5 shadow-2xl sm:p-6">
             <p id="cookie-title" className="font-display text-base font-semibold">
               Votre confidentialité
             </p>
@@ -100,14 +100,14 @@ export default function CookieConsent() {
               <button
                 type="button"
                 onClick={() => decide("ALL")}
-                className="w-full rounded-lg border border-accent bg-accent px-5 py-3 text-sm font-semibold text-white hover:border-accent-clair hover:bg-accent-clair active:scale-[0.99] transition"
+                className="w-full rounded-full border border-action bg-action px-5 py-3 text-sm font-semibold text-white hover:border-action-hover hover:bg-action-hover active:scale-[0.99] transition"
               >
                 Tout accepter
               </button>
               <button
                 type="button"
                 onClick={() => decide("ESSENTIAL")}
-                className="w-full rounded-lg border border-white/40 bg-transparent px-5 py-3 text-sm font-semibold text-white hover:border-white hover:bg-white/5 active:scale-[0.99] transition"
+                className="w-full rounded-full border border-bordure-forte bg-transparent px-5 py-3 text-sm font-semibold text-texte hover:bg-carte-2 active:scale-[0.99] transition"
               >
                 Essentiels uniquement
               </button>

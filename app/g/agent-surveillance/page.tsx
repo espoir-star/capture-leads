@@ -1,7 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Geist } from "next/font/google";
+import BrandLogo from "@/components/BrandLogo";
 import { AGENT_SURVEILLANCE as fiche, einvoiceTableTsv } from "@/content/guides/agent-surveillance";
 import ManualReviewCalculator from "@/components/ManualReviewCalculator";
 import CopyPillButton from "@/components/CopyPillButton";
@@ -13,23 +12,13 @@ export const metadata: Metadata = {
  robots:{index:false,follow:false},
 };
 
-const geist = Geist({ subsets:["latin"], weight:["400","500","600","700"], display:"swap" });
-
 const CAL_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
-
-/* Rôles de couleur (standard davinci), sur la palette Althoce : neutres et filets dérivés du texte. */
-const ROLES = {
- "--bg":"#0A0A0A", "--surface":"#111412", "--surface-2":"#181D1A",
- "--fg":"#F1F5F2", "--fg-muted":"#A4B2A9", "--fg-subtle":"#6F7D74",
- "--border":"rgb(241 245 242 / 0.08)", "--border-strong":"rgb(241 245 242 / 0.15)",
- "--accent":"#51D9AA", "--accent-fill":"#1D9E75", "--warn":"#F2A07B",
-} as CSSProperties;
 
 const label = "text-[11px] font-semibold uppercase tracking-[0.16em]";
 const card = "rounded-[18px] border border-[color:var(--border)] bg-[color:var(--surface)]";
 const tile = "flex size-7 shrink-0 items-center justify-center rounded-lg bg-[color:var(--surface-2)] text-[color:var(--fg-muted)]";
 const pill = "inline-flex items-center gap-2 rounded-full px-[22px] py-3 text-[14px] font-medium transition-colors duration-150 active:scale-[0.985]";
-const primary = `${pill} bg-[color:var(--accent-fill)] text-[#081D12] hover:bg-[#26C08F]`;
+const primary = `${pill} bg-action text-white hover:bg-action-hover`;
 
 function Refs({ ns }: { ns: number[] }) {
  return <>{ns.map(n=><a key={n} href="#sources" className="ml-1 text-[12px] text-[color:var(--accent)] tabular-nums hover:underline">[{n}]</a>)}</>;
@@ -40,18 +29,18 @@ function Section({ id, eyebrow, title, sub, children }: { id: string; eyebrow: s
 }
 
 function Badge({ tone, className = "", children }: { tone: "warn" | "ok"; className?: string; children: ReactNode }) {
- const c = tone === "warn" ? "border-[rgb(242_160_123/0.25)] bg-[rgb(242_160_123/0.10)] text-[color:var(--warn)]" : "border-[rgb(81_217_170/0.25)] bg-[rgb(81_217_170/0.10)] text-[color:var(--accent)]";
+ const c = tone === "warn" ? "border-alerte/25 bg-alerte/10 text-alerte" : "border-accent/25 bg-accent/10 text-accent";
  return <span className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums ${c} ${className}`}><span className="size-1.5 rounded-full bg-current"/>{children}</span>;
 }
 
 export default function Page() {
  const alerts = fiche.morningExample.filter(m=>m.alert).length;
  const t = fiche.einvoiceTable;
- return <main style={ROLES} className={`${geist.className} min-h-screen bg-[color:var(--bg)] text-[color:var(--fg)] antialiased`}><div className="mx-auto max-w-[760px] px-5 pb-24 pt-8 sm:px-8">
-   <header className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] pb-6"><Link href="https://althoce.com" className="text-[22px] font-semibold tracking-[-0.03em]">Althoce<span className="text-[color:var(--accent)]">.</span></Link><span className={`${label} text-right text-[color:var(--fg-subtle)]`}>Conseil &amp; intégration IA</span></header>
+ return <main className="min-h-screen bg-fond text-texte antialiased"><div className="mx-auto max-w-[760px] px-5 pb-24 pt-8 sm:px-8">
+   <header className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] pb-6"><BrandLogo/><span className={`${label} text-right text-[color:var(--fg-subtle)]`}>Conseil &amp; intégration IA</span></header>
 
    <div className="pt-14"><p className={`${label} text-[color:var(--accent)]`}>Agent Althoce · Surveillance</p>
-     <h1 className="mt-4 text-[36px] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-[52px]">Vos clients relevés chaque nuit, <span className="text-[color:var(--fg-muted)]">sans que personne ne se connecte.</span></h1>
+     <h1 className="mt-4 text-[36px] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-[52px]">Vos clients relevés chaque nuit, <span className="text-accent">sans que personne ne se connecte.</span></h1>
      <p className="mt-6 max-w-[600px] text-[16px] leading-relaxed text-[color:var(--fg-muted)]">{fiche.intro}</p>
      <div className="mt-8 flex flex-wrap gap-3"><a href="#checklist" className={primary}>La checklist du cabinet<Icon name="arrowDown" size={14}/></a><a href={CAL_URL} target="_blank" rel="noopener noreferrer" className={`${pill} border border-[color:var(--border-strong)] text-[color:var(--fg)] hover:bg-[color:var(--surface-2)]`}>Voir l’agent sur votre cabinet<Icon name="arrowUpRight" size={14}/></a></div>
      <p className="mt-5 flex items-center gap-2 text-[13px] text-[color:var(--fg-muted)]"><Icon name="check" size={14} className="text-[color:var(--accent)]"/>{fiche.proof}</p></div>
