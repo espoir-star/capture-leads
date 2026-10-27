@@ -63,7 +63,7 @@ test("newsletters d'octobre : brouillons Brevo, programmés seulement sur accord
     const html = renderNewsletterHtml(nl);
     assert.match(html, /\{\{ unsubscribe \}\}/);
     assert.match(html, new RegExp(`utm_campaign=nl_finance_${date.replaceAll("-", "")}&amp;utm_content=cta`));
-    assert.equal((html.match(/background-color:#1D9E75;border-radius:8px/g) ?? []).length, 1, `${date} : un seul bouton`);
+    assert.equal((html.match(/background-color:#2563EB;border-radius:999px/g) ?? []).length, 1, `${date} : un seul bouton`);
     assert.doesNotMatch(html, /%%[A-Z_]+%%/);
     assert.ok(html.includes(rubric.replace("&", "&amp;")), `${date} : rubrique affichée`);
   }
@@ -137,7 +137,7 @@ test("annonces du webinar du 5/11 : toute la base envoyable sauf les inscrits, a
     // Objectif : la présence en direct. Le replay n'est jamais mis en avant dans les invitations (demande d'Espoir, 27/10).
     assert.doesNotMatch(`${nl.meta.previewText} ${nl.body}`, /replay|enregistr/i, `${file} : pas de raison de ne pas venir`);
     const html = renderNewsletterHtml(nl);
-    assert.equal((html.match(/background-color:#1D9E75;border-radius:8px/g) ?? []).length, 1, `${file} : un seul bouton`);
+    assert.equal((html.match(/background-color:#2563EB;border-radius:999px/g) ?? []).length, 1, `${file} : un seul bouton`);
     assert.match(html, /w\/connecteurs-mcp-cabinets\?utm_source=brevo&amp;utm_medium=email&amp;utm_campaign=webinar_connecteurs_mcp_20261105&amp;utm_content=email_/);
     assert.ok(html.includes("Jeudi 5 novembre&nbsp;· 11\u00a0h – 12\u00a0h (heure de Paris)&nbsp;· Google Meet"), `${file} : date et horaire`);
     assert.match(html, /Espoir Mwami/);
