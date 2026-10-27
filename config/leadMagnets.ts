@@ -47,6 +47,14 @@ export const LEAD_MAGNETS = {
     sequence: "guide-claude-pennylane-v1",
     legacy: { automationId: 2, deliveryTemplateId: 1, followupTemplateIds: [2] },
   },
+  "agent-surveillance-cabinets": {
+    slug: "agent-surveillance-cabinets", resource: "agent-surveillance-cabinets",
+    brevoListId: 24, brevoListName: "LM - Agent Surveillance cabinets",
+    vertical: "FINANCE", subsector: "EXPERTISE_COMPTABLE",
+    note: "Liste 24 et champs MG_*_24 créés et relus via API (npm run brevo:guide) le 27/10/2026. Cible du post : experts-comptables et dirigeants de cabinets.",
+    sequence: "guide-agent-surveillance-v1",
+    legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
+  },
   "guide-claude-meta-ads": {
     slug: "guide-claude-meta-ads", resource: "guide-claude-meta-ads",
     brevoListId: 7, brevoListName: "LM - Guide Claude Meta Ads",

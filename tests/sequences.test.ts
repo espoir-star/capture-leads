@@ -50,6 +50,7 @@ test("config : chaque guide a une séquence prête et son automation historique 
   for (const lm of Object.values(LEAD_MAGNETS)) {
     const seq = getSequence(lm.sequence);
     assert.ok(seq && sequenceReady(seq), `${lm.slug} : séquence ${lm.sequence} prête`);
+    if (lm.legacy.automationId === 0) continue; // guide né sur le moteur : aucun email historique
     assert.ok(!delivery.has(lm.legacy.deliveryTemplateId), "un email de livraison historique par guide");
     delivery.add(lm.legacy.deliveryTemplateId);
   }

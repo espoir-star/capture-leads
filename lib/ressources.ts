@@ -112,6 +112,36 @@ export const RESSOURCES: Record<string, Ressource> = {
   },
 
   /* ─────────────────────────────────────────────────────────────
+   * Agent Surveillance : la fiche complète (proposition Althoce, 27/10/2026)
+   * ──────────────────────────────────────────────────────────── */
+  "agent-surveillance-cabinets": {
+    slug: "agent-surveillance-cabinets",
+    badge: "FICHE GRATUITE",
+    titre: "Vos clients relevés <accent>chaque nuit</accent>,\nsans que personne ne se connecte.",
+    sousTitre:
+      "Pour les experts-comptables et dirigeants de cabinets. La checklist des portails de vos clients, le tableau de suivi de la facturation électronique, puis la fiche complète de l'agent qui l'applique chaque nuit.",
+    resourceCard: {
+      titre: "Agent Surveillance : la fiche complète",
+      description: "La checklist portail par portail, le tableau de suivi à copier et l'agent.",
+      meta: "Lecture estimée : 5 minutes",
+    },
+    pills: [
+      "Checklist impôts, URSSAF, BODACC",
+      "Tableau facturation électronique",
+      "Déjà en service en cabinet",
+      "Lecture seule, serveur en France",
+    ],
+    urlRessource: "/g/agent-surveillance",
+    style: "modal",
+    cta: "Recevoir la fiche",
+    signature: "Espoir Mwami — Althoce",
+    merci: {
+      titre: "Votre fiche est prête.",
+      ctaTitre: "Voir l'agent sur votre cabinet ?",
+    },
+  },
+
+  /* ─────────────────────────────────────────────────────────────
    * EXEMPLE 2 — Guide Claude × Meta Ads (guide existant)
    * ──────────────────────────────────────────────────────────── */
   "guide-claude-meta-ads": {

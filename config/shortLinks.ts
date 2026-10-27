@@ -45,6 +45,14 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // Post « 10 usages Claude × Pennylane » publié le vendredi 16/10/2026 (date donnée par Espoir).
     utm_content: "LI_EC_20261016_01",
   },
+  sv1: {
+    slug: "agent-surveillance-cabinets",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "agent_surveillance_cabinets",
+    // Post « agent Surveillance » publié le 27/10/2026 (date donnée par Espoir).
+    utm_content: "LI_EC_20261027_01",
+  },
   ec1: {
     slug: "12-cas-usage-experts-comptables",
     utm_source: "linkedin",
