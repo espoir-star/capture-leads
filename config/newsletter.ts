@@ -74,10 +74,36 @@ export const SEGMENTS = {
   },
 } satisfies Record<string, SegmentRef>;
 
+/**
+ * Liste Brevo synchronisée PAR API (l'API ne crée pas de segments) :
+ * `npm run newsletter:list -- <audience> [--apply]` y place exactement les
+ * contacts autorisés (lib/newsletter/audienceList.ts) et retire les autres.
+ */
+export interface ListRef {
+  /** Nom exact de la liste dans Brevo */
+  name: string;
+  /** ID réel, null tant qu'il n'est pas recopié (résolu par le nom exact) */
+  id: number | null;
+  /** Règle de sélection, affichée en simulation */
+  rule: string;
+}
+
+export const LISTS = {
+  /* Annonces à toute la base (décision d'Espoir, 26/10/2026) : le secteur Marketing compte peu d'inscrits. */
+  annonceBase: {
+    name: "ANNONCES — BASE ENVOYABLE",
+    /* Créée le 26/10/2026 par npm run newsletter:list -- annonce --apply (2 101 contacts). */
+    id: 22,
+    rule: `${MARKETING_OK} ET ${EMAIL_OK} ET non blocklisté ET IS_QA ≠ true, tous secteurs`,
+  },
+} satisfies Record<string, ListRef>;
+
 export interface Audience {
   label: string;
-  /** Segment destinataire */
-  segment: SegmentRef;
+  /** Segment destinataire (newsletters) */
+  segment?: SegmentRef;
+  /** OU liste synchronisée par API (annonces à toute la base) */
+  list?: ListRef;
   /** Segments exclus (sécurité supplémentaire) */
   exclude: SegmentRef[];
 }
@@ -94,6 +120,7 @@ export const AUDIENCES: Record<string, Audience> = {
     exclude: [SEGMENTS.dqRejected],
   },
   daf: { label: "Newsletter DAF", segment: SEGMENTS.newsletterDaf, exclude: [SEGMENTS.dqRejected] },
+  annonce: { label: "Annonce : toute la base envoyable", list: LISTS.annonceBase, exclude: [SEGMENTS.dqRejected] },
 };
 
 /** Fuseau d'affichage des dates en dry run */
