@@ -20,6 +20,9 @@
  *          après relecture et accord explicite. Remet le contenu à jour, vérifie
  *          l'audience du brouillon puis confirme que Brevo l'a mis en file (queued).
  *
+ * Annonce de webinar (frontmatter `webinar`) : les inscrits, c.-à-d. la liste
+ * Brevo du webinar, sont exclus ; Brevo applique l'exclusion à l'heure d'envoi.
+ *
  * Garde-fous : status "ready" exigé, segment d'audience existant dans Brevo,
  * expéditeur actif dans Brevo (domaine althoce.fr authentifié),
  * date future, refus si une campagne du même nom existe déjà ou si le
@@ -31,8 +34,10 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { brevoRequest, getApiKey } from "@/lib/brevo/api";
 import { listSegments, resolveSegmentId, type BrevoSegment } from "@/lib/brevo/segments";
+import { listLists, resolveListId, type BrevoList } from "@/lib/brevo/lists";
 import { findActiveSender, listSenders, type BrevoSender } from "@/lib/brevo/senders";
 import { AUDIENCES, NEWSLETTER_REPLY_TO, NEWSLETTER_SENDER, NEWSLETTER_TIMEZONE } from "@/config/newsletter";
+import { WEBINARS } from "@/config/webinars";
 import { campaignUtm, loadNewsletter, renderNewsletterHtml } from "@/lib/newsletter";
 
 const argv = process.argv.slice(2);
@@ -77,15 +82,27 @@ async function main() {
   // Segments : ID configuré, sinon nom exact dans Brevo (jamais d'ID inventé)
   let segments: BrevoSegment[] | null = null;
   let senders: BrevoSender[] | null = null;
+  let lists: BrevoList[] | null = null;
   if (getApiKey()) {
     segments = await listSegments().catch(() => null);
     senders = await listSenders().catch(() => null);
+    if (audience.list || meta.webinar) lists = await listLists().catch(() => null);
   }
   const senderOk = senders ? !!findActiveSender(senders, NEWSLETTER_SENDER.email) : null;
-  const targetId = segments ? resolveSegmentId(audience.segment, segments) : audience.segment.id;
+  // Cible : un segment (newsletters) ou une liste synchronisée par API (annonces, npm run newsletter:list)
+  const target = audience.list
+    ? { kind: "liste" as const, name: audience.list.name, id: lists ? resolveListId(audience.list, lists) : audience.list.id, rule: audience.list.rule }
+    : { kind: "segment" as const, name: audience.segment!.name, id: segments ? resolveSegmentId(audience.segment!, segments) : audience.segment!.id, rule: audience.segment!.conditions };
+  const targetId = target.id;
+  const missingTarget = target.kind === "liste"
+    ? `liste « ${target.name} » introuvable dans Brevo (npm run newsletter:list -- ${meta.audience} --apply)`
+    : `segment « ${target.name} » introuvable dans Brevo (créer puis npm run brevo:segments)`;
   const excludeIds = audience.exclude
     .map((ref) => (segments ? resolveSegmentId(ref, segments) : ref.id))
     .filter((id): id is number => !!id);
+  // Annonce de webinar : les inscrits (liste Brevo du webinar) ne la reçoivent pas
+  const webinar = meta.webinar ? WEBINARS[meta.webinar] : undefined;
+  const excludeListIds = webinar ? [webinar.brevoListId] : [];
   const html = renderNewsletterHtml(nl);
 
   const previewDir = resolve(process.cwd(), ".newsletter-previews");
@@ -97,9 +114,10 @@ async function main() {
   console.log(`  Sujet        ${meta.subject}`);
   console.log(`  Aperçu       ${meta.previewText || "(vide)"}`);
   console.log(`  Audience     ${meta.audience} → ${audience.label}`);
-  console.log(`               segment « ${audience.segment.name} » → ${targetId ? `id ${targetId}` : "⚠ INTROUVABLE dans Brevo (à créer, voir npm run brevo:segments)"}`);
+  console.log(`               ${target.kind} « ${target.name} » → ${targetId ? `id ${targetId}` : `⚠ ${missingTarget}`}`);
   console.log(`               exclusions ${audience.exclude.map((r) => `« ${r.name} »`).join(", ")} → ${excludeIds.join(", ") || "aucune trouvée"}`);
-  console.log(`               ${audience.segment.conditions}`);
+  if (webinar) console.log(`               inscrits exclus : liste « ${webinar.brevoListName} » → id ${webinar.brevoListId}`);
+  console.log(`               ${target.rule}`);
   console.log(`  Date/heure   ${fmtDate(meta.scheduledAt)} (${NEWSLETTER_TIMEZONE})`);
   console.log(`  Tag          ${meta.tag}`);
   console.log(`  UTM          ${new URLSearchParams(utm as Record<string, string>).toString()}`);
@@ -117,12 +135,16 @@ async function main() {
       errors.push("Segments marketing non validés : reconfigurer Brevo puis MARKETING_SEGMENTS_REVIEWED=true");
     }
     if (!getApiKey()) errors.push("BREVO_API_KEY absente");
-    if (!targetId) errors.push(`segment « ${audience.segment.name} » introuvable dans Brevo (créer puis npm run brevo:segments)`);
+    if (!targetId) errors.push(missingTarget);
+    if (webinar && lists && !lists.some((l) => l.id === webinar.brevoListId))
+      errors.push(`liste des inscrits « ${webinar.brevoListName} » (#${webinar.brevoListId}) introuvable dans Brevo`);
     if (!senderOk) errors.push(`expéditeur ${NEWSLETTER_SENDER.email} absent ou inactif dans Brevo (npm run brevo:domain)`);
     if (SCHEDULE) {
       if (!meta.scheduledAt) errors.push("scheduledAt manquant");
       else if (new Date(meta.scheduledAt).getTime() < Date.now() + 15 * 60_000)
         errors.push("scheduledAt doit être au moins 15 min dans le futur");
+      else if (webinar && Date.parse(meta.scheduledAt) >= Date.parse(webinar.startsAt))
+        errors.push("scheduledAt doit précéder le début du webinar annoncé");
     }
     return errors;
   };
@@ -131,7 +153,7 @@ async function main() {
     if (!getApiKey()) throw new Error("Refusé : BREVO_API_KEY absente");
     if (!meta.brevoCampaignId) throw new Error("Refusé : aucun brevoCampaignId dans le fichier (créer d'abord avec --create)");
     if (meta.status !== "created") throw new Error(`Refusé : statut "${meta.status}" (seul un brouillon créé, status "created", se met à jour)`);
-    const current = await brevoRequest<{ status?: string; name?: string; recipients?: { segments?: number[]; excludedSegments?: number[] } }>(
+    const current = await brevoRequest<{ status?: string; name?: string; recipients?: { lists?: number[]; exclusionLists?: number[]; segments?: number[]; excludedSegments?: number[] } }>(
       `/emailCampaigns/${meta.brevoCampaignId}?excludeHtmlContent=true`
     );
     if (!current.ok) throw new Error(`Refusé : campagne #${meta.brevoCampaignId} illisible (${current.status})`);
@@ -141,8 +163,10 @@ async function main() {
       const errors = sendingErrors();
       const same = (a: number[] = [], b: number[]) => [...a].sort().join() === [...b].sort().join();
       const r = current.data?.recipients;
-      if (targetId && !same(r?.segments, [targetId])) errors.push(`audience du brouillon ${JSON.stringify(r?.segments ?? [])} ≠ segment ${targetId}`);
+      const drafted = target.kind === "liste" ? r?.lists : r?.segments;
+      if (targetId && !same(drafted, [targetId])) errors.push(`audience du brouillon ${JSON.stringify(drafted ?? [])} ≠ ${target.kind} ${targetId}`);
       if (!same(r?.excludedSegments, excludeIds)) errors.push(`exclusions du brouillon ${JSON.stringify(r?.excludedSegments ?? [])} ≠ ${JSON.stringify(excludeIds)}`);
+      if (!same(r?.exclusionLists, excludeListIds)) errors.push(`listes exclues du brouillon ${JSON.stringify(r?.exclusionLists ?? [])} ≠ ${JSON.stringify(excludeListIds)}`);
       if (errors.length) throw new Error(`Refusé :\n${errors.map((e) => `  - ${e}`).join("\n")}`);
     }
     const upd = await brevoRequest(`/emailCampaigns/${meta.brevoCampaignId}`, {
@@ -203,8 +227,9 @@ async function main() {
       // le tag reste dans le fichier et le nom de campagne ; envoyé seulement si l'offre le permet.
       ...(process.env.BREVO_CAMPAIGN_TAGS === "true" && { tag: meta.tag }),
       recipients: {
-        segmentIds: [targetId],
+        ...(target.kind === "liste" ? { listIds: [targetId] } : { segmentIds: [targetId] }),
         ...(excludeIds.length && { exclusionSegmentIds: excludeIds }),
+        ...(excludeListIds.length && { exclusionListIds: excludeListIds }),
       },
       ...(SCHEDULE && { scheduledAt: meta.scheduledAt }),
     },

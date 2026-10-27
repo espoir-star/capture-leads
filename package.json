@@ -17,6 +17,7 @@
     "brevo:backfill": "tsx --env-file-if-exists=.env scripts/brevo/backfill.ts",
     "brevo:smoke": "tsx --env-file-if-exists=.env scripts/brevo/smoke-test.ts",
     "newsletter": "tsx --env-file-if-exists=.env scripts/newsletter/campaign.ts",
+    "newsletter:list": "tsx --env-file-if-exists=.env scripts/newsletter/sync-list.ts",
     "utm": "tsx scripts/tracking/build-url.ts",
     "data:disposable": "tsx scripts/data-quality/update-disposable-domains.ts",
     "brevo:segments": "tsx --env-file-if-exists=.env scripts/brevo/segments.ts",

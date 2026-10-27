@@ -7,6 +7,9 @@
  *   :::usecase Titre du cas d'usage      :::insight Titre de l'insight
  *   texte Markdown…                      texte Markdown…
  *   :::                                  :::
+ *
+ * Annonce de webinar (frontmatter `webinar: <slug>`) : encadré date, horaire,
+ * intervenant et badges repris de config/webinars.ts, au-dessus du bouton.
  */
 
 import { readFileSync } from "node:fs";
@@ -15,7 +18,10 @@ import matter from "gray-matter";
 import { Marked, type Tokens } from "marked";
 import { z } from "zod";
 import { AUDIENCES, CAMPAIGN_TAGS } from "@/config/newsletter";
+import { WEBINARS } from "@/config/webinars";
+import { siteUrl } from "@/lib/sequences/links";
 import { addUtmToUrl, type Utm } from "@/lib/tracking/utm";
+import { webinarDay, webinarHours } from "@/lib/webinar/format";
 
 /* ── Frontmatter ─────────────────────────────────────────────────────── */
 
@@ -39,6 +45,8 @@ export const frontmatterSchema = z.object({
   status: z.enum(["draft", "ready", "created", "scheduled"]),
   cta: z.object({ label: z.string().min(2).max(60), url: z.string().url() }).optional(),
   signature: z.string().max(300).optional(),
+  /** Webinar annoncé : encadré dans l'email, inscrits exclus de la campagne (liste Brevo du webinar) */
+  webinar: z.string().refine((slug) => slug in WEBINARS, "webinar inconnu (config/webinars.ts)").optional(),
   brevoCampaignId: z.number().int().positive().optional(),
 });
 
@@ -151,6 +159,37 @@ export function renderMarkdown(body: string, utm: Utm): string {
   return parts.join("\n").replace(/^\s*<p style="margin:16px 0 0;/, '<p style="margin:12px 0 0;');
 }
 
+const PLATFORMS: Record<string, string> = { google_meet: "Google Meet", zoom: "Zoom", teams: "Microsoft Teams", livestorm: "Livestorm" };
+const CARD_FONT = "font-family:Arial,Helvetica,sans-serif;";
+
+/** Encadré du webinar annoncé : mêmes informations que la page d'inscription et les emails du parcours. */
+export function renderWebinarCard(slug: string, base = siteUrl()): string {
+  const w = WEBINARS[slug];
+  const platform = PLATFORMS[w.platform];
+  const when = `${webinarDay(new Date(w.startsAt))}&nbsp;· ${webinarHours(w)} (heure de Paris)${platform ? `&nbsp;· ${platform}` : ""}`;
+  const speaker = w.speaker
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 0;"><tr>
+${w.speaker.photo ? `<td width="56" valign="middle" style="padding:0 12px 0 0;"><img src="${esc(base + w.speaker.photo)}" width="44" height="44" alt="${esc(w.speaker.name)}" style="display:block;width:44px;height:44px;border:0;border-radius:22px;" /></td>\n` : ""}<td valign="middle" style="${CARD_FONT}">
+<p style="margin:0;font-size:12px;line-height:16px;color:#5C625C;">Animé par</p>
+<p style="margin:2px 0 0;font-size:14px;line-height:20px;font-weight:bold;color:#0A0A0A;">${esc(w.speaker.name)}</p>
+<p style="margin:1px 0 0;font-size:13px;line-height:18px;color:#5C625C;">${esc(w.speaker.role)}</p>
+</td></tr></table>`
+    : "";
+  return `<tr><td class="px" style="padding:26px 40px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F1F8F5;border:1px solid #BFE3D5;border-radius:10px;">
+<tr><td style="padding:18px 20px 20px;${CARD_FONT}">
+<p style="margin:0;font-size:11px;line-height:16px;font-weight:bold;letter-spacing:1px;color:#157A5B;">WEBINAR GRATUIT&nbsp;· EN DIRECT</p>
+<p style="margin:6px 0 0;font-size:17px;line-height:24px;font-weight:bold;color:#0A0A0A;">${esc(w.title)}</p>
+<p style="margin:8px 0 0;font-size:15px;line-height:22px;font-weight:bold;color:#157A5B;">${when}</p>
+${speaker}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 0;"><tr>
+<td style="background-color:#FFFFFF;border:1px solid #E3E6E2;border-radius:8px;padding:5px;"><img src="${esc(base)}/webinar/activateur-france-num.png" width="44" height="40" alt="Activateur France Num" style="display:block;border:0;" /></td>
+<td width="8" style="font-size:0;line-height:0;">&nbsp;</td>
+<td style="background-color:#FFFFFF;border:1px solid #E3E6E2;border-radius:8px;padding:4px;"><img src="${esc(base)}/webinar/french-tech-bordeaux.png" width="42" height="42" alt="La French Tech Bordeaux" style="display:block;border:0;" /></td>
+</tr></table>
+</td></tr></table></td></tr>`;
+}
+
 export function campaignUtm(meta: NewsletterFrontmatter): Utm {
   return {
     utm_source: "brevo",
@@ -185,6 +224,6 @@ export function renderNewsletterHtml(nl: Newsletter, templatePath = TEMPLATE_PAT
     )
     .replaceAll("%%PREVIEW_TEXT%%", esc(nl.meta.previewText))
     .replace("%%CONTENT%%", renderMarkdown(nl.body, utm))
-    .replace("%%CTA%%", cta)
+    .replace("%%CTA%%", (nl.meta.webinar ? renderWebinarCard(nl.meta.webinar) : "") + cta)
     .replace("%%SIGNATURE%%", signature);
 }
