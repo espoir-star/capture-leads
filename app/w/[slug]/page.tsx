@@ -147,7 +147,7 @@ export default async function PageWebinar({ params }: Props) {
         <section id="inscription" className="scroll-mt-6 rounded-2xl border border-bordure bg-carte p-6 shadow-2xl sm:p-8">
           <h2 className="font-display text-xl font-bold">Réserver ma place</h2>
           <p className="mt-2 text-sm leading-relaxed text-secondaire">
-            Gratuit. Votre lien de connexion arrive par email. Le webinar est enregistré&nbsp;: le replay est envoyé aux inscrits.
+            Gratuit. Votre lien de connexion arrive par email. Le webinar est enregistré.
           </p>
           <div className="mt-5">
             {preview ? (

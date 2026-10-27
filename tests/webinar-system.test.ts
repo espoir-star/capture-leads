@@ -290,3 +290,11 @@ test("score : les liens de service d'un webinar (connexion, replay, agenda) ne r
   assert.equal(classifyClick("https://guide-gratuit-pi.vercel.app/w/test-parcours-webinaire"), "content_click", "la page d'inscription reste un contenu");
   assert.equal(classifyClick("https://cal.com/althoce-conseil-4ncbuz/30min"), "offer_click");
 });
+
+test("avant le direct, le replay n'est jamais promis : page d'inscription, confirmation, email de confirmation (objectif : la présence en direct)", () => {
+  const visible = (f: string) => readFileSync(f, "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/\{\{[^}]*\}\}|\{%[^%]*%\}/g, "");
+  // L'enregistrement reste annoncé (information des participants, test ci-dessus) ; seul le replay disparaît.
+  assert.doesNotMatch(visible("emails/sequences/webinar/confirmation.html"), /replay/i);
+  assert.doesNotMatch(readFileSync("app/w/[slug]/confirmation/page.tsx", "utf8"), /replay/i);
+  assert.doesNotMatch(readFileSync("app/w/[slug]/page.tsx", "utf8"), /le replay est envoyé aux inscrits/);
+});
