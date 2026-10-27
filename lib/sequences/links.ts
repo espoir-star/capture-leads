@@ -6,6 +6,7 @@
 import { getWebinar } from "@/config/webinars";
 import { googleCalendarUrl, personalWebinarLinks } from "@/lib/webinar/access";
 import { readWebinarActivity } from "@/lib/webinar/activity";
+import { webinarDay, webinarHours } from "@/lib/webinar/format";
 import { webinarReplayUrl } from "@/lib/webinar/urls";
 import type { AttributeValue } from "@/lib/brevo/api";
 import { getRessource } from "@/lib/ressources";
@@ -47,7 +48,8 @@ export function confirmUrl(email: string, emailStatus: unknown): string | undefi
 }
 
 /**
- * Titre, date et heure (Europe/Paris), ressources et liens d'un webinar (config/webinars.ts).
+ * Titre, date et heure (Europe/Paris), intervenant, ressources et liens d'un webinar (config/webinars.ts).
+ * SITE_URL sert aux images publiques des emails (photo, badges : public/webinar/).
  * JOIN_URL et REPLAY_URL sont TOUJOURS des liens personnels /w/<slug>/… (avec
  * `contactId`) : la salle Meet et l'enregistrement ne figurent jamais dans un email.
  * REPLAY_AVAILABLE indique que l'enregistrement est publié (variable Vercel).
@@ -67,6 +69,14 @@ export function webinarParams(slug: string | undefined, contactId?: number): Rec
     WEBINAR_DATE: date,
     WEBINAR_TIME: time.replace(":", " h "),
     WEBINAR_DURATION: `${w.durationMin} min`,
+    WEBINAR_DAY: webinarDay(start),
+    WEBINAR_HOURS: webinarHours(w),
+    ...(w.speaker && {
+      SPEAKER_NAME: w.speaker.name,
+      SPEAKER_ROLE: w.speaker.role,
+      ...(w.speaker.photo && { SPEAKER_PHOTO_URL: `${base}${w.speaker.photo}` }),
+    }),
+    SITE_URL: base,
     WEBINAR_PAGE_URL: `${base}/w/${w.slug}`,
     CALENDAR_GOOGLE_URL: googleCalendarUrl(w, base),
     CALENDAR_ICS_URL: `${base}/w/${w.slug}/agenda.ics`,

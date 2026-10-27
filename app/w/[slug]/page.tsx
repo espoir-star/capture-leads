@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import CaptureForm from "@/components/CaptureForm";
 import { getWebinar, getWebinarPageSlugs } from "@/config/webinars";
 import { registrationOpen } from "@/lib/webinar/access";
+import { webinarDay, webinarHours } from "@/lib/webinar/format";
 
 /**
  * Landing d'inscription webinar : formulaire court (prénom, nom, email,
@@ -35,21 +36,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-const PARIS = "Europe/Paris";
-
-/** « jeudi 5 novembre » */
-function jour(d: Date): string {
-  return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: PARIS }).format(d);
-}
-
-/** « 11 h », « 11 h 30 » (heure de Paris) */
-function heure(d: Date): string {
-  const parts = new Intl.DateTimeFormat("fr-FR", { hour: "numeric", minute: "2-digit", timeZone: PARIS }).formatToParts(d);
-  const h = parts.find((p) => p.type === "hour")?.value ?? "";
-  const m = parts.find((p) => p.type === "minute")?.value ?? "00";
-  return m === "00" ? `${Number(h)}\u00a0h` : `${Number(h)}\u00a0h\u00a0${m}`;
-}
-
 function Icone({ d }: { d: string }) {
   return (
     <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-accent" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -70,8 +56,6 @@ export default async function PageWebinar({ params }: Props) {
   if (!w || (w.status !== "open" && w.status !== "draft")) notFound();
   const preview = w.status === "draft";
   const closed = !preview && !registrationOpen(w, new Date());
-  const debut = new Date(w.startsAt);
-  const fin = new Date(debut.getTime() + w.durationMin * 60_000);
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:py-14">
@@ -96,12 +80,12 @@ export default async function PageWebinar({ params }: Props) {
           <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-3 rounded-xl border border-bordure bg-carte px-4 py-3.5">
             <li className="flex items-center gap-2 whitespace-nowrap text-sm font-medium">
               <Icone d={ICONES.agenda} />
-              <span className="first-letter:uppercase">{jour(debut)}</span>
+              <span>{webinarDay(new Date(w.startsAt))}</span>
             </li>
             <li className="flex items-center gap-2 whitespace-nowrap text-sm font-medium">
               <Icone d={ICONES.heure} />
               <span>
-                {heure(debut)} – {heure(fin)} <span className="font-normal text-secondaire">(Paris)</span>
+                {webinarHours(w)} <span className="font-normal text-secondaire">(Paris)</span>
               </span>
             </li>
             <li className="flex items-center gap-2 whitespace-nowrap text-sm font-medium">
