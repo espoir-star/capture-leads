@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { AGENT_SURVEILLANCE as fiche } from "@/content/guides/agent-surveillance";
+import { AGENT_SURVEILLANCE as fiche, manualReviewHours } from "@/content/guides/agent-surveillance";
 import { getLeadMagnet } from "@/config/leadMagnets";
 import { getSequence } from "@/config/sequences";
 import { getRessource } from "@/lib/ressources";
@@ -14,33 +14,46 @@ test("Agent Surveillance : les quatre sources du post, dans l'ordre, avec ce que
   assert.deepEqual(fiche.sources.map((s) => s.name), ["Impôts", "URSSAF", "INPI et BODACC", "Facturation électronique"]);
   for (const s of fiche.sources) assert.ok(s.reads.length >= 3, s.id);
   const all = text(fiche.sources);
-  for (const item of ["Avis de CFE", "Avis de taxe foncière", "Avis à payer", "Procédures collectives", "Mandats", "Raccordement"]) {
-    assert.ok(all.includes(item), item);
-  }
+  for (const item of ["Avis de CFE", "taxe foncière", "Avis à payer", "Procédures collectives", "Mandats", "Raccordement"]) assert.ok(all.includes(item), item);
   assert.equal(fiche.steps.length, 3);
   assert.equal(fiche.guarantees.length, 3);
 });
 
-test("Agent Surveillance : garanties de la proposition, aucun prix ni chiffre inventé, pas de tiret long", () => {
+test("Agent Surveillance : chaque délai « ce que coûte un oubli » renvoie à une source officielle (Légifrance, impots.gouv.fr)", () => {
+  const n = fiche.officialSources.length;
+  assert.equal(new Set(fiche.officialSources.map((s) => s.url)).size, n);
+  for (const s of fiche.officialSources) assert.match(s.url, /^https:\/\/(www\.legifrance\.gouv\.fr\/codes\/article_lc\/LEGIARTI\d+|www\.impots\.gouv\.fr\/)/);
+  assert.equal(fiche.stakes.length, 5);
+  for (const s of fiche.stakes) {
+    assert.ok(s.refs.length > 0, s.event);
+    for (const r of s.refs) assert.ok(r >= 1 && r <= n, `${s.event} : [${r}]`);
+  }
+  const rule = (e: string) => fiche.stakes.find((s) => s.event === e)!.rule;
+  // Vérifiés le 27/10/2026 : CGI 1731 B + 1731 (5 %), CGI 1730 (10 %), C. com. R622-24 (deux mois), guide DGFiP (trois mois).
+  assert.match(rule("Avis de CFE"), /15 décembre.*5\s%/);
+  assert.match(rule("Avis de taxe foncière"), /10\s%/);
+  assert.match(rule("Procédure collective d'un client"), /deux mois après la publication au BODACC/);
+  assert.match(rule("Client sans plateforme agréée"), /1er septembre 2026.*trois mois/);
+  assert.doesNotMatch(rule("Mise en demeure"), /\bmois\b/, "aucun délai URSSAF non vérifié");
+});
+
+test("Agent Surveillance : proposition fidèle, aucun prix ni témoignage, exemple du matin fictif et anonyme", () => {
   const all = text(fiche);
   assert.match(all, /ne paie, ne déclare et ne signe jamais/);
   assert.match(all, /sans votre validation/);
-  assert.match(all, /serveur en France, au nom du cabinet/);
-  assert.doesNotMatch(all, /€|\d+ ?%|clients satisfaits|témoign/i, "aucun prix, pourcentage ni témoignage");
+  assert.match(all, /serveur en France, au nom du cabinet/i);
+  assert.doesNotMatch(all, /€|clients satisfaits|témoign/i, "aucun prix ni témoignage");
   assert.doesNotMatch(all, /—/, "pas de tiret long");
   // Relevé chaque nuit : une pièce déposée en journée est vue au relevé suivant, jamais « le jour même ».
   assert.doesNotMatch(all, /le jour même/);
+  for (const m of fiche.morningExample) assert.match(m.file, /^Dossier \d{3} · (SARL|SAS|EURL)$/, "dossiers anonymes");
+  assert.match(readFileSync("app/g/agent-surveillance/page.tsx", "utf8"), /Exemple fictif/);
 });
 
-test("Agent Surveillance : chaque « Bon à savoir » renvoie à une source officielle HTTPS existante", () => {
-  const n = fiche.officialSources.length;
-  assert.equal(new Set(fiche.officialSources.map((s) => s.url)).size, n);
-  for (const s of fiche.officialSources) assert.match(s.url, /^https:\/\/(www\.)?(impots\.gouv\.fr|data\.gouv\.fr|inpi\.fr)\//);
-  for (const s of fiche.sources) for (const ref of s.context?.sources ?? []) assert.ok(ref >= 1 && ref <= n, `${s.id} : [${ref}]`);
-  const fe = fiche.sources.find((s) => s.id === "facturation")!;
-  assert.match(fe.context!.text, /1er septembre 2026/);
-  assert.match(fe.context!.text, /1er septembre 2027/);
-  assert.match(fiche.sources.find((s) => s.id === "impots")!.context!.text, /15 décembre/);
+test("Agent Surveillance : relevé à la main = dossiers × portails × minutes × passages, sans valeur négative", () => {
+  assert.deepEqual(manualReviewHours({ files: 80, portals: 3, minutes: 3, perMonth: 4 }), { month: 48, year: 576 });
+  assert.deepEqual(manualReviewHours({ files: -5, portals: 3, minutes: 3, perMonth: 4 }), { month: 0, year: 0 });
+  assert.deepEqual(manualReviewHours({ files: Number.NaN, portals: 3, minutes: 3, perMonth: 4 }), { month: 0, year: 0 });
 });
 
 test("Agent Surveillance : capture, liste Brevo 24, séquence dédiée, lecteur interne dans les emails, lien sv1 réservé", () => {
@@ -67,9 +80,10 @@ test("Agent Surveillance : capture, liste Brevo 24, séquence dédiée, lecteur 
   }
 });
 
-test("Agent Surveillance : page non indexée, sources affichées, aucune collecte", () => {
+test("Agent Surveillance : page non indexée, sections et sources affichées, calculateur sans collecte", () => {
   const page = readFileSync("app/g/agent-surveillance/page.tsx", "utf8");
   assert.match(page, /robots:\{index:false,follow:false\}/);
-  for (const id of ["releves", "matin", "mise-en-route", "garanties", "proposition", "sources"]) assert.match(page, new RegExp(`id="${id}"`), id);
+  for (const id of ["enjeux", "temps", "releves", "matin", "mise-en-route", "garanties", "proposition", "sources"]) assert.match(page, new RegExp(`id="${id}"`), id);
   assert.doesNotMatch(page, /<form|fetch\(|localStorage|sendBeacon|CaptureForm/);
+  assert.doesNotMatch(readFileSync("components/ManualReviewCalculator.tsx", "utf8"), /fetch\(|localStorage|sendBeacon|cookie/i);
 });
