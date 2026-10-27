@@ -119,16 +119,16 @@ export const RESSOURCES: Record<string, Ressource> = {
     badge: "FICHE GRATUITE",
     titre: "Vos clients relevés <accent>chaque nuit</accent>,\nsans que personne ne se connecte.",
     sousTitre:
-      "Pour les experts-comptables et dirigeants de cabinets. La fiche complète de l'agent Surveillance : ce qu'il relève source par source, ce que vous recevez le matin, la mise en route et les garanties.",
+      "Pour les experts-comptables et dirigeants de cabinets. La checklist des portails de vos clients, le tableau de suivi de la facturation électronique, puis la fiche complète de l'agent qui l'applique chaque nuit.",
     resourceCard: {
       titre: "Agent Surveillance : la fiche complète",
-      description: "Impôts, URSSAF, INPI, BODACC et facturation électronique, client par client.",
-      meta: "Lecture estimée : 4 minutes",
+      description: "La checklist portail par portail, le tableau de suivi à copier et l'agent.",
+      meta: "Lecture estimée : 5 minutes",
     },
     pills: [
-      "Impôts, URSSAF, INPI, BODACC",
-      "Facturation électronique",
-      "Uniquement le neuf, chaque matin",
+      "Checklist impôts, URSSAF, BODACC",
+      "Tableau facturation électronique",
+      "Déjà en service en cabinet",
       "Lecture seule, serveur en France",
     ],
     urlRessource: "/g/agent-surveillance",

@@ -16,6 +16,7 @@ const ICONS = {
   arrowUpRight: [["path", { d: "M7 7h10v10" }], ["path", { d: "M7 17 17 7" }]],
   arrowDown: [["path", { d: "M12 5v14" }], ["path", { d: "m19 12-7 7-7-7" }]],
   check: [["path", { d: "M20 6 9 17l-5-5" }]],
+  mail: [["path", { d: "m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7" }], ["rect", { x: "2", y: "4", width: "20", height: "16", rx: "2" }]],
 } satisfies Record<string, Node[]>;
 
 export type IconName = keyof typeof ICONS;
