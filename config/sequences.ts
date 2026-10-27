@@ -41,6 +41,7 @@ export const SEQUENCES = {
   // Compatibilité : ne pas supprimer cette identité, des inscriptions signées peuvent encore la porter.
   "guide-generique-v1": genericGuide("guide-generique-v1", "Guide (ancienne identité partagée)"),
   "guide-claude-pennylane-v1": genericGuide("guide-claude-pennylane-v1", "Claude × Pennylane"),
+  "guide-agent-surveillance-v1": genericGuide("guide-agent-surveillance-v1", "Agent Surveillance : la fiche"),
   "guide-claude-meta-ads-v1": genericGuide("guide-claude-meta-ads-v1", "Claude × Meta Ads"),
   "guide-copilot-8-cas-v1": genericGuide("guide-copilot-8-cas-v1", "Copilot : 8 cas d'usage"),
   "guide-claude-droit-v1": genericGuide("guide-claude-droit-v1", "Claude pour le droit"),
