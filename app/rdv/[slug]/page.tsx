@@ -133,12 +133,19 @@ export default async function PageRdv({ params }: Props) {
             </div>
           </div>
           <div className="mt-7">
-            <BookingCalendar embedUrl={p.booking.embedUrl} url={p.booking.url} title={p.booking.title} durationMin={p.booking.durationMin} />
+            <BookingCalendar embedUrl={p.booking.embedUrl} url={p.booking.url} title={p.booking.title} />
           </div>
         </section>
 
         <Section id="ia" eyebrow="Ce que votre IA prépare à votre place" title="Vous ne saisissez plus, vous validez">
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+          <div className="flex gap-4 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6 sm:items-center sm:gap-5 sm:p-7">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Icon name="clock" size={18} strokeWidth={1.75} /></span>
+            <div>
+              <p className="text-[18px] font-semibold leading-snug tracking-[-0.02em] sm:text-[20px]">{p.timeSaved.title}</p>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{p.timeSaved.text}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1.1fr_1fr]">
             <ul className={`${card} divide-y divide-bordure`}>
               {p.tasks.map((t) => (
                 <li key={t} className="flex items-center gap-3 px-5 py-3.5 text-[14px] sm:px-6">
@@ -146,6 +153,10 @@ export default async function PageRdv({ params }: Props) {
                   {t}
                 </li>
               ))}
+              <li className="flex items-center gap-3 px-5 py-3.5 text-[14px] text-secondaire sm:px-6">
+                <Icon name="plus" size={14} className="shrink-0 text-discret" />
+                {p.tasksMore}
+              </li>
             </ul>
             <div className={`${card} p-6`}>
               <span className={tile}><Icon name="shieldCheck" size={14} /></span>
@@ -155,7 +166,7 @@ export default async function PageRdv({ params }: Props) {
           </div>
         </Section>
 
-        <Section id="logiciels" eyebrow="Votre logiciel" title="Lecture, écriture ou fichier FEC">
+        <Section id="logiciels" eyebrow="Votre logiciel" title={p.softwareTitle}>
           <ul className={`${card} divide-y divide-bordure`}>
             {p.software.map((s) => (
               <li key={s.names} className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-6">

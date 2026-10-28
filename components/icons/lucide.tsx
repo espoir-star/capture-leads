@@ -24,6 +24,7 @@ const ICONS = {
   route: [["circle", { cx: "6", cy: "19", r: "3" }], ["path", { d: "M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" }], ["circle", { cx: "18", cy: "5", r: "3" }]],
   listChecks: [["path", { d: "m3 17 2 2 4-4" }], ["path", { d: "m3 7 2 2 4-4" }], ["path", { d: "M13 6h8" }], ["path", { d: "M13 12h8" }], ["path", { d: "M13 18h8" }]],
   userCheck: [["path", { d: "m16 11 2 2 4-4" }], ["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }], ["circle", { cx: "9", cy: "7", r: "4" }]],
+  plus: [["path", { d: "M5 12h14" }], ["path", { d: "M12 5v14" }]],
 } satisfies Record<string, Node[]>;
 
 export type IconName = keyof typeof ICONS;

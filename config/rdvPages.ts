@@ -3,12 +3,14 @@
  * dans un agenda de rendez-vous Google, sans formulaire ni email intermédiaire.
  *
  * Premier test le 29/10/2026 : post LinkedIn « Catégoriser, lettrer, saisir »
- * (audit d'installation gratuit, texte d'Espoir). L'agenda n'est chargé qu'au clic
- * du visiteur (components/BookingCalendar.tsx) : Google lit et dépose ses propres cookies.
+ * (audit d'installation gratuit, texte d'Espoir). L'agenda est affiché ouvert dès
+ * l'arrivée sur la page (choix d'Espoir du 28/10/2026, components/BookingCalendar.tsx).
  *
- * Uniquement des faits vérifiés : connecteurs et logiciels repris de la page
- * althoce.com/connecteurs/pennylane/ (brief d'Espoir du 26/10/2026), lecture seule
- * du MCP Pennylane revérifiée sur pennylane.com/fr/mcp le 28/10/2026, Isacompta
+ * Uniquement des faits vérifiés : logiciels et temps gagné donnés par Espoir le
+ * 28/10/2026 (ACD, Cegid Loop, Sage Génération Experts, MyUnisoft, Inqom en écriture
+ * comme Pennylane ; logiciels fermés en sur mesure ; aucune mention du fichier FEC ;
+ * « une matinée par dossier […] se relit en quelques minutes », texte du post), lecture
+ * seule du MCP Pennylane revérifiée sur pennylane.com/fr/mcp le 28/10/2026, Isacompta
  * édité par AGIRIS pour les cabinets (agiris.fr).
  */
 import type { IconName } from "@/components/icons/lucide";
@@ -35,7 +37,11 @@ export interface RdvPage {
   /** Phrase d'honnêteté sous les apports de l'audit */
   honesty: string;
   tasks: string[];
+  /** Dernière ligne de la liste : elle n'est pas exhaustive */
+  tasksMore: string;
+  timeSaved: { title: string; text: string };
   validation: { title: string; text: string };
+  softwareTitle: string;
   software: { names: string; status: string; text: string; source?: { label: string; url: string } }[];
   /** Webinar proposé à ceux qui ne réservent pas (affiché tant que les inscriptions sont ouvertes) */
   webinarSlug?: string;
@@ -46,7 +52,7 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
     slug: "audit-connecteurs",
     metaTitle: "Audit d'installation gratuit\u00a0: votre IA dans votre logiciel",
     metaDescription:
-      "30 minutes en visio pour savoir ce qui est branchable sur votre logiciel (lecture, écriture, FEC) et ce que votre IA peut préparer à votre place.",
+      "30 minutes en visio pour savoir ce que votre IA peut lire et écrire dans votre logiciel, et ce qu'elle peut préparer à votre place.",
     eyebrow: "Audit d'installation · 100\u00a0% gratuit",
     title: "Votre IA peut-elle <accent>écrire dans votre logiciel\u00a0?</accent>",
     subtitle: "En 30 minutes de visio, vous savez ce qui est branchable chez vous et par où commencer.",
@@ -61,7 +67,7 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
     host: { name: "Espoir Mwami", role: "Fondateur d'Althoce", photo: "/webinar/espoir-mwami.jpg" },
     deliverables: [
       { icon: "plug", title: "Ce qui est branchable", text: "Sur votre logiciel\u00a0: lecture, écriture, ou les deux." },
-      { icon: "route", title: "La méthode adaptée", text: "Connecteur officiel, connecteur sur mesure ou fichier FEC." },
+      { icon: "route", title: "La méthode adaptée", text: "Connecteur officiel ou sur mesure, adapté aux spécificités de votre logiciel." },
       { icon: "listChecks", title: "Les tâches à confier en premier", text: "Et le temps gagné sur chacune." },
       { icon: "userCheck", title: "Le bon compte Claude ou ChatGPT", text: "Pour traiter des données clients." },
     ],
@@ -73,26 +79,32 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
       "Lettrer et rapprocher",
       "Passer des écritures",
     ],
+    tasksMore: "Et d'autres tâches, selon vos besoins",
+    timeSaved: {
+      title: "Une matinée par dossier, relue en quelques minutes",
+      text: "Catégoriser, lettrer, saisir\u00a0: votre IA le prépare pendant que vous faites autre chose. Vous relisez, vous validez.",
+    },
     validation: {
       title: "Votre IA propose, vous décidez.",
       text: "Rien ne part dans le dossier sans votre accord. Dans Claude, chaque type d'action se règle sur «\u00a0toujours autorisé\u00a0», «\u00a0validation requise\u00a0» ou «\u00a0bloqué\u00a0». Dans ChatGPT, les écritures demandent une confirmation par défaut.",
     },
+    softwareTitle: "Chaque connecteur s'adapte à votre logiciel",
     software: [
       {
         names: "Pennylane",
-        status: "Écriture avec Althoce",
+        status: "Lecture et écriture",
         text: "Le connecteur officiel est en lecture seule à ce jour. Le connecteur Althoce ajoute l'écriture.",
         source: { label: "pennylane.com/fr/mcp", url: "https://www.pennylane.com/fr/mcp" },
       },
       {
         names: "ACD, Cegid Loop, Sage Génération Experts, MyUnisoft, Inqom",
-        status: "Sur mesure",
-        text: "Connecteur sur mesure possible. L'écriture dépend des accès de votre logiciel.",
+        status: "Lecture et écriture",
+        text: "Comme pour Pennylane, votre IA lit vos dossiers et y écrit, avec votre validation.",
       },
       {
         names: "Cegid Quadra, Quadratus, Coala, Isacompta (AGIRIS)",
-        status: "Fichier FEC",
-        text: "Logiciels fermés\u00a0: on passe par le fichier FEC.",
+        status: "Sur mesure",
+        text: "Logiciels fermés\u00a0: on construit un connecteur sur mesure.",
       },
     ],
     webinarSlug: "connecteurs-mcp-cabinets",

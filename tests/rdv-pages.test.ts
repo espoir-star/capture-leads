@@ -9,7 +9,8 @@ import { getWebinar } from "@/config/webinars";
 function texts(p: (typeof RDV_PAGES)[string]): string[] {
   return [
     p.metaTitle, p.metaDescription, p.eyebrow, p.title, p.subtitle, p.booking.title, p.honesty,
-    p.validation.title, p.validation.text, p.host.name, p.host.role,
+    p.validation.title, p.validation.text, p.host.name, p.host.role, p.tasksMore,
+    p.timeSaved.title, p.timeSaved.text, p.softwareTitle,
     ...p.deliverables.flatMap((d) => [d.title, d.text]),
     ...p.tasks,
     ...p.software.flatMap((s) => [s.names, s.status, s.text]),
@@ -37,7 +38,7 @@ test("pages de rendez-vous : agenda Google réel, intégrable, et page bien form
   assert.equal(getRdvPage("__proto__"), undefined);
 });
 
-test("audit connecteurs : le texte du post, l'agenda des connecteurs, aucune écriture promise via Pennylane seul", () => {
+test("audit connecteurs : le texte du post, l'agenda des connecteurs, les logiciels validés par Espoir", () => {
   const p = getRdvPage("audit-connecteurs");
   assert.ok(p);
   // Même agenda que althoce.com/connecteurs (« Connecteurs IA MCP - By Althoce », 30 min)
@@ -45,11 +46,19 @@ test("audit connecteurs : le texte du post, l'agenda des connecteurs, aucune éc
   assert.equal(p.booking.durationMin, 30);
   assert.match(p.eyebrow, /100\u00a0% gratuit/);
   assert.deepEqual(p.tasks, ["Catégoriser les transactions", "Affecter un tiers", "Ventiler une facture fournisseur", "Lettrer et rapprocher", "Passer des écritures"]);
+  assert.match(p.tasksMore, /^Et d'autres tâches/, "liste non exhaustive");
+  // Temps gagné : le texte du post, aucun chiffre ajouté
+  assert.match(p.timeSaved.title, /une matinée par dossier/i);
+  assert.match(p.timeSaved.title, /quelques minutes/);
   assert.match(p.honesty, /ne permet pas l'écriture/);
   assert.match(p.validation.text, /sans votre accord/);
   const pennylane = p.software.find((s) => s.names === "Pennylane");
   assert.ok(pennylane);
   assert.match(pennylane.text, /lecture seule/);
   assert.equal(pennylane.source?.url, "https://www.pennylane.com/fr/mcp");
-  assert.ok(p.software.some((s) => /fichier FEC/.test(s.text)));
+  // Espoir, 28/10 : ACD, Loop, Sage GE, MyUnisoft, Inqom en écriture comme Pennylane ; logiciels fermés en sur mesure ; plus de FEC
+  const status = (name: string) => p.software.find((s) => s.names.includes(name))?.status;
+  for (const name of ["Pennylane", "ACD", "Cegid Loop", "Sage Génération Experts", "MyUnisoft", "Inqom"]) assert.equal(status(name), "Lecture et écriture", name);
+  for (const name of ["Cegid Quadra", "Quadratus", "Coala", "Isacompta"]) assert.equal(status(name), "Sur mesure", name);
+  for (const t of texts(p)) assert.doesNotMatch(t, /\bFEC\b/, `fichier FEC retiré : ${t}`);
 });
