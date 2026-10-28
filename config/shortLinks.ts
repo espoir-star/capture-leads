@@ -7,11 +7,12 @@
  * config/sourceRegistry.ts). Pour un nouveau post : ajouter une entrée.
  */
 import { getLeadMagnet } from "@/config/leadMagnets";
+import { getRdvPage } from "@/config/rdvPages";
 import { getWebinar } from "@/config/webinars";
 
 export interface ShortLink {
-  /** Page cible : guide (/r/<slug>, défaut) ou webinar ouvert (/w/<slug>) */
-  kind?: "guide" | "webinar";
+  /** Page cible : guide (/r/<slug>, défaut), webinar ouvert (/w/<slug>) ou rendez-vous (/rdv/<slug>) */
+  kind?: "guide" | "webinar" | "rdv";
   slug: string;
   utm_source: string;
   utm_medium: string;
@@ -70,6 +71,15 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // lien envoyé en message privé.
     utm_content: "LI_EC_20261028_01",
   },
+  au1: {
+    kind: "rdv",
+    slug: "audit-connecteurs",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "audit_installation_connecteurs",
+    // Post « Catégoriser, lettrer, saisir » (audit d'installation gratuit), publié le 29/10/2026 (date donnée par Espoir).
+    utm_content: "LI_EC_20261029_01",
+  },
 };
 
 /** Chemin cible (relatif) d'un code, ou null s'il est inconnu */
@@ -77,8 +87,15 @@ export function shortLinkTarget(code: string): string | null {
   if (!Object.hasOwn(SHORT_LINKS, code)) return null;
   const l = SHORT_LINKS[code];
   if (!l.utm_content) return null;
-  const webinar = l.kind === "webinar";
-  if (webinar ? getWebinar(l.slug)?.status !== "open" : !getLeadMagnet(l.slug)) return null;
+  if (!shortLinkPageExists(l)) return null;
   const q = new URLSearchParams({ utm_source: l.utm_source, utm_medium: l.utm_medium, utm_campaign: l.utm_campaign, utm_content: l.utm_content });
-  return `/${webinar ? "w" : "r"}/${l.slug}?${q}`;
+  const prefix = l.kind === "webinar" ? "w" : l.kind === "rdv" ? "rdv" : "r";
+  return `/${prefix}/${l.slug}?${q}`;
+}
+
+/** La page visée existe : guide connu, webinar ouvert ou page de rendez-vous connue */
+export function shortLinkPageExists(l: Pick<ShortLink, "kind" | "slug">): boolean {
+  if (l.kind === "webinar") return getWebinar(l.slug)?.status === "open";
+  if (l.kind === "rdv") return Boolean(getRdvPage(l.slug));
+  return Boolean(getLeadMagnet(l.slug));
 }

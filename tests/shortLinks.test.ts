@@ -1,15 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SHORT_LINKS, shortLinkTarget } from "@/config/shortLinks";
-import { getLeadMagnet } from "@/config/leadMagnets";
-import { getWebinar } from "@/config/webinars";
+import { SHORT_LINKS, shortLinkPageExists, shortLinkTarget } from "@/config/shortLinks";
 import { LINKEDIN_UTM_CONTENT_PATTERN } from "@/config/sourceRegistry";
 
-test("liens courts : guide existant, code court, utm_content conforme et unique par post", () => {
+test("liens courts : page existante, code court, utm_content conforme et unique par post", () => {
   const contents = new Set<string>();
   for (const [code, l] of Object.entries(SHORT_LINKS)) {
     assert.match(code, /^[a-z0-9-]{1,20}$/, code);
-    assert.ok(l.kind === "webinar" ? getWebinar(l.slug)?.status === "open" : getLeadMagnet(l.slug), l.slug);
+    assert.ok(shortLinkPageExists(l), l.slug);
     if (l.utm_content === null) {
       assert.equal(shortLinkTarget(code), null, "code réservé, jamais diffusé avec une date inventée");
       continue;
@@ -37,6 +35,11 @@ test("liens courts : cible exacte, code inconnu et clés du prototype refusés",
     shortLinkTarget("wb1"),
     "/w/connecteurs-mcp-cabinets?utm_source=linkedin&utm_medium=organic&utm_campaign=webinar_connecteurs_mcp_20261105&utm_content=LI_EC_20261028_01"
   );
+  assert.equal(
+    shortLinkTarget("au1"),
+    "/rdv/audit-connecteurs?utm_source=linkedin&utm_medium=organic&utm_campaign=audit_installation_connecteurs&utm_content=LI_EC_20261029_01"
+  );
+  assert.equal(shortLinkPageExists({ kind: "rdv", slug: "inconnu" }), false);
   assert.equal(shortLinkTarget("inconnu"), null);
   assert.equal(shortLinkTarget("toString"), null);
   assert.equal(shortLinkTarget("__proto__"), null);
