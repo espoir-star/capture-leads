@@ -38,7 +38,7 @@ test("réconciliation des clics à 00:30 heure de Paris (22:30 UTC) : aucune err
   await fetch(`${URL}/__seed`, { method: "POST", body: JSON.stringify({ email: "nuit@cabinet.fr", attributes: { LEAD_SCORE: 5 } }) });
   await fetch(`${URL}/__stats`, { method: "POST", body: JSON.stringify({ events: [
     { event: "requests", email: "nuit@cabinet.fr", messageId: "<m-nuit@relay>", date: sentAt, templateId: 43 },
-    { event: "clicks", email: "nuit@cabinet.fr", messageId: "<m-nuit@relay>", date: clickAt, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    { event: "clicks", email: "nuit@cabinet.fr", messageId: "<m-nuit@relay>", date: clickAt, templateId: 43, link: "https://calendar.app.google/JmhxjFqk2kybuFLR9" },
   ] }) });
   const report = await clicks.reconcileTransactionalClicks(parisAfterMidnight);
   assert.equal(report.candidates, 1);
@@ -52,7 +52,7 @@ test("passe horaire : clics déjà journalisés = aucune relecture ni réécritu
   for (const email of emails) await fetch(`${URL}/__seed`, { method: "POST", body: JSON.stringify({ email, attributes: { LEAD_SCORE: 5 } }) });
   await fetch(`${URL}/__stats`, { method: "POST", body: JSON.stringify({ events: emails.flatMap((email, i) => [
     { event: "requests", email, messageId: `<m-${i}@relay>`, date: sentAt, templateId: 43 },
-    { event: "clicks", email, messageId: `<m-${i}@relay>`, date: clickAt, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    { event: "clicks", email, messageId: `<m-${i}@relay>`, date: clickAt, templateId: 43, link: "https://calendar.app.google/JmhxjFqk2kybuFLR9" },
   ]) }) });
   const first = await clicks.reconcileTransactionalClicks(new Date());
   assert.equal(first.inserted, 3);
@@ -71,7 +71,7 @@ test("passe horaire : heure limite atteinte → clics reportés, sans erreur", a
   await fetch(`${URL}/__seed`, { method: "POST", body: JSON.stringify({ email: "tard@cabinet.fr", attributes: {} }) });
   await fetch(`${URL}/__stats`, { method: "POST", body: JSON.stringify({ events: [
     { event: "requests", email: "tard@cabinet.fr", messageId: "<m-tard@relay>", date: new Date(Date.now() - 7_200_000).toISOString(), templateId: 43 },
-    { event: "clicks", email: "tard@cabinet.fr", messageId: "<m-tard@relay>", date: clickAt, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    { event: "clicks", email: "tard@cabinet.fr", messageId: "<m-tard@relay>", date: clickAt, templateId: 43, link: "https://calendar.app.google/JmhxjFqk2kybuFLR9" },
   ] }) });
   const report = await clicks.reconcileTransactionalClicks(new Date(), { deadline: Date.now() - 1 });
   assert.equal(report.deferred, 1);
@@ -85,9 +85,9 @@ test("passe horaire : seuls les clics des 6 dernières heures sont relus (le web
   for (const email of ["ancien@cabinet.fr", "recent@cabinet.fr"]) await fetch(`${URL}/__seed`, { method: "POST", body: JSON.stringify({ email, attributes: {} }) });
   await fetch(`${URL}/__stats`, { method: "POST", body: JSON.stringify({ events: [
     { event: "requests", email: "ancien@cabinet.fr", messageId: "<m-old@relay>", date: new Date(now.getTime() - 21 * 3_600_000).toISOString(), templateId: 43 },
-    { event: "clicks", email: "ancien@cabinet.fr", messageId: "<m-old@relay>", date: old, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    { event: "clicks", email: "ancien@cabinet.fr", messageId: "<m-old@relay>", date: old, templateId: 43, link: "https://calendar.app.google/JmhxjFqk2kybuFLR9" },
     { event: "requests", email: "recent@cabinet.fr", messageId: "<m-new@relay>", date: new Date(now.getTime() - 2 * 3_600_000).toISOString(), templateId: 43 },
-    { event: "clicks", email: "recent@cabinet.fr", messageId: "<m-new@relay>", date: recent, templateId: 43, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+    { event: "clicks", email: "recent@cabinet.fr", messageId: "<m-new@relay>", date: recent, templateId: 43, link: "https://calendar.app.google/JmhxjFqk2kybuFLR9" },
   ] }) });
   const report = await clicks.reconcileTransactionalClicks(now);
   assert.equal(report.candidates, 1);

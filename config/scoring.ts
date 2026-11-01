@@ -33,7 +33,7 @@ export const CLICK_CATEGORIES: ReadonlySet<BehaviorCategory> = new Set(["content
 
 export const SCORE_CAP = 100;
 
-/** Préfixe de la page de prise de RDV (cal.com/althoce-…) */
+/** Préfixe des pages de prise de RDV (agenda Google, lu par le CRM) */
 const CTA_PREFIX = CTA_URL.replace(/\/[^/]*$/, "/");
 
 /** Clic « offre commerciale ». Ajouter ici les pages d'offre du site althoce.com quand elles seront définies. */

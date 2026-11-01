@@ -15,7 +15,7 @@ import { createMarketingOptoutToken } from "@/lib/marketing/token";
 
 type Env = Record<string, string | undefined>;
 
-export const CTA_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
+export const CTA_URL = "https://calendar.app.google/JmhxjFqk2kybuFLR9";
 const PRODUCTION_URL = "https://guide-gratuit-pi.vercel.app";
 
 /** Domaine des liens : SITE_URL, sinon l'URL de branche en Preview, sinon la Production */

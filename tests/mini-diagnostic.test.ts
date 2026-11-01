@@ -65,10 +65,10 @@ test("feuille de route : réponses, classement, champs manquants signalés, proc
   assert.doesNotMatch(roadmapSummary([], {}), /Classement/);
 });
 
-test("page : un seul appel commercial (Cal.com), aucun formulaire ni envoi de données", () => {
+test("page : un seul appel commercial (agenda Google), aucun formulaire ni envoi de données", () => {
   const page = readFileSync("app/g/mini-diagnostic-ia-finance/page.tsx", "utf8");
   const tool = readFileSync("components/MiniDiagnostic.tsx", "utf8");
-  assert.equal((page.match(/cal\.com\/althoce-conseil-4ncbuz\/30min/g) ?? []).length, 1);
+  assert.equal((page.match(/calendar\.app\.google\/JmhxjFqk2kybuFLR9/g) ?? []).length, 1);
   assert.match(page, /Échanger 30 minutes avec Althoce/);
   assert.match(page, /robots:\{index:false,follow:false\}/);
   for (const src of [page, tool]) {

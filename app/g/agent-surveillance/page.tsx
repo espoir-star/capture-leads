@@ -12,7 +12,7 @@ export const metadata: Metadata = {
  robots:{index:false,follow:false},
 };
 
-const CAL_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
+const CAL_URL = "https://calendar.app.google/JmhxjFqk2kybuFLR9";
 
 const label = "text-[11px] font-semibold uppercase tracking-[0.16em]";
 const card = "rounded-[18px] border border-[color:var(--border)] bg-[color:var(--surface)]";

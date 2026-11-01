@@ -19,7 +19,7 @@ import { recordEvents } from "@/lib/scoring/ledger";
 process.env.SIGNING_SECRET = "secret-de-test";
 
 const NOW = new Date("2026-10-10T12:00:00Z");
-const CAL = "https://cal.com/althoce-conseil-4ncbuz/30min";
+const CAL = "https://calendar.app.google/JmhxjFqk2kybuFLR9";
 const NOTION = "https://espoir-metareglage.notion.site/12-cas-d-usage-concrets-de-Claude";
 const tx = (over: Record<string, unknown> = {}) => ({
   event: "click",

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const guide = "https://espoir-metareglage.notion.site/12-cas-d-usage-concrets-de-Claude-pour-les-experts-comptables-3aac7d01a0e881caabc6c8d9d5555dc2";
-const booking = "https://cal.com/althoce-conseil-4ncbuz/30min";
+const booking = "https://calendar.app.google/JmhxjFqk2kybuFLR9";
 const privacy = "https://althoce.com/confidentialite/";
 
 for (const family of ["guide-12-cas-ec", "generique"]) {

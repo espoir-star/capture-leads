@@ -510,7 +510,7 @@ async function main() {
 
   await scenario("SC1 · clic RDV (transactionnel) → +10 ; rejeu → rien ; clic guide → +5, lead chaud, AUCUN email (suivi dans le CRM)", async () => {
     await seed({ email: "chaud@cabinet.fr", attributes: { LEAD_SCORE: 12, LIFECYCLE_STAGE: "LEAD", EMAIL_STATUS: "PENDING", PRENOM: "Léa", ENTREPRISE: "Cabinet <Test>" } });
-    const offer = click("chaud@cabinet.fr", "<m1@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min");
+    const offer = click("chaud@cabinet.fr", "<m1@relay>", "https://calendar.app.google/JmhxjFqk2kybuFLR9");
     const r1 = await hook(offer);
     assert.equal(r1.status, 200, JSON.stringify(r1.body));
     assert.deepEqual(r1.body.results, ["click_scored"]);
@@ -521,7 +521,7 @@ async function main() {
     assert.equal(c.attributes.LAST_EMAIL_CLICK_AT, today());
 
     await hook(offer); // Brevo rejoue
-    await hook([offer, { ...offer, link: "https://cal.com/althoce-conseil-4ncbuz/30min?x=1" }]); // 2e clic RDV, même email
+    await hook([offer, { ...offer, link: "https://calendar.app.google/JmhxjFqk2kybuFLR9?x=1" }]); // 2e clic RDV, même email
     let s = await state();
     assert.equal(s.ledger.length, 1, "un seul événement journalisé");
     assert.equal(s.contacts[0].attributes.LEAD_SCORE, 22, "aucun double comptage");
@@ -544,7 +544,7 @@ async function main() {
   await scenario("SC2 · n8n arrêté → 429 (Brevo rejoue), rien écrit ; au rejeu → compté une fois", async () => {
     await seed({ email: "panne@cabinet.fr", attributes: { LEAD_SCORE: 4 } });
     await configure({ ledgerDown: true });
-    const evt = click("panne@cabinet.fr", "<m2@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min");
+    const evt = click("panne@cabinet.fr", "<m2@relay>", "https://calendar.app.google/JmhxjFqk2kybuFLR9");
     const r = await hook(evt);
     assert.equal(r.status, 429);
     assert.equal((await contactOf("panne@cabinet.fr"))!.attributes.LEAD_SCORE, 4);
@@ -562,7 +562,7 @@ async function main() {
       click("neutre@cabinet.fr", "<m3@relay>", `${APP}/desinscription?t=abc`),
       click("neutre@cabinet.fr", "<m3@relay>", `${APP}/confirmer-email?t=abc`),
       click("neutre@cabinet.fr", "<m3@relay>", "mailto:espoir@contact.althoce.com"),
-      { ...click("neutre@cabinet.fr", "<m4@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min"), tags: ["alerte-lead-chaud"] },
+      { ...click("neutre@cabinet.fr", "<m4@relay>", "https://calendar.app.google/JmhxjFqk2kybuFLR9"), tags: ["alerte-lead-chaud"] },
       { event: "spam", email: "neutre@cabinet.fr" },
     ]);
     assert.deepEqual(r.body.results, ["ignored_click", "ignored_click", "ignored_click", "ignored_click", "marketing_opposed"]);
@@ -856,7 +856,7 @@ async function main() {
     await seed({ email: "robot@cabinet.fr", attributes: { LEAD_SCORE: 2 } });
     const sent = Math.floor(Date.now() / 1000) - 3600;
     const r = await hook([
-      { event: "click", email: "robot@cabinet.fr", camp_id: 51, URL: "https://cal.com/althoce-conseil-4ncbuz/30min", ts_sent: sent, ts_event: sent + 4 },
+      { event: "click", email: "robot@cabinet.fr", camp_id: 51, URL: "https://calendar.app.google/JmhxjFqk2kybuFLR9", ts_sent: sent, ts_event: sent + 4 },
       { event: "click", email: "robot@cabinet.fr", camp_id: 52, URL: "https://www.linkedin.com/posts/x", ts_sent: sent, ts_event: sent + 600 },
     ]);
     assert.equal(r.status, 200);
@@ -871,8 +871,8 @@ async function main() {
     const clickAt = new Date(Date.now() - 3_600_000).toISOString();
     await fetch(`${MOCK}/__stats`, { method: "POST", body: JSON.stringify({ events: [
       { event: "requests", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: sentAt, templateId: 36 },
-      { event: "clicks", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: clickAt, templateId: 36, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
-      { event: "clicks", email: "espoir@contact.althoce.com", messageId: "<m-interne@relay>", date: clickAt, link: "https://cal.com/althoce-conseil-4ncbuz/30min" },
+      { event: "clicks", email: "perdu@cabinet.fr", messageId: "<m-perdu@relay>", date: clickAt, templateId: 36, link: "https://calendar.app.google/JmhxjFqk2kybuFLR9" },
+      { event: "clicks", email: "espoir@contact.althoce.com", messageId: "<m-interne@relay>", date: clickAt, link: "https://calendar.app.google/JmhxjFqk2kybuFLR9" },
     ] }) });
     const auth = { Authorization: `Bearer ${SEQUENCE_SECRET}` };
     const m = await post("/api/marketing/maintenance", {}, auth);
@@ -881,7 +881,7 @@ async function main() {
     let c = (await contactOf("perdu@cabinet.fr"))!;
     assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
     // Brevo finit par livrer le webhook : même clé, aucun double comptage
-    await hook(click("perdu@cabinet.fr", "<m-perdu@relay>", "https://cal.com/althoce-conseil-4ncbuz/30min"));
+    await hook(click("perdu@cabinet.fr", "<m-perdu@relay>", "https://calendar.app.google/JmhxjFqk2kybuFLR9"));
     await post("/api/marketing/maintenance", {}, auth);
     c = (await contactOf("perdu@cabinet.fr"))!;
     assert.equal(c.attributes.BEHAVIOR_SCORE, 10);
