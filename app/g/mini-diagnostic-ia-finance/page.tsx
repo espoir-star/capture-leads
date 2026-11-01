@@ -10,7 +10,7 @@ export const metadata: Metadata = {
  robots:{index:false,follow:false},
 };
 
-const CAL_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
+const CAL_URL = "https://calendar.app.google/JmhxjFqk2kybuFLR9";
 
 export default function Page() {
  return <main className="min-h-screen bg-fond text-white print:min-h-0 print:bg-white"><div className="mx-auto max-w-[790px] px-5 pb-20 pt-10 sm:px-8 print:p-0">

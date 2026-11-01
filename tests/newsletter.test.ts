@@ -31,7 +31,7 @@ test("email complet : désinscription Brevo, CTA tracé, aucun marqueur restant"
   const html = renderNewsletterHtml(nl);
   assert.match(html, /\{\{ unsubscribe \}\}/);
   assert.match(html, /\{\{ mirror \}\}/);
-  assert.match(html, /cal\.com\/althoce-conseil-4ncbuz\/30min\?utm_source=brevo&amp;utm_medium=email&amp;utm_campaign=nl_finance_20261103&amp;utm_content=cta/);
+  assert.match(html, /calendar\.app\.google\/JmhxjFqk2kybuFLR9\?utm_source=brevo&amp;utm_medium=email&amp;utm_campaign=nl_finance_20261103&amp;utm_content=cta/);
   assert.doesNotMatch(html, /%%[A-Z_]+%%/);
   assert.doesNotMatch(html, /<script/i);
 });

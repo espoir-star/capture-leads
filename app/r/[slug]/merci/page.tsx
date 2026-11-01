@@ -5,7 +5,7 @@ import GuideLink from "@/components/GuideLink";
 import OppositionNotice from "@/components/OppositionNotice";
 import DeliveryStatus from "@/components/DeliveryStatus";
 
-const CAL_URL = "https://cal.com/althoce-conseil-4ncbuz/30min";
+const CAL_URL = "https://calendar.app.google/JmhxjFqk2kybuFLR9";
 
 interface Props {
   params: Promise<{ slug: string }>;

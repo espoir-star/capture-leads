@@ -288,7 +288,7 @@ test("score : les liens de service d'un webinar (connexion, replay, agenda) ne r
     "https://calendar.google.com/calendar/render?action=TEMPLATE&text=x",
   ]) assert.equal(classifyClick(url), null, url);
   assert.equal(classifyClick("https://guide-gratuit-pi.vercel.app/w/test-parcours-webinaire"), "content_click", "la page d'inscription reste un contenu");
-  assert.equal(classifyClick("https://cal.com/althoce-conseil-4ncbuz/30min"), "offer_click");
+  assert.equal(classifyClick("https://calendar.app.google/JmhxjFqk2kybuFLR9"), "offer_click");
 });
 
 test("avant le direct, le replay n'est jamais promis : page d'inscription, confirmation, email de confirmation (objectif : la présence en direct)", () => {
