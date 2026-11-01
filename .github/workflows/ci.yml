@@ -1,6 +1,8 @@
 # Vérifications à chaque pull request et sur main. Aucun secret : les tests
 # de bout en bout tournent contre un faux Brevo et un faux n8n en mémoire
 # (tests/e2e/mock-brevo.ts) ; Turnstile utilise la clé de TEST Cloudflare.
+# Google Fonts est simulé (tests/e2e/mock-google-fonts.cjs) : la compilation ne
+# dépend pas du réseau. Vercel, lui, télécharge les vraies polices.
 name: CI
 
 on:
@@ -20,6 +22,8 @@ jobs:
     name: Lint, types, tests, build, e2e
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      NEXT_FONT_GOOGLE_MOCKED_RESPONSES: ${{ github.workspace }}/tests/e2e/mock-google-fonts.cjs
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
