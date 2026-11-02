@@ -11,8 +11,11 @@ import { getRdvPage } from "@/config/rdvPages";
 import { getWebinar } from "@/config/webinars";
 
 export interface ShortLink {
-  /** Page cible : guide (/r/<slug>, défaut), webinar ouvert (/w/<slug>) ou rendez-vous (/rdv/<slug>) */
-  kind?: "guide" | "webinar" | "rdv";
+  /**
+   * Page cible : guide (/r/<slug>, défaut), webinar ouvert (/w/<slug>), rendez-vous (/rdv/<slug>)
+   * ou ressource en accès libre, sans formulaire (/g/<slug>, voir OPEN_READERS)
+   */
+  kind?: "guide" | "webinar" | "rdv" | "lecteur";
   slug: string;
   utm_source: string;
   utm_medium: string;
@@ -80,7 +83,19 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // Post « Catégoriser, lettrer, saisir » (audit d'installation gratuit), publié le 29/10/2026 (date donnée par Espoir).
     utm_content: "LI_EC_20261029_01",
   },
+  pr1: {
+    kind: "lecteur",
+    slug: "10-prompts-production-cabinet",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "10_prompts_production_cabinet",
+    // Post « 10 prompts » (texte fourni par Espoir le 02/11/2026) : code réservé jusqu'à la date de publication.
+    utm_content: null,
+  },
 };
+
+/** Lecteurs /g/<slug> en accès libre (sans page de capture) : seuls ceux-ci acceptent un lien court. */
+export const OPEN_READERS: readonly string[] = ["10-prompts-production-cabinet"];
 
 /** Chemin cible (relatif) d'un code, ou null s'il est inconnu */
 export function shortLinkTarget(code: string): string | null {
@@ -89,13 +104,14 @@ export function shortLinkTarget(code: string): string | null {
   if (!l.utm_content) return null;
   if (!shortLinkPageExists(l)) return null;
   const q = new URLSearchParams({ utm_source: l.utm_source, utm_medium: l.utm_medium, utm_campaign: l.utm_campaign, utm_content: l.utm_content });
-  const prefix = l.kind === "webinar" ? "w" : l.kind === "rdv" ? "rdv" : "r";
+  const prefix = l.kind === "webinar" ? "w" : l.kind === "rdv" ? "rdv" : l.kind === "lecteur" ? "g" : "r";
   return `/${prefix}/${l.slug}?${q}`;
 }
 
-/** La page visée existe : guide connu, webinar ouvert ou page de rendez-vous connue */
+/** La page visée existe : guide connu, webinar ouvert, page de rendez-vous ou lecteur en accès libre */
 export function shortLinkPageExists(l: Pick<ShortLink, "kind" | "slug">): boolean {
   if (l.kind === "webinar") return getWebinar(l.slug)?.status === "open";
   if (l.kind === "rdv") return Boolean(getRdvPage(l.slug));
+  if (l.kind === "lecteur") return OPEN_READERS.includes(l.slug);
   return Boolean(getLeadMagnet(l.slug));
 }
