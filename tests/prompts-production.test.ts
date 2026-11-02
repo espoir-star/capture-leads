@@ -20,6 +20,7 @@ function texts(): string[] {
     r.halfWork.writer.label, r.halfWork.writer.title, ...r.halfWork.writer.done, r.halfWork.writer.text, r.halfWork.promise,
     r.applyPrompt.title, r.applyPrompt.text, r.applyPrompt.prompt,
     r.method.title, r.method.coverage, ...r.method.steps.flatMap((s) => [s.title, s.text]),
+    r.software.title, r.software.custom, ...r.software.names,
   ];
 }
 
@@ -66,10 +67,16 @@ test("10 prompts : faits validés, typographie française, ni FEC ni replay", ()
     assert.doesNotMatch(t, /\bFEC\b/, `fichier FEC retiré (Espoir, 28/10) : ${t}`);
     assert.doesNotMatch(t, /\breplay\b|enregistr/i, `invitation au direct, sans replay : ${t}`);
   }
-  // Logiciels : la liste validée de l'audit (lecture seule du MCP Pennylane, source officielle)
-  const rdv = getRdvPage(r.rdvSlug);
-  assert.ok(rdv);
-  assert.equal(rdv.software.find((s) => s.names === "Pennylane")?.source?.url, "https://www.pennylane.com/fr/mcp");
+  // Espoir, 02/11 : en écriture, du sur mesure pour tous les logiciels ; branchement montré au webinar ; aucun lien vers Pennylane
+  assert.match(r.software.custom, /sur mesure, quel que soit votre logiciel/);
+  assert.match(r.method.steps[0].title, /sur mesure/);
+  assert.ok(r.software.names.length >= 10 && r.software.names.includes("Pennylane"));
+  const page = readFileSync(`app/g/${r.slug}/page.tsx`, "utf8");
+  for (const src of [page, readFileSync("content/guides/prompts-production-cabinet.ts", "utf8")]) {
+    assert.doesNotMatch(src, /pennylane\.com|Lecture et écriture|\.software\.map|softwareTitle/);
+  }
+  assert.match(page, /on vous l'explique \$\{[^}]+\}, avec une démo en direct/);
+  assert.ok(getRdvPage(r.rdvSlug), "page d'audit, repli après le direct");
 });
 
 test("10 prompts : appels à l'action vers le webinar, puis l'audit, avec la même campagne que wb1 et au1", () => {

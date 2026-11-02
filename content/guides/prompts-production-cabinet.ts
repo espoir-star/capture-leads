@@ -5,9 +5,10 @@
  * qui écrit. Les appels à l'action mènent à l'inscription au webinar du 05/11/2026,
  * puis, une fois les inscriptions closes, à l'audit d'installation (/rdv/audit-connecteurs).
  *
- * Faits : MCP Pennylane officiel en lecture seule « pour le moment » (pennylane.com/fr/mcp,
- * revérifié le 02/11/2026) ; logiciels en écriture ou sur mesure validés par Espoir le
- * 28/10/2026 (config/rdvPages.ts, repris tel quel) ; temps gagné = texte du post.
+ * Faits : Espoir, 02/11/2026 : pour tous les logiciels, le connecteur en écriture est
+ * construit sur mesure ; le branchement est expliqué, avec une démo en direct, au
+ * webinar ; aucun lien vers le site de Pennylane. Logiciels repris de la liste validée
+ * le 28/10/2026 (config/rdvPages.ts) ; temps gagné = texte du post.
  * Aucune mention du fichier FEC, aucun replay annoncé (objectif : présence en direct).
  * Prompts repris du guide Pennylane (content/guides/claude-pennylane.ts) et rendus
  * indépendants du logiciel ; ceux de la saisie sont nouveaux.
@@ -242,8 +243,8 @@ Ensuite, récapitule ce qui a été écrit et ce qui reste à traiter.`),
     title: "Brancher un connecteur qui écrit, en quatre étapes",
     steps: [
       {
-        title: "Vérifiez ce que votre logiciel permet",
-        text: fr("Lecture, écriture, ou les deux : tout dépend des accès que l'éditeur ouvre. Le point logiciel par logiciel est juste en dessous."),
+        title: "Un connecteur sur mesure pour votre logiciel",
+        text: fr("Pour que votre IA écrive dans votre logiciel, le connecteur est construit sur mesure, selon les accès que le logiciel permet."),
       },
       {
         title: "Prenez un compte IA professionnel",
@@ -260,6 +261,12 @@ Ensuite, récapitule ce qui a été écrit et ce qui reste à traiter.`),
     ],
     /** Phrase du post, en tête de la liste des logiciels */
     coverage: fr("Ça marche sur Pennylane, et sur la plupart des autres logiciels de production, lorsque les accès le permettent."),
+  },
+  /** Espoir, 02/11/2026 : en écriture, du sur mesure pour tous les logiciels */
+  software: {
+    title: "Chaque connecteur s'adapte à votre logiciel",
+    custom: "Le connecteur qui écrit est construit sur mesure, quel que soit votre logiciel.",
+    names: ["Pennylane", "ACD", "Cegid Quadra", "Cegid Loop", "Sage Génération Experts", "Isacompta (AGIRIS)", "MyUnisoft", "Inqom", "Quadratus", "Coala"],
   },
   /** Provenance de l'inscription quand la visite n'a pas d'UTM (lien partagé, accès direct) */
   fallbackUtm: { utm_source: "althoce", utm_medium: "ressource", utm_content: "ressource_10_prompts" } satisfies Utm,

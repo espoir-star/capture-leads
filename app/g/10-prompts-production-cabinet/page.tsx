@@ -58,9 +58,9 @@ function pageCta(now: Date): Cta {
       utm: { ...r.fallbackUtm, utm_campaign: r.campaigns.webinar },
       button: "Je réserve ma place",
       hero: `Webinar ${day.toLowerCase()}`,
-      title: "Voyez votre IA écrire dans un dossier, en direct",
+      title: "On vous montre comment le brancher, en direct",
       detail: `${day} · ${webinarHours(w)} (Paris) · Google Meet · gratuit`,
-      software: `Votre logiciel n'est pas dans la liste ? Posez votre question ${day.split(" ")[0].toLowerCase()}, en direct.`,
+      software: `Comment le brancher sur le vôtre : on vous l'explique ${day.split(" ")[0].toLowerCase()}, avec une démo en direct.`,
     };
   }
   const rdv = getRdvPage(r.rdvSlug)!;
@@ -71,9 +71,9 @@ function pageCta(now: Date): Cta {
     utm: { ...r.fallbackUtm, utm_campaign: r.campaigns.rdv },
     button: "Choisir mon créneau",
     hero: "Audit d'installation gratuit",
-    title: "Voyons ce que votre IA peut écrire chez vous",
+    title: "Voyons comment le brancher sur votre logiciel",
     detail: `Audit d'installation gratuit · ${rdv.booking.durationMin} min · Google Meet`,
-    software: "Votre logiciel n'est pas dans la liste ? C'est l'objet de l'audit.",
+    software: "Comment le brancher sur le vôtre : c'est l'objet de l'audit.",
   };
 }
 
@@ -103,7 +103,6 @@ function PromptBlock({ text }: { text: string }) {
 
 export default function Page() {
   const c = pageCta(new Date());
-  const software = getRdvPage(r.rdvSlug)!;
 
   return (
     <main className="min-h-screen bg-fond text-texte antialiased">
@@ -263,32 +262,22 @@ export default function Page() {
           </ol>
 
           <div id="logiciels" className="mt-12 scroll-mt-8">
-            <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.02em]">{software.softwareTitle}</h3>
+            <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.02em]">{r.software.title}</h3>
             <p className="mt-2 text-[13.5px] leading-relaxed text-secondaire">{r.method.coverage}</p>
-            <ul className={`${card} mt-5 divide-y divide-bordure`}>
-              {software.software.map((s) => (
-                <li key={s.names} className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-6">
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-semibold leading-snug">{s.names}</p>
-                    <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">
-                      {s.text}
-                      {s.source && (
-                        <>
-                          {" "}
-                          <a href={s.source.url} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-discret underline decoration-bordure-forte underline-offset-4 hover:text-texte">
-                            Source&nbsp;: {s.source.label}
-                          </a>
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <span className="inline-flex shrink-0 items-center gap-1.5 self-start whitespace-nowrap rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
-                    <span className="size-1.5 rounded-full bg-current" />
-                    {s.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className={`${card} mt-5 p-6`}>
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-6">
+                <p className="text-[15px] font-semibold leading-snug">{r.software.custom}</p>
+                <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
+                  <span className="size-1.5 rounded-full bg-current" />
+                  Sur mesure
+                </span>
+              </div>
+              <ul className="mt-5 flex flex-wrap gap-2">
+                {r.software.names.map((n) => (
+                  <li key={n} className="rounded-full border border-bordure px-3 py-1.5 text-[12.5px] text-secondaire">{n}</li>
+                ))}
+              </ul>
+            </div>
             <div className="mt-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[13.5px] text-secondaire">{c.software}</p>
               <SourceLink href={c.href} fallback={c.utm} className={`${ghost} shrink-0`}>
