@@ -201,7 +201,7 @@ export default function Page() {
           ))}
         </Section>
 
-        <Section id="connecteur" eyebrow="Le connecteur qui écrit" title={r.halfWork.title}>
+        <Section id="connecteur" eyebrow="Connecteur sur mesure en écriture" title={r.halfWork.title}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className={`${card} p-6`}>
               <p className={`${label} text-discret`}>{r.halfWork.alone.label}</p>

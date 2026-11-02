@@ -42,7 +42,8 @@ test("10 prompts : les titres et les familles du post, dans l'ordre", () => {
     "Rédiger les relances d'impayés, prêtes à relire",
   ]);
   assert.equal(r.halfWork.promise, "Plus de ressaisie. Et rien n'entre dans le dossier sans votre accord.");
-  assert.match(r.method.coverage, /lorsque les accès le permettent/);
+  // Espoir, 02/11 : « lorsque les accès le permettent » retiré, aucune condition d'accès
+  assert.doesNotMatch([r.method.coverage, ...r.method.steps.map((s) => s.text)].join(" "), /accès/);
 });
 
 test("10 prompts : indépendants du logiciel, l'IA propose et vous validez", () => {
@@ -68,12 +69,12 @@ test("10 prompts : faits validés, typographie française, ni FEC ni replay", ()
     assert.doesNotMatch(t, /\breplay\b|enregistr/i, `invitation au direct, sans replay : ${t}`);
   }
   // Espoir, 02/11 : en écriture, du sur mesure pour tous les logiciels ; branchement montré au webinar ; aucun lien vers Pennylane
-  assert.match(r.software.custom, /sur mesure, quel que soit votre logiciel/);
-  assert.match(r.method.steps[0].title, /sur mesure/);
+  assert.match(r.software.custom, /connecteur sur mesure en écriture/);
+  assert.match(r.method.steps[0].title, /sur mesure en écriture/);
   assert.ok(r.software.names.length >= 10 && r.software.names.includes("Pennylane"));
   const page = readFileSync(`app/g/${r.slug}/page.tsx`, "utf8");
   for (const src of [page, readFileSync("content/guides/prompts-production-cabinet.ts", "utf8")]) {
-    assert.doesNotMatch(src, /pennylane\.com|Lecture et écriture|\.software\.map|softwareTitle/);
+    assert.doesNotMatch(src, /pennylane\.com|Lecture et écriture|\.software\.map|softwareTitle|connecteur qui écrit|lorsque les accès/);
   }
   assert.match(page, /on vous l'explique \$\{[^}]+\}, avec une démo en direct/);
   assert.ok(getRdvPage(r.rdvSlug), "page d'audit, repli après le direct");

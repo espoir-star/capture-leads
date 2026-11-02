@@ -2,7 +2,7 @@
  * « 10 prompts pour un mois de production » : ressource en accès libre, sans
  * formulaire (lecteur /g/10-prompts-production-cabinet). Texte du post LinkedIn
  * fourni par Espoir le 02/11/2026 : 10 prompts en 4 familles, puis le connecteur
- * qui écrit. Les appels à l'action mènent à l'inscription au webinar du 05/11/2026,
+ * sur mesure en écriture. Les appels à l'action mènent à l'inscription au webinar du 05/11/2026,
  * puis, une fois les inscriptions closes, à l'audit d'installation (/rdv/audit-connecteurs).
  *
  * Faits : Espoir, 02/11/2026 : pour tous les logiciels, le connecteur en écriture est
@@ -182,7 +182,7 @@ export const PROMPTS_PRODUCTION = {
   slug: "10-prompts-production-cabinet",
   metaTitle: "10 prompts pour un mois de production",
   metaDescription: fr(
-    "Les 10 prompts d'un mois de production en cabinet, du contrôle à la relance client, et la méthode pour brancher un connecteur qui écrit dans votre logiciel. Accès libre."
+    "Les 10 prompts d'un mois de production en cabinet, du contrôle à la relance client, et la méthode pour brancher un connecteur sur mesure en écriture sur votre logiciel. Accès libre."
   ),
   eyebrow: "Ressource gratuite · 10 prompts",
   /** <accent>…</accent> = mot mis en avant (bleu du site) ; phrase d'accroche du post */
@@ -210,7 +210,7 @@ export const PROMPTS_PRODUCTION = {
   ] satisfies readonly { icon: IconName; title: string; text: string }[],
   families: [
     { id: "controle", label: "Contrôle", icon: "scanSearch" },
-    { id: "saisie", label: "Saisie", icon: "receipt", note: fr("Avec un connecteur qui écrit, ces trois-là sont préparés directement dans le logiciel : il ne vous reste qu'à valider.") },
+    { id: "saisie", label: "Saisie", icon: "receipt", note: fr("Avec un connecteur sur mesure en écriture, ces trois-là sont préparés directement dans le logiciel : il ne vous reste qu'à valider.") },
     { id: "analyse", label: "Analyse", icon: "trendingUp" },
     { id: "client", label: "Relation client", icon: "messageSquareText" },
   ] satisfies readonly { id: PromptFamily; label: string; icon: IconName; note?: string }[],
@@ -224,7 +224,7 @@ export const PROMPTS_PRODUCTION = {
       text: fr("Elle vous dit quelle catégorie mettre, quel fournisseur affecter, quoi lettrer. Ensuite, quelqu'un doit encore tout ressaisir dans le logiciel."),
     },
     writer: {
-      label: "Avec un connecteur qui écrit",
+      label: "Avec un connecteur sur mesure en écriture",
       title: "Votre IA prépare le travail dans votre logiciel",
       done: ["Les transactions sont catégorisées", "Les tiers sont affectés", "Le lettrage est préparé"],
       text: "Vous ouvrez le dossier, vous relisez, vous validez.",
@@ -234,17 +234,17 @@ export const PROMPTS_PRODUCTION = {
   /** Prompt qui suit la relecture d'un prompt de saisie (tableaux numérotés) */
   applyPrompt: {
     title: "Après votre relecture, le prompt qui applique",
-    text: fr("À utiliser avec un connecteur qui écrit, sur le tableau numéroté d'un prompt de saisie."),
+    text: fr("À utiliser avec un connecteur sur mesure en écriture, sur le tableau numéroté d'un prompt de saisie."),
     prompt: fr(`Applique dans [LOGICIEL] uniquement les lignes que j'ai validées : [NUMÉROS DES LIGNES, OU « TOUTES SAUF 4 ET 7 »].
 Avant chaque écriture, vérifie que la ligne n'a pas changé depuis ta proposition.
 Ensuite, récapitule ce qui a été écrit et ce qui reste à traiter.`),
   },
   method: {
-    title: "Brancher un connecteur qui écrit, en quatre étapes",
+    title: "Brancher un connecteur sur mesure en écriture, en quatre étapes",
     steps: [
       {
-        title: "Un connecteur sur mesure pour votre logiciel",
-        text: fr("Pour que votre IA écrive dans votre logiciel, le connecteur est construit sur mesure, selon les accès que le logiciel permet."),
+        title: "Un connecteur sur mesure en écriture",
+        text: fr("Il est construit pour votre logiciel : votre IA y écrit directement, sans ressaisie."),
       },
       {
         title: "Prenez un compte IA professionnel",
@@ -260,12 +260,12 @@ Ensuite, récapitule ce qui a été écrit et ce qui reste à traiter.`),
       },
     ],
     /** Phrase du post, en tête de la liste des logiciels */
-    coverage: fr("Ça marche sur Pennylane, et sur la plupart des autres logiciels de production, lorsque les accès le permettent."),
+    coverage: fr("Ça marche sur Pennylane, et sur la plupart des autres logiciels de production."),
   },
   /** Espoir, 02/11/2026 : en écriture, du sur mesure pour tous les logiciels */
   software: {
     title: "Chaque connecteur s'adapte à votre logiciel",
-    custom: "Le connecteur qui écrit est construit sur mesure, quel que soit votre logiciel.",
+    custom: "Un connecteur sur mesure en écriture, pour chacun de ces logiciels.",
     names: ["Pennylane", "ACD", "Cegid Quadra", "Cegid Loop", "Sage Génération Experts", "Isacompta (AGIRIS)", "MyUnisoft", "Inqom", "Quadratus", "Coala"],
   },
   /** Provenance de l'inscription quand la visite n'a pas d'UTM (lien partagé, accès direct) */
