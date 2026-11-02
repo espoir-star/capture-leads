@@ -1,22 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { preload } from "react-dom";
 import "./globals.css";
 import CookieConsent from "@/components/CookieConsent";
 
-/* Police commune (standard davinci) : Geist, nombres en chiffres tabulaires. */
-const geist = Geist({
-  subsets: ["latin"],
-  variable: "--font-geist",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-  weight: ["400", "500"],
-  display: "swap",
-});
+/*
+ * Police commune (standard davinci) : Geist, nombres en chiffres tabulaires.
+ * Auto-hébergée (règles @font-face dans app/globals.css) : la compilation ne
+ * télécharge plus rien chez Google Fonts. Sous-ensembles latins préchargés,
+ * comme le faisait next/font.
+ */
+const FONT_PRELOADS = ["/fonts/geist-v1/geist-latin.woff2", "/fonts/geist-v1/geist-mono-latin.woff2"];
 
 export const metadata: Metadata = {
   title: "Ressources Althoce",
@@ -29,8 +22,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  for (const href of FONT_PRELOADS) preload(href, { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
   return (
-    <html lang="fr" className={`${geist.variable} ${geistMono.variable}`}>
+    <html lang="fr">
       <body>
         {/* GA4, Meta Pixel, tracker Brevo : chargés seulement après « Tout accepter » (components/CookieConsent.tsx) */}
         {children}
