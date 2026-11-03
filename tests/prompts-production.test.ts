@@ -103,11 +103,13 @@ test("liens internes : UTM nettoyés, valeur invalide ignorée, chemin seul sans
   assert.equal(pathWithUtm("/w/x", { utm_source: "LinkedIn", utm_content: "pas un id !" }), "/w/x?utm_source=linkedin");
 });
 
-test("lecteurs en accès libre : page présente, lien court réservé sans date inventée", () => {
+test("lecteurs en accès libre : page présente, lien court du post du 03/11", () => {
   for (const slug of OPEN_READERS) assert.ok(existsSync(`app/g/${slug}/page.tsx`), slug);
   assert.ok(shortLinkPageExists({ kind: "lecteur", slug: r.slug }));
   assert.equal(shortLinkPageExists({ kind: "lecteur", slug: "inconnu" }), false);
   assert.equal(SHORT_LINKS.pr1.slug, r.slug);
-  assert.equal(SHORT_LINKS.pr1.utm_content, null);
-  assert.equal(shortLinkTarget("pr1"), null);
+  assert.equal(
+    shortLinkTarget("pr1"),
+    "/g/10-prompts-production-cabinet?utm_source=linkedin&utm_medium=organic&utm_campaign=10_prompts_production_cabinet&utm_content=LI_EC_20261103_01"
+  );
 });

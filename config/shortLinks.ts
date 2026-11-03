@@ -89,8 +89,8 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     utm_source: "linkedin",
     utm_medium: "organic",
     utm_campaign: "10_prompts_production_cabinet",
-    // Post « 10 prompts » (texte fourni par Espoir le 02/11/2026) : code réservé jusqu'à la date de publication.
-    utm_content: null,
+    // Post « 10 prompts » (accès libre, sans formulaire), publié le 03/11/2026 (« le post d'aujourd'hui », Espoir le 03/11).
+    utm_content: "LI_EC_20261103_01",
   },
 };
 
