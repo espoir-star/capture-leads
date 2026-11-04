@@ -156,6 +156,20 @@ test("étape de séquence : deux inscriptions du même contact + reprises → un
   assert.ok(attempts.some((e) => e.event_properties?.status === "SENT" && e.event_properties?.via === "sent" && e.event_properties?.message_id));
 });
 
+test("journal Brevo indisponible : H-1 réessayé 2 min plus tard, J-1 rendu à n8n ; aucun envoi", async () => {
+  const webinar = (await import("@/config/sequences")).getSequence("webinar-standard-v1")!;
+  const { DEMO_WEBINAR } = await import("@/config/webinars");
+  const EVENT = Date.parse("2026-11-20T12:30:00+01:00");
+  const id = await seed({ email: "inscrit@cabinet.fr", attributes: { EMAIL_STATUS: "PENDING" }, listIds: [50] });
+  const token = enrollment.signEnrollment({ s: webinar.id, c: id, t: EVENT - 48 * H, r: DEMO_WEBINAR.slug, e: EVENT })!;
+  await configure({ journalDown: true });
+  const slot = (id % 300) * 1000;
+  const h1 = new Date(EVENT - H + slot);
+  assert.deepEqual(await run.runStep(token, "rappel-h-1", h1), { action: "wait", stepId: "rappel-h-1", at: new Date(h1.getTime() + 2 * MIN).toISOString() });
+  await assert.rejects(run.runStep(token, "rappel-j-1", new Date(EVENT - 24 * H + slot)), run.SequenceSendError);
+  assert.equal(posts(await state()), 0, "rien n'est envoyé sans lecture du journal");
+});
+
 test("refus Brevo : 400 → abandon définitif (FAILED) ; 401 → FAILED temporaire ; aucune requête renvoyée", async () => {
   await configure({ sendFailStatus: 400 });
   const bad = await so.sendOnce(input(so.sendKeyOf("t8")));

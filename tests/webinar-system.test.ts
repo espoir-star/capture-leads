@@ -6,7 +6,7 @@ import { buildContactUpdate } from "@/lib/lead/contactUpdate";
 import { checkPhone } from "@/lib/data-quality/phone";
 import { DEMO_WEBINAR, WEBINARS, getWebinar } from "@/config/webinars";
 import { getSequence } from "@/config/sequences";
-import { nextStep, registeredAfter, staleAfterMs, stepAt } from "@/lib/sequences/plan";
+import { nextStep, quickRetryAt, registeredAfter, spreadMs, staleAfterMs, stepAt } from "@/lib/sequences/plan";
 import { signEnrollment, type Enrollment } from "@/lib/sequences/enrollment";
 import { runStep } from "@/lib/sequences/run";
 import { webinarContactParams, webinarParams } from "@/lib/sequences/links";
@@ -106,6 +106,33 @@ test("rappels jamais en retard : J-1 au plus tard la veille au soir, H-1 au plus
   const h1 = stepAt(e, step("rappel-h-1"))!;
   assert.ok(h1 + staleAfterMs(seq, e, step("rappel-h-1")) < EVENT, "H-1 abandonné avant le début");
   assert.equal(nextStep(seq, e, "rappel-j-1", EVENT - 20 * 60_000)?.step.id, "replay", "n8n en retard : H-1 sauté");
+});
+
+test("rappels étalés : un créneau stable par inscrit dans les 5 minutes, jamais d'envoi groupé (J-1 du 04/11/2026)", async () => {
+  const slots = Array.from({ length: 120 }, (_, i) => spreadMs(enr(48 * H, { c: 1800 + i }), step("rappel-h-1")));
+  assert.equal(new Set(slots).size, 120, "un inscrit par seconde au plus");
+  assert.ok(slots.every((s) => s >= 0 && s < 5 * 60_000));
+  assert.equal(spreadMs(enr(48 * H), step("rappel-h-1")), 42_000, "même contact, même créneau");
+  assert.equal(spreadMs(enr(48 * H, { k: 120 }), step("rappel-h-1")), 350, "QA : compressé comme les délais");
+  assert.equal(spreadMs(enr(48 * H), getSequence("guide-12-cas-ec-v1")!.steps[0]), 0, "relances de guide inchangées");
+  // H-1 déjà planifié par n8n à l'heure pile : Vercel renvoie le créneau, sans appel réseau
+  const e = enr(48 * H);
+  const id = signEnrollment(e)!;
+  const h1 = stepAt(e, step("rappel-h-1"))!;
+  const slot = { action: "wait", stepId: "rappel-h-1", at: new Date(h1 + 42_000).toISOString() };
+  assert.deepEqual(await runStep(id, "rappel-h-1", new Date(h1)), slot);
+  assert.deepEqual(await runStep(id, "rappel-h-1", new Date(h1 - 2 * H)), slot);
+});
+
+test("H-1 et panne Brevo : nouvel essai 2 min plus tard (celui de n8n, 30 min, arriverait hors délai) ; J-1 : reprise n8n", () => {
+  const e = enr(48 * H);
+  const h1 = stepAt(e, step("rappel-h-1"))!;
+  assert.equal(quickRetryAt(seq, e, step("rappel-h-1"), h1 + 42_000), h1 + 42_000 + 2 * 60_000);
+  assert.equal(quickRetryAt(seq, e, step("rappel-h-1"), h1 + 29 * 60_000), null, "au-delà de 30 min : abandonné");
+  const j1 = stepAt(e, step("rappel-j-1"))!;
+  assert.equal(quickRetryAt(seq, e, step("rappel-j-1"), j1), null, "J-1 toléré 12 h : reprise n8n");
+  assert.equal(quickRetryAt(seq, e, step("rappel-j-1"), j1 + 11.75 * H), j1 + 11.75 * H + 2 * 60_000, "J-1 tard le soir");
+  assert.equal(quickRetryAt(seq, e, step("suivi"), EVENT + 72 * H), null);
 });
 
 test("replay : attendu jusqu'au suivi J+3 (pas d'abandon à J+20 h), puis le suivi part même sans replay", () => {
