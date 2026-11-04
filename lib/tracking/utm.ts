@@ -81,6 +81,17 @@ export function resolveAttribution(firstTouch: Touch | undefined, current: Touch
   return current ?? {};
 }
 
+/** Chemin interne suivi des UTM nettoyés (lien entre deux pages : la provenance suit le visiteur). */
+export function pathWithUtm(path: string, utm: Utm): string {
+  const q = new URLSearchParams();
+  for (const key of UTM_KEYS) {
+    const v = cleanUtmValue(key, utm[key]);
+    if (v) q.set(key, v);
+  }
+  const s = q.toString();
+  return s ? `${path}?${s}` : path;
+}
+
 /**
  * Ajoute des UTM à un lien (emails Brevo) sans jamais doubler un paramètre
  * déjà présent. Ne touche pas aux liens non http(s) ni aux balises Brevo.
