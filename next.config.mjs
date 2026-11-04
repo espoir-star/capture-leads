@@ -67,6 +67,11 @@ const nextConfig = {
           },
         ],
       },
+      {
+        // Polices auto-hébergées (app/globals.css) : fichiers immuables, un nouveau dossier à chaque mise à jour.
+        source: "/fonts/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
     ];
   },
 };
