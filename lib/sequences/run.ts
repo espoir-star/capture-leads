@@ -14,7 +14,7 @@ import type { SendResult } from "@/lib/brevo/transactional";
 import { deliverySendKey, signEnrollment, stepSendKey, verifyEnrollment, type Enrollment } from "@/lib/sequences/enrollment";
 import { confirmUrl, CTA_URL, resourceParams, unsubscribeLinks, webinarContactParams } from "@/lib/sequences/links";
 import { notifyN8n } from "@/lib/sequences/n8n";
-import { decideStep, nextStep, registeredAfter, REPLAY_RETRY_HOURS, staleAfterMs, stepAt } from "@/lib/sequences/plan";
+import { decideStep, nextStep, quickRetryAt, registeredAfter, REPLAY_RETRY_HOURS, spreadMs, staleAfterMs, stepAt } from "@/lib/sequences/plan";
 import { sequencesPaused } from "@/lib/sequences/switch";
 import { guideFollowupDecision, knownGuideRequests } from "@/lib/guides/requests";
 
@@ -97,7 +97,9 @@ export async function runStep(enrollmentId: unknown, stepId: unknown, now = new 
   if (sequencesPaused()) return wait(step.id, t + 6 * HOUR);
   const at = stepAt(enr, step);
   if (at === null) return { action: "done", reason: "no_anchor" };
-  if (t < at - 5 * 60_000) return wait(step.id, at);
+  // Webinar : un créneau par inscrit plutôt qu'un envoi groupé (spreadMs)
+  const slot = at + spreadMs(enr, step);
+  if (t < at - 5 * 60_000 || (slot > at && t < slot - 2_000)) return wait(step.id, slot);
   let sent = false;
   let skipReason: string | undefined;
   const resource = resourceParams(enr.r);
@@ -144,6 +146,8 @@ export async function runStep(enrollmentId: unknown, stepId: unknown, now = new 
         sendKey: stepSendKey(seq.id, enr.c, step.id), since: new Date(at - 6 * HOUR), now, oneClickUnsubscribeUrl: links?.oneClick,
       });
       await recordAttempt(enr.c, out, { sequence_id: seq.id, step: step.id, ...(enr.r && { resource: enr.r }) }, now);
+      const retryAt = out.status === "UNKNOWN" || (out.status === "FAILED" && !out.permanent) ? quickRetryAt(seq, enr, step, t) : null;
+      if (retryAt !== null) return wait(step.id, retryAt);
       if (out.status === "UNKNOWN") throw new SequenceSendError(0, out.reason);
       if (out.status === "FAILED" && !out.permanent) throw new SequenceSendError(out.httpStatus, out.code);
       if (out.status === "FAILED") { skipReason = "send_failed"; }

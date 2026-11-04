@@ -34,7 +34,8 @@ Format : 60 minutes, soit environ 45 minutes de présentation et 15 minutes de q
 | **Inscription tardive** | Un rappel dont le moment est passé à l'inscription n'est pas envoyé : inscrit la veille au soir, pas de « C'est demain » ; inscrit 30 minutes avant, ni J-1 ni H-1. |
 | **Rappel en retard** (n8n arrêté) | J-1 abandonné au-delà de la veille au soir (12 h après son heure), H-1 au-delà de 30 minutes avant le début. Jamais après le début. |
 | **Double inscription** | Un seul contact. Une seule confirmation par jour (clé d'envoi Brevo). Une seule séquence de rappels (déjà dans la liste = pas de nouvelle séquence). |
-| **Erreur temporaire Brevo** | L'étape renvoie une erreur 5xx ; n8n réessaie toutes les 30 minutes pendant 24 heures. Clé d'idempotence Brevo + journal : aucun doublon. |
+| **Envoi étalé** | Rappels, replay et suivi partent à la même heure pour tous les inscrits : chacun a son créneau, stable, dans les 5 minutes qui suivent. Le 04/11/2026, le J-1 envoyé d'un coup a vu la plupart des lectures du journal Brevo refusées, puis rattrapées de 30 en 30 minutes. |
+| **Erreur temporaire Brevo** | L'étape renvoie une erreur 5xx ; n8n réessaie toutes les 30 minutes pendant 24 heures. Quand cet essai arriverait trop tard (H-1, J-1 tard le soir), Vercel en programme un 2 minutes plus tard. Clé d'idempotence Brevo + journal : aucun doublon. |
 | **Reprise n8n** | Les attentes sont persistées par n8n ; une étape exécutée en retard suit les règles ci-dessus. |
 | **Fuseau** | Dates ISO avec fuseau dans la configuration ; tous les emails et pages affichent l'heure de Paris, en toutes lettres (changement d'heure géré par `Intl`). |
 | **Désinscription** | Le lien « Ne plus recevoir nos conseils » coupe le marketing, pas les emails de service du webinaire demandé. Un désabonnement survenu pendant l'attente est relu au moment de chaque envoi. |

@@ -24,6 +24,32 @@ export function isPreEventReminder(step: Pick<SequenceStep, "anchor" | "offsetHo
   return step.anchor === "event" && step.offsetHours < 0;
 }
 
+/**
+ * Étapes ancrées sur le webinar : même date pour tous les inscrits. Le 04/11/2026, le J-1
+ * envoyé à tous à la même seconde a vu la plupart des lectures du journal Brevo refusées :
+ * envois étalés sur trois reprises de 30 min. Chaque inscrit a donc son créneau, stable,
+ * dans les 5 minutes qui suivent (le H-1 reste toléré 30 min).
+ */
+export const EVENT_STEP_SPREAD_SECONDS = 300;
+export function spreadMs(enr: Enrollment, step: Pick<SequenceStep, "anchor">): number {
+  return step.anchor === "event" ? ((enr.c % EVENT_STEP_SPREAD_SECONDS) * 1000) / (enr.k ?? 1) : 0;
+}
+
+/** Délai des nouveaux essais de n8n après une erreur (n8n/althoce-sequences.json, retryDelayMinutes). */
+export const N8N_RETRY_MINUTES = 30;
+/** Rappel dont l'essai de n8n arriverait hors délai (H-1, J-1 tard le soir) : nouvel essai rapproché, décidé ici. */
+export const SHORT_REMINDER_RETRY_MINUTES = 2;
+
+/** Date du nouvel essai rapproché d'un rappel après une panne Brevo, ou null : n8n reprend dans 30 min. */
+export function quickRetryAt(seq: SequenceConfig, enr: Enrollment, step: SequenceStep, now: number): number | null {
+  const at = stepAt(enr, step);
+  if (!isPreEventReminder(step) || at === null) return null;
+  const deadline = at + staleAfterMs(seq, enr, step);
+  if (now + N8N_RETRY_MINUTES * 60_000 <= deadline) return null;
+  const retryAt = now + (SHORT_REMINDER_RETRY_MINUTES * 60_000) / (enr.k ?? 1);
+  return retryAt <= deadline ? retryAt : null;
+}
+
 /** Pas de nouvel essai du replay plus souvent que toutes les 3 heures (avant compression QA). */
 export const REPLAY_RETRY_HOURS = 3;
 /** Sans étape suivante, attendre la publication du replay au plus 14 jours. */
