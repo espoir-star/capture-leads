@@ -92,6 +92,16 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // Post « 10 prompts » (accès libre, sans formulaire), publié le 03/11/2026 (« le post d'aujourd'hui », Espoir le 03/11).
     utm_content: "LI_EC_20261103_01",
   },
+  ag1: {
+    kind: "rdv",
+    slug: "demo-agents-ia",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "demo_plateforme_agents_ia",
+    // Post « Saisie, rapprochement, collecte des pièces » (démo de la plateforme d'agents IA, pré-audit offert),
+    // publié le 10/11/2026 (« il sera posté aujourd'hui », Espoir le 10/11).
+    utm_content: "LI_EC_20261110_01",
+  },
 };
 
 /** Lecteurs /g/<slug> en accès libre (sans page de capture) : seuls ceux-ci acceptent un lien court. */
