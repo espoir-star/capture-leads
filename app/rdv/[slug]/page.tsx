@@ -5,16 +5,16 @@ import { notFound } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Icon } from "@/components/icons/lucide";
-import { getRdvPage, getRdvSlugs, type RdvDetail } from "@/config/rdvPages";
+import { getRdvPage, getRdvSlugs, type RdvBlock, type RdvDetail, type RdvNote, type RdvPage, type RdvPoint } from "@/config/rdvPages";
 import { getWebinar } from "@/config/webinars";
 import { registrationOpen } from "@/lib/webinar/access";
 import { webinarDay, webinarHour } from "@/lib/webinar/format";
 
 /**
  * Page de rendez-vous : le visiteur réserve directement son créneau, sans
- * formulaire. Tous les textes viennent de config/rdvPages.ts. Régénérée toutes les
- * 10 minutes : le webinar proposé à ceux qui ne réservent pas disparaît à la
- * clôture des inscriptions.
+ * formulaire. Tous les textes et l'ordre des blocs viennent de config/rdvPages.ts.
+ * Régénérée toutes les 10 minutes : le webinar proposé à ceux qui ne réservent pas
+ * disparaît à la clôture des inscriptions.
  */
 
 interface Props {
@@ -69,6 +69,31 @@ function Section({ id, eyebrow, title, children }: { id: string; eyebrow: string
   );
 }
 
+function Cartes({ items, className }: { items: RdvPoint[]; className: string }) {
+  return (
+    <ul className={className}>
+      {items.map((d) => (
+        <li key={d.title} className={`${card} flex gap-4 p-5 sm:p-6`}>
+          <span className={tile}><Icon name={d.icon} size={14} /></span>
+          <div>
+            <p className="text-[15px] font-semibold leading-tight">{d.title}</p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{d.text}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Note({ note }: { note: RdvNote }) {
+  return (
+    <p className="mt-5 flex items-start gap-2.5 text-[13.5px] leading-relaxed text-secondaire">
+      <Icon name={note.icon} size={14} className="mt-[3px] shrink-0 text-accent" />
+      {note.text}
+    </p>
+  );
+}
+
 function DetailText({ item }: { item: RdvDetail }) {
   return (
     <div className="min-w-0">
@@ -86,6 +111,132 @@ function DetailText({ item }: { item: RdvDetail }) {
       </p>
     </div>
   );
+}
+
+function Bloc({ b, p }: { b: RdvBlock; p: RdvPage }) {
+  switch (b.kind) {
+    case "apports":
+      return (
+        <section aria-labelledby="apports" className="mt-16">
+          <h2 id="apports" className={`${label} text-discret`}>{b.title}</h2>
+          <Cartes items={b.items} className="mt-4 grid gap-4 sm:grid-cols-2" />
+          <Note note={b.note} />
+        </section>
+      );
+
+    case "agenda":
+      return (
+        <section id="creneaux" aria-labelledby="creneaux-titre" className="mt-20 scroll-mt-6">
+          <p className={`${label} text-accent`}>Réserver</p>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <h2 id="creneaux-titre" className="text-[26px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[28px]">Choisissez votre créneau</h2>
+            <div className="flex items-center gap-3">
+              <Image src={p.host.photo} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
+              <p className="text-[12.5px] leading-tight text-secondaire">
+                Avec <span className="font-medium text-texte">{p.host.name}</span>
+                <br />
+                {p.host.role}
+              </p>
+            </div>
+          </div>
+          <div className="mt-7">
+            <BookingCalendar embedUrl={p.booking.embedUrl} url={p.booking.url} title={p.booking.title} />
+          </div>
+        </section>
+      );
+
+    case "cartes":
+      return (
+        <Section id={b.id} eyebrow={b.eyebrow} title={b.title}>
+          <Cartes items={b.items} className="grid gap-4 sm:grid-cols-2" />
+          {b.more && (
+            <p className="mt-4 flex items-center gap-2.5 px-1 text-[13.5px] text-secondaire">
+              <Icon name="plus" size={14} className="shrink-0 text-discret" />
+              {b.more}
+            </p>
+          )}
+          {b.points && (
+            <div className="mt-6 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6 sm:p-7">
+              <p className="text-[18px] font-semibold leading-snug tracking-[-0.02em] sm:text-[20px]">{b.points.title}</p>
+              <ul className="mt-4 grid gap-3 sm:grid-cols-3 sm:gap-5">
+                {b.points.items.map((t) => (
+                  <li key={t} className="flex items-start gap-2.5 text-[14px] leading-snug">
+                    <Icon name="check" size={14} className="mt-[3px] shrink-0 text-accent" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {b.note && <Note note={b.note} />}
+        </Section>
+      );
+
+    case "travail":
+      return (
+        <Section id={b.id} eyebrow={b.eyebrow} title={b.title}>
+          <div className="flex gap-4 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6 sm:items-center sm:gap-5 sm:p-7">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Icon name={b.highlight.icon} size={18} strokeWidth={1.75} /></span>
+            <div>
+              <p className="text-[18px] font-semibold leading-snug tracking-[-0.02em] sm:text-[20px]">{b.highlight.title}</p>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{b.highlight.text}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1.1fr_1fr]">
+            <ul className={`${card} divide-y divide-bordure`}>
+              {b.tasks.map((t) => (
+                <li key={t} className="flex items-center gap-3 px-5 py-3.5 text-[14px] sm:px-6">
+                  <Icon name="check" size={14} className="shrink-0 text-accent" />
+                  {t}
+                </li>
+              ))}
+              <li className="flex items-center gap-3 px-5 py-3.5 text-[14px] text-secondaire sm:px-6">
+                <Icon name="plus" size={14} className="shrink-0 text-discret" />
+                {b.tasksMore}
+              </li>
+            </ul>
+            <div className={`${card} p-6`}>
+              <span className={tile}><Icon name={b.aside.icon} size={14} /></span>
+              <p className="mt-4 text-[15px] font-semibold leading-tight">{b.aside.title}</p>
+              <p className="mt-2 text-[13.5px] leading-relaxed text-secondaire">{b.aside.text}</p>
+            </div>
+          </div>
+        </Section>
+      );
+
+    case "liste":
+      return (
+        <Section id={b.id} eyebrow={b.eyebrow} title={b.title}>
+          <ul className={`${card} divide-y divide-bordure`}>
+            {b.items.map((s) => (
+              <li key={s.title} className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-6">
+                {s.icon ? (
+                  <div className="flex min-w-0 gap-4">
+                    <span className={tile}><Icon name={s.icon} size={14} /></span>
+                    <DetailText item={s} />
+                  </div>
+                ) : (
+                  <DetailText item={s} />
+                )}
+                {s.status && (
+                  <span className="inline-flex shrink-0 items-center gap-1.5 self-start whitespace-nowrap rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
+                    <span className="size-1.5 rounded-full bg-current" />
+                    {s.status}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[13.5px] text-secondaire">{b.cta}</p>
+            <a href="#creneaux" className={`${pill} border border-bordure-forte text-texte hover:bg-carte-2`}>
+              Choisir mon créneau
+              <Icon name="arrowDown" size={14} />
+            </a>
+          </div>
+        </Section>
+      );
+  }
 }
 
 export default async function PageRdv({ params }: Props) {
@@ -120,101 +271,9 @@ export default async function PageRdv({ params }: Props) {
           </div>
         </div>
 
-        <section aria-labelledby="apports" className="mt-16">
-          <h2 id="apports" className={`${label} text-discret`}>{p.deliverablesTitle}</h2>
-          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-            {p.deliverables.map((d) => (
-              <li key={d.title} className={`${card} flex gap-4 p-5 sm:p-6`}>
-                <span className={tile}><Icon name={d.icon} size={14} /></span>
-                <div>
-                  <p className="text-[15px] font-semibold leading-tight">{d.title}</p>
-                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{d.text}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-5 flex items-start gap-2.5 text-[13.5px] leading-relaxed text-secondaire">
-            <Icon name={p.note.icon} size={14} className="mt-[3px] shrink-0 text-accent" />
-            {p.note.text}
-          </p>
-        </section>
-
-        <section id="creneaux" aria-labelledby="creneaux-titre" className="mt-20 scroll-mt-6">
-          <p className={`${label} text-accent`}>Réserver</p>
-          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-            <h2 id="creneaux-titre" className="text-[26px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[28px]">Choisissez votre créneau</h2>
-            <div className="flex items-center gap-3">
-              <Image src={p.host.photo} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
-              <p className="text-[12.5px] leading-tight text-secondaire">
-                Avec <span className="font-medium text-texte">{p.host.name}</span>
-                <br />
-                {p.host.role}
-              </p>
-            </div>
-          </div>
-          <div className="mt-7">
-            <BookingCalendar embedUrl={p.booking.embedUrl} url={p.booking.url} title={p.booking.title} />
-          </div>
-        </section>
-
-        <Section id="ia" eyebrow={p.work.eyebrow} title={p.work.title}>
-          <div className="flex gap-4 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6 sm:items-center sm:gap-5 sm:p-7">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Icon name={p.work.highlight.icon} size={18} strokeWidth={1.75} /></span>
-            <div>
-              <p className="text-[18px] font-semibold leading-snug tracking-[-0.02em] sm:text-[20px]">{p.work.highlight.title}</p>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{p.work.highlight.text}</p>
-            </div>
-          </div>
-          <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1.1fr_1fr]">
-            <ul className={`${card} divide-y divide-bordure`}>
-              {p.work.tasks.map((t) => (
-                <li key={t} className="flex items-center gap-3 px-5 py-3.5 text-[14px] sm:px-6">
-                  <Icon name="check" size={14} className="shrink-0 text-accent" />
-                  {t}
-                </li>
-              ))}
-              <li className="flex items-center gap-3 px-5 py-3.5 text-[14px] text-secondaire sm:px-6">
-                <Icon name="plus" size={14} className="shrink-0 text-discret" />
-                {p.work.tasksMore}
-              </li>
-            </ul>
-            <div className={`${card} p-6`}>
-              <span className={tile}><Icon name={p.work.aside.icon} size={14} /></span>
-              <p className="mt-4 text-[15px] font-semibold leading-tight">{p.work.aside.title}</p>
-              <p className="mt-2 text-[13.5px] leading-relaxed text-secondaire">{p.work.aside.text}</p>
-            </div>
-          </div>
-        </Section>
-
-        <Section id={p.details.id} eyebrow={p.details.eyebrow} title={p.details.title}>
-          <ul className={`${card} divide-y divide-bordure`}>
-            {p.details.items.map((s) => (
-              <li key={s.title} className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-6">
-                {s.icon ? (
-                  <div className="flex min-w-0 gap-4">
-                    <span className={tile}><Icon name={s.icon} size={14} /></span>
-                    <DetailText item={s} />
-                  </div>
-                ) : (
-                  <DetailText item={s} />
-                )}
-                {s.status && (
-                  <span className="inline-flex shrink-0 items-center gap-1.5 self-start whitespace-nowrap rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
-                    <span className="size-1.5 rounded-full bg-current" />
-                    {s.status}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[13.5px] text-secondaire">{p.details.cta}</p>
-            <a href="#creneaux" className={`${pill} border border-bordure-forte text-texte hover:bg-carte-2`}>
-              Choisir mon créneau
-              <Icon name="arrowDown" size={14} />
-            </a>
-          </div>
-        </Section>
+        {p.blocks.map((b, i) => (
+          <Bloc key={`${b.kind}-${i}`} b={b} p={p} />
+        ))}
 
         {webinar && (
           <aside className={`${card} mt-20 flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7`}>

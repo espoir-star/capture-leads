@@ -4,9 +4,10 @@
  * L'agenda est affiché ouvert dès l'arrivée sur la page (choix d'Espoir du
  * 28/10/2026, components/BookingCalendar.tsx).
  *
- * Une page = un bloc de configuration : tous les textes affichés sont ici, la mise
- * en page est commune (app/rdv/[slug]/page.tsx). Uniquement des faits vérifiés ou
- * le texte du post qui mène à la page.
+ * Une page = un bloc de configuration : tous les textes affichés sont ici, et les
+ * blocs sous l'en-tête s'affichent dans l'ordre de `blocks`. La mise en page est
+ * commune (app/rdv/[slug]/page.tsx). Uniquement des faits vérifiés ou le texte du
+ * post qui mène à la page.
  *
  * audit-connecteurs, post du 29/10/2026 « Catégoriser, lettrer, saisir » (audit
  * d'installation gratuit, texte d'Espoir) : logiciels et temps gagné donnés par
@@ -18,16 +19,25 @@
  *
  * demo-agents-ia, post du 10/11/2026 « Saisie, rapprochement, collecte des pièces »
  * (démo de la plateforme d'agents IA, texte d'Espoir, dont « plus de 20 cabinets ») :
- * agenda « Pré-audit IA offert - Althoce » vérifié le 10/11/2026 (30 min, Google Meet,
- * le même que les guides et les emails) ; « ce qui prend trop de place aujourd'hui »
- * repris du pré-audit offert d'althoce.com.
+ * d'abord les tâches automatisées, puis l'agenda, puis ce que la démo apporte, pour
+ * que le visiteur se projette avant de réserver (demande d'Espoir du 10/11/2026).
+ * Chaque tâche décrit le travail nommé dans le post, avec sa règle « les agents
+ * préparent, vos collaborateurs valident ». Agenda « Pré-audit IA offert - Althoce »
+ * vérifié le 10/11/2026 (30 min, Google Meet, le même que les guides et les emails) ;
+ * « ce qui prend trop de place aujourd'hui » repris du pré-audit offert d'althoce.com.
  */
 import type { IconName } from "@/components/icons/lucide";
 
-/** Carte ou encadré : icône, titre, texte */
+/** Carte : icône, titre, texte */
 export interface RdvPoint {
   icon: IconName;
   title: string;
+  text: string;
+}
+
+/** Phrase précédée d'une icône (honnêteté, preuve) */
+export interface RdvNote {
+  icon: IconName;
   text: string;
 }
 
@@ -39,6 +49,37 @@ export interface RdvDetail {
   text: string;
   source?: { label: string; url: string };
 }
+
+/** Blocs affichés sous l'en-tête, dans l'ordre choisi pour chaque page */
+export type RdvBlock =
+  /** Cartes juste sous l'en-tête : titre discret en petites capitales, phrase en dessous */
+  | { kind: "apports"; title: string; items: RdvPoint[]; note: RdvNote }
+  /** Section titrée de cartes ; ligne « et d'autres », encadré de points forts et phrase facultatifs */
+  | {
+      kind: "cartes";
+      id: string;
+      eyebrow: string;
+      title: string;
+      items: RdvPoint[];
+      more?: string;
+      points?: { title: string; items: string[] };
+      note?: RdvNote;
+    }
+  /** Encadré mis en avant, liste des tâches (la dernière ligne dit qu'elle n'est pas exhaustive) et carte à côté */
+  | {
+      kind: "travail";
+      id: string;
+      eyebrow: string;
+      title: string;
+      highlight: RdvPoint;
+      tasks: string[];
+      tasksMore: string;
+      aside: RdvPoint;
+    }
+  /** Liste détaillée (logiciels, données…), puis relance vers les créneaux */
+  | { kind: "liste"; id: string; eyebrow: string; title: string; items: RdvDetail[]; cta: string }
+  /** L'agenda (ancre #creneaux) */
+  | { kind: "agenda" };
 
 export interface RdvPage {
   slug: string;
@@ -60,31 +101,7 @@ export interface RdvPage {
     durationMin: number;
   };
   host: { name: string; role: string; photo: string };
-  /** Cartes sous l'en-tête : ce que le rendez-vous apporte */
-  deliverablesTitle: string;
-  deliverables: RdvPoint[];
-  /** Phrase sous les cartes (honnêteté, preuve) */
-  note: { icon: IconName; text: string };
-  /** Le travail confié à l'IA : encadré mis en avant, liste des tâches, carte à côté */
-  work: {
-    eyebrow: string;
-    title: string;
-    highlight: RdvPoint;
-    tasks: string[];
-    /** Dernière ligne de la liste : elle n'est pas exhaustive */
-    tasksMore: string;
-    aside: RdvPoint;
-  };
-  /** Liste détaillée (logiciels, données…), puis relance vers les créneaux */
-  details: {
-    /** Ancre de la section */
-    id: string;
-    eyebrow: string;
-    title: string;
-    items: RdvDetail[];
-    /** Phrase à côté du second bouton « Choisir mon créneau » */
-    cta: string;
-  };
+  blocks: RdvBlock[];
   /** Webinar proposé à ceux qui ne réservent pas (affiché tant que les inscriptions sont ouvertes) */
   webinarSlug?: string;
 }
@@ -110,60 +127,69 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
       durationMin: 30,
     },
     host: ESPOIR,
-    deliverablesTitle: "Ce que l'audit vous apporte",
-    deliverables: [
-      { icon: "plug", title: "Ce qui est branchable", text: "Sur votre logiciel : lecture, écriture, ou les deux." },
-      { icon: "route", title: "La méthode adaptée", text: "Connecteur officiel ou sur mesure, adapté aux spécificités de votre logiciel." },
-      { icon: "listChecks", title: "Les tâches à confier en premier", text: "Et le temps gagné sur chacune." },
-      { icon: "userCheck", title: "Le bon compte Claude ou ChatGPT", text: "Pour traiter des données clients." },
+    blocks: [
+      {
+        kind: "apports",
+        title: "Ce que l'audit vous apporte",
+        items: [
+          { icon: "plug", title: "Ce qui est branchable", text: "Sur votre logiciel : lecture, écriture, ou les deux." },
+          { icon: "route", title: "La méthode adaptée", text: "Connecteur officiel ou sur mesure, adapté aux spécificités de votre logiciel." },
+          { icon: "listChecks", title: "Les tâches à confier en premier", text: "Et le temps gagné sur chacune." },
+          { icon: "userCheck", title: "Le bon compte Claude ou ChatGPT", text: "Pour traiter des données clients." },
+        ],
+        note: { icon: "shieldCheck", text: "Si votre logiciel ne permet pas l'écriture, on vous le dit dès l'audit." },
+      },
+      { kind: "agenda" },
+      {
+        kind: "travail",
+        id: "ia",
+        eyebrow: "Ce que votre IA prépare à votre place",
+        title: "Vous ne saisissez plus, vous validez",
+        highlight: {
+          icon: "clock",
+          title: "Une matinée par dossier, relue en quelques minutes",
+          text: "Catégoriser, lettrer, saisir : votre IA le prépare pendant que vous faites autre chose. Vous relisez, vous validez.",
+        },
+        tasks: [
+          "Catégoriser les transactions",
+          "Affecter un tiers",
+          "Ventiler une facture fournisseur",
+          "Lettrer et rapprocher",
+          "Passer des écritures",
+        ],
+        tasksMore: "Et d'autres tâches, selon vos besoins",
+        aside: {
+          icon: "shieldCheck",
+          title: "Votre IA propose, vous décidez.",
+          text: "Rien ne part dans le dossier sans votre accord. Dans Claude, chaque type d'action se règle sur « toujours autorisé », « validation requise » ou « bloqué ». Dans ChatGPT, les écritures demandent une confirmation par défaut.",
+        },
+      },
+      {
+        kind: "liste",
+        id: "logiciels",
+        eyebrow: "Votre logiciel",
+        title: "Chaque connecteur s'adapte à votre logiciel",
+        items: [
+          {
+            title: "Pennylane",
+            status: "Lecture et écriture",
+            text: "Le connecteur officiel est en lecture seule à ce jour. Le connecteur Althoce ajoute l'écriture.",
+            source: { label: "pennylane.com/fr/mcp", url: "https://www.pennylane.com/fr/mcp" },
+          },
+          {
+            title: "ACD, Cegid Loop, Sage Génération Experts, MyUnisoft, Inqom",
+            status: "Lecture et écriture",
+            text: "Comme pour Pennylane, votre IA lit vos dossiers et y écrit, avec votre validation.",
+          },
+          {
+            title: "Cegid Quadra, Quadratus, Coala, Isacompta (AGIRIS)",
+            status: "Sur mesure",
+            text: "Logiciels fermés : on construit un connecteur sur mesure.",
+          },
+        ],
+        cta: "Votre logiciel n'est pas dans la liste ? C'est l'objet de l'audit.",
+      },
     ],
-    note: { icon: "shieldCheck", text: "Si votre logiciel ne permet pas l'écriture, on vous le dit dès l'audit." },
-    work: {
-      eyebrow: "Ce que votre IA prépare à votre place",
-      title: "Vous ne saisissez plus, vous validez",
-      highlight: {
-        icon: "clock",
-        title: "Une matinée par dossier, relue en quelques minutes",
-        text: "Catégoriser, lettrer, saisir : votre IA le prépare pendant que vous faites autre chose. Vous relisez, vous validez.",
-      },
-      tasks: [
-        "Catégoriser les transactions",
-        "Affecter un tiers",
-        "Ventiler une facture fournisseur",
-        "Lettrer et rapprocher",
-        "Passer des écritures",
-      ],
-      tasksMore: "Et d'autres tâches, selon vos besoins",
-      aside: {
-        icon: "shieldCheck",
-        title: "Votre IA propose, vous décidez.",
-        text: "Rien ne part dans le dossier sans votre accord. Dans Claude, chaque type d'action se règle sur « toujours autorisé », « validation requise » ou « bloqué ». Dans ChatGPT, les écritures demandent une confirmation par défaut.",
-      },
-    },
-    details: {
-      id: "logiciels",
-      eyebrow: "Votre logiciel",
-      title: "Chaque connecteur s'adapte à votre logiciel",
-      items: [
-        {
-          title: "Pennylane",
-          status: "Lecture et écriture",
-          text: "Le connecteur officiel est en lecture seule à ce jour. Le connecteur Althoce ajoute l'écriture.",
-          source: { label: "pennylane.com/fr/mcp", url: "https://www.pennylane.com/fr/mcp" },
-        },
-        {
-          title: "ACD, Cegid Loop, Sage Génération Experts, MyUnisoft, Inqom",
-          status: "Lecture et écriture",
-          text: "Comme pour Pennylane, votre IA lit vos dossiers et y écrit, avec votre validation.",
-        },
-        {
-          title: "Cegid Quadra, Quadratus, Coala, Isacompta (AGIRIS)",
-          status: "Sur mesure",
-          text: "Logiciels fermés : on construit un connecteur sur mesure.",
-        },
-      ],
-      cta: "Votre logiciel n'est pas dans la liste ? C'est l'objet de l'audit.",
-    },
     webinarSlug: "connecteurs-mcp-cabinets",
   },
   "demo-agents-ia": {
@@ -184,50 +210,75 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
       durationMin: 30,
     },
     host: ESPOIR,
-    deliverablesTitle: "Ce que la démo vous apporte",
-    deliverables: [
-      { icon: "video", title: "La plateforme en action", text: "Des cas d'usage concrets, sur de vrais dossiers." },
-      { icon: "scanSearch", title: "Votre pré-audit", text: "Ce qui prend trop de place à votre cabinet aujourd'hui." },
-      { icon: "route", title: "Par où commencer", text: "Les premiers agents à mettre en place chez vous." },
-      { icon: "messageSquareText", title: "Vos questions", text: "Installation, données, validation : on y répond en direct." },
-    ],
-    note: { icon: "building", text: "La solution tourne déjà dans plus de 20 cabinets." },
-    work: {
-      eyebrow: "La plateforme",
-      title: "Ce qu'elle prend en charge",
-      highlight: {
-        icon: "listChecks",
-        title: "Tous les agents IA du cabinet, au même endroit",
-        text: "Un seul endroit pour suivre tous les dossiers.",
-      },
-      tasks: [
-        "La saisie et la production",
-        "Le rapprochement bancaire",
-        "La collecte des pièces auprès de vos clients",
-        "La récupération des documents sur les espaces officiels : impôts, URSSAF, BODACC",
-      ],
-      tasksMore: "Et bien d'autres tâches du quotidien",
-      aside: {
-        icon: "userCheck",
-        title: "Les agents préparent, vos collaborateurs valident.",
-        text: "Plus de copier-coller entre cinq outils.",
-      },
-    },
-    details: {
-      id: "donnees",
-      eyebrow: "Vos données",
-      title: "Vos données restent chez vous",
-      items: [
-        {
-          icon: "server",
-          title: "En Europe, ou sur votre serveur",
-          text: "Les agents tournent sur des modèles hébergés en Europe, ou directement sur votre serveur.",
+    blocks: [
+      {
+        kind: "cartes",
+        id: "plateforme",
+        eyebrow: "La plateforme",
+        title: "Ce qu'elle automatise dans votre cabinet",
+        items: [
+          {
+            icon: "receipt",
+            title: "La saisie et la production",
+            text: "Les pièces sont saisies, la production avance. Vos collaborateurs relisent et valident.",
+          },
+          {
+            icon: "arrowLeftRight",
+            title: "Le rapprochement bancaire",
+            text: "Les opérations bancaires sont rapprochées des pièces et des écritures. Vous validez les propositions.",
+          },
+          {
+            icon: "mail",
+            title: "La collecte des pièces auprès de vos clients",
+            text: "Les pièces manquantes sont demandées à vos clients et réunies dans le dossier. Rien ne part sans votre validation.",
+          },
+          {
+            icon: "landmark",
+            title: "Les documents des espaces officiels",
+            text: "Impôts, URSSAF, BODACC : les documents sont récupérés pour vous, sans vous connecter site par site.",
+          },
+        ],
+        more: "Et bien d'autres tâches du quotidien",
+        points: {
+          title: "Ce qui change pour le cabinet",
+          items: [
+            "Les agents préparent, vos collaborateurs valident",
+            "Plus de copier-coller entre cinq outils",
+            "Un seul endroit pour suivre tous les dossiers",
+          ],
         },
-        { icon: "lock", title: "Pas d'IA grand public", text: "Aucune donnée client n'y est envoyée." },
-        { icon: "shieldCheck", title: "Votre validation d'abord", text: "Rien ne part chez un client sans votre validation." },
-      ],
-      cta: "Votre cabinet a des exigences particulières ? C'est l'objet du pré-audit.",
-    },
+        note: { icon: "building", text: "La solution tourne déjà dans plus de 20 cabinets." },
+      },
+      { kind: "agenda" },
+      {
+        kind: "cartes",
+        id: "demo",
+        eyebrow: "En 30 minutes",
+        title: "Ce que la démo vous apporte",
+        items: [
+          { icon: "video", title: "Des cas d'usage concrets", text: "Montrés en direct, sur de vrais dossiers." },
+          { icon: "scanSearch", title: "Votre pré-audit", text: "Ce qui prend trop de place à votre cabinet aujourd'hui." },
+          { icon: "route", title: "Par où commencer", text: "Les premiers agents à mettre en place chez vous." },
+          { icon: "messageSquareText", title: "Vos questions", text: "Installation, données, validation : on y répond en direct." },
+        ],
+      },
+      {
+        kind: "liste",
+        id: "donnees",
+        eyebrow: "Vos données",
+        title: "Vos données restent chez vous",
+        items: [
+          {
+            icon: "server",
+            title: "En Europe, ou sur votre serveur",
+            text: "Les agents tournent sur des modèles hébergés en Europe, ou directement sur votre serveur.",
+          },
+          { icon: "lock", title: "Pas d'IA grand public", text: "Aucune donnée client n'y est envoyée." },
+          { icon: "shieldCheck", title: "Votre validation d'abord", text: "Rien ne part chez un client sans votre validation." },
+        ],
+        cta: "Votre cabinet a des exigences particulières ? C'est l'objet du pré-audit.",
+      },
+    ],
   },
 };
 
