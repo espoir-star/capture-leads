@@ -39,6 +39,10 @@ test("liens courts : cible exacte, code inconnu et clés du prototype refusés",
     shortLinkTarget("au1"),
     "/rdv/audit-connecteurs?utm_source=linkedin&utm_medium=organic&utm_campaign=audit_installation_connecteurs&utm_content=LI_EC_20261029_01"
   );
+  assert.equal(
+    shortLinkTarget("ag1"),
+    "/rdv/demo-agents-ia?utm_source=linkedin&utm_medium=organic&utm_campaign=demo_plateforme_agents_ia&utm_content=LI_EC_20261110_01"
+  );
   assert.equal(shortLinkPageExists({ kind: "rdv", slug: "inconnu" }), false);
   assert.equal(shortLinkTarget("inconnu"), null);
   assert.equal(shortLinkTarget("toString"), null);
