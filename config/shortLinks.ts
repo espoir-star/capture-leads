@@ -108,9 +108,8 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     utm_source: "linkedin",
     utm_medium: "organic",
     utm_campaign: "agent_pieces_cabinet",
-    // Post « Le vrai temps perdu dans un cabinet […] C'est courir après les pièces » (texte d'Espoir du 12/11/2026).
-    // Réservé : date de publication à confirmer par Espoir avant d'activer le lien.
-    utm_content: null,
+    // Post « Le vrai temps perdu dans un cabinet […] C'est courir après les pièces », publié le 12/11/2026 (date donnée par Espoir).
+    utm_content: "LI_EC_20261112_01",
   },
 };
 
