@@ -102,6 +102,15 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // publié le 10/11/2026 (« il sera posté aujourd'hui », Espoir le 10/11).
     utm_content: "LI_EC_20261110_01",
   },
+  pc1: {
+    kind: "rdv",
+    slug: "agent-pieces",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "agent_pieces_cabinet",
+    // Post « Le vrai temps perdu dans un cabinet […] C'est courir après les pièces », publié le 12/11/2026 (date donnée par Espoir).
+    utm_content: "LI_EC_20261112_01",
+  },
 };
 
 /** Lecteurs /g/<slug> en accès libre (sans page de capture) : seuls ceux-ci acceptent un lien court. */
