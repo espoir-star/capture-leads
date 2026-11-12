@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { RDV_PAGES, getRdvPage, type RdvBlock, type RdvPage, type RdvPoint } from "@/config/rdvPages";
 import { getWebinar } from "@/config/webinars";
@@ -18,6 +18,14 @@ function bloc<K extends Kind>(p: RdvPage, kind: K): BlockOf<K> {
   return b;
 }
 
+/** Largeur et hauteur d'un WebP étendu (en-tête VP8X : largeur - 1 et hauteur - 1 sur 24 bits) */
+function webpSize(file: string): [number, number] {
+  assert.ok(existsSync(file), file);
+  const b = readFileSync(file);
+  assert.equal(b.toString("latin1", 0, 4) + b.toString("latin1", 8, 16), "RIFFWEBPVP8X", `${file} : WebP étendu attendu`);
+  return [b.readUIntLE(24, 3) + 1, b.readUIntLE(27, 3) + 1];
+}
+
 /** Tous les textes affichés d'une page de rendez-vous */
 function texts(p: RdvPage): string[] {
   const point = (x: RdvPoint) => [x.title, x.text];
@@ -30,7 +38,12 @@ function texts(p: RdvPage): string[] {
       case "cartes":
         out.push(b.eyebrow, b.title, ...b.items.flatMap(point));
         if (b.more !== undefined) out.push(b.more);
+        if (b.highlight) out.push(...point(b.highlight));
         if (b.points) out.push(b.points.title, ...b.points.items);
+        if (b.note) out.push(b.note.text);
+        break;
+      case "apercu":
+        out.push(b.eyebrow, b.title, b.image.alt, b.image.caption, ...b.items.flatMap(point));
         if (b.note) out.push(b.note.text);
         break;
       case "travail":
@@ -65,8 +78,10 @@ test("pages de rendez-vous : agenda Google réel, intégrable, et page bien form
       assert.ok(!["apports", "creneaux", "creneaux-titre"].includes(id), id);
     }
     for (const b of p.blocks) {
-      if (b.kind === "cartes" || b.kind === "apports" || b.kind === "liste") assert.ok(b.items.length > 0, `${p.slug} : ${b.kind} vide`);
+      if (b.kind === "cartes" || b.kind === "apports" || b.kind === "liste" || b.kind === "apercu") assert.ok(b.items.length > 0, `${p.slug} : ${b.kind} vide`);
       if (b.kind === "travail") assert.ok(b.tasks.length > 0, `${p.slug} : tâches vides`);
+      // Capture : fichier présent dans public/ et dimensions déclarées = dimensions réelles (pas de déformation)
+      if (b.kind === "apercu") assert.deepEqual(webpSize(join(process.cwd(), "public", b.image.src)), [b.image.width, b.image.height], b.image.src);
     }
     if (p.webinarSlug) assert.ok(getWebinar(p.webinarSlug), p.webinarSlug);
     for (const t of texts(p)) {
@@ -154,5 +169,46 @@ test("démo agents IA : les tâches du post d'abord, puis l'agenda du pré-audit
   // Seuls chiffres : la durée (30 min) et « plus de 20 cabinets », écrit par Espoir dans le post
   assert.match(taches.note?.text ?? "", /plus de 20 cabinets/);
   assert.deepEqual([...new Set(texts(p).join(" ").match(/\d+/g))].sort(), ["20", "30"]);
+  for (const t of texts(p)) assert.doesNotMatch(t, /\bFEC\b/, t);
+});
+
+test("agent pièces : ce que fait l'agent, puis l'interface réelle, puis l'agenda du pré-audit, puis la démo", () => {
+  const p = getRdvPage("agent-pieces");
+  assert.ok(p);
+  // Préférence d'Espoir (10/11) : d'abord ce que fait l'agent et comment, puis l'agenda, puis ce que la démo apporte
+  assert.deepEqual(p.blocks.map((b) => b.kind), ["cartes", "apercu", "agenda", "cartes", "liste"]);
+  const [agent, demo] = blocks(p, "cartes");
+  assert.equal(agent.id, "agent");
+  assert.equal(demo.title, "Ce que la démo vous apporte");
+  // Agenda « Pré-audit IA offert - Althoce », le même que la démo du 10/11
+  assert.equal(p.booking.url, getRdvPage("demo-agents-ia")?.booking.url);
+  assert.equal(p.booking.embedUrl, getRdvPage("demo-agents-ia")?.booking.embedUrl);
+  assert.match(p.eyebrow, /100 % gratuit/);
+  assert.equal(p.webinarSlug, undefined);
+  // Les quatre actions du post, dans l'ordre ; relance validée ; CFE et attestation URSSAF
+  assert.deepEqual(agent.items.map((t) => t.title), [
+    "Il repère les pièces manquantes",
+    "Il relance le client",
+    "Il récupère les documents officiels",
+    "Il range tout au bon dossier",
+  ]);
+  assert.match(agent.items[1].text, /message prêt\. Vous le validez/);
+  assert.match(agent.items[2].text, /avis de CFE/);
+  assert.match(agent.items[2].text, /attestation URSSAF/);
+  assert.equal(agent.highlight?.title, "Le matin, vous ne voyez que ce qui a changé");
+  // L'interface : la capture d'Espoir (onglet Agents) et ce qu'elle montre
+  const ui = bloc(p, "apercu");
+  assert.equal(ui.image.src, "/rdv/onglet-agents.webp");
+  for (const espace of ["Impôts", "URSSAF", "URSSAF · TNS", "INPI", "jedeclare.com", "BODACC"]) assert.ok(ui.items[0].text.includes(espace), espace);
+  assert.ok(ui.items.some((i) => /dernier passage/.test(i.text)));
+  assert.ok(ui.items.some((i) => /accès à rétablir/.test(i.text)));
+  assert.ok(ui.items.some((i) => /Relever maintenant/.test(i.text)));
+  assert.match(ui.note?.text ?? "", /saisie et le rapprochement\. Commencez par les pièces/);
+  // Données : Europe ou serveur du cabinet, relance jamais envoyée sans validation
+  const data = bloc(p, "liste").items.map((s) => `${s.title} ${s.text}`).join(" ");
+  assert.match(data, /En Europe, ou sur votre propre serveur/);
+  assert.match(data, /sans votre validation/);
+  // Seuls chiffres : 100 % gratuit et 30 minutes
+  assert.deepEqual([...new Set(texts(p).join(" ").match(/\d+/g))].sort(), ["100", "30"]);
   for (const t of texts(p)) assert.doesNotMatch(t, /\bFEC\b/, t);
 });

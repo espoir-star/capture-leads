@@ -85,6 +85,19 @@ function Cartes({ items, className }: { items: RdvPoint[]; className: string }) 
   );
 }
 
+/** Encadré mis en avant ; `className` s'ajoute sans changer les classes de base */
+function Highlight({ point, className }: { point: RdvPoint; className?: string }) {
+  return (
+    <div className={`flex gap-4 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6 sm:items-center sm:gap-5 sm:p-7${className ? ` ${className}` : ""}`}>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Icon name={point.icon} size={18} strokeWidth={1.75} /></span>
+      <div>
+        <p className="text-[18px] font-semibold leading-snug tracking-[-0.02em] sm:text-[20px]">{point.title}</p>
+        <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{point.text}</p>
+      </div>
+    </div>
+  );
+}
+
 function Note({ note }: { note: RdvNote }) {
   return (
     <p className="mt-5 flex items-start gap-2.5 text-[13.5px] leading-relaxed text-secondaire">
@@ -155,6 +168,7 @@ function Bloc({ b, p }: { b: RdvBlock; p: RdvPage }) {
               {b.more}
             </p>
           )}
+          {b.highlight && <Highlight point={b.highlight} className="mt-6" />}
           {b.points && (
             <div className="mt-6 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6 sm:p-7">
               <p className="text-[18px] font-semibold leading-snug tracking-[-0.02em] sm:text-[20px]">{b.points.title}</p>
@@ -172,16 +186,40 @@ function Bloc({ b, p }: { b: RdvBlock; p: RdvPage }) {
         </Section>
       );
 
+    case "apercu":
+      return (
+        <Section id={b.id} eyebrow={b.eyebrow} title={b.title}>
+          <figure>
+            <a
+              href={b.image.src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block overflow-hidden rounded-[18px] border border-bordure bg-white transition-colors duration-150 hover:border-bordure-forte"
+            >
+              <Image src={b.image.src} alt={b.image.alt} width={b.image.width} height={b.image.height} sizes="(min-width: 960px) 896px, 100vw" className="block h-auto w-full" />
+              <span className="sr-only">Agrandir la capture (nouvel onglet)</span>
+            </a>
+            <figcaption className="mt-3 text-[12px] leading-relaxed text-discret">{b.image.caption}</figcaption>
+          </figure>
+          <ul className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2">
+            {b.items.map((d) => (
+              <li key={d.title} className="flex gap-4">
+                <span className={tile}><Icon name={d.icon} size={14} /></span>
+                <div>
+                  <p className="text-[15px] font-semibold leading-tight">{d.title}</p>
+                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{d.text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {b.note && <Note note={b.note} />}
+        </Section>
+      );
+
     case "travail":
       return (
         <Section id={b.id} eyebrow={b.eyebrow} title={b.title}>
-          <div className="flex gap-4 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6 sm:items-center sm:gap-5 sm:p-7">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Icon name={b.highlight.icon} size={18} strokeWidth={1.75} /></span>
-            <div>
-              <p className="text-[18px] font-semibold leading-snug tracking-[-0.02em] sm:text-[20px]">{b.highlight.title}</p>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{b.highlight.text}</p>
-            </div>
-          </div>
+          <Highlight point={b.highlight} />
           <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1.1fr_1fr]">
             <ul className={`${card} divide-y divide-bordure`}>
               {b.tasks.map((t) => (

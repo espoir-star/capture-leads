@@ -25,6 +25,15 @@
  * préparent, vos collaborateurs valident ». Agenda « Pré-audit IA offert - Althoce »
  * vérifié le 10/11/2026 (30 min, Google Meet, le même que les guides et les emails) ;
  * « ce qui prend trop de place aujourd'hui » repris du pré-audit offert d'althoce.com.
+ *
+ * agent-pieces, post « Le vrai temps perdu dans un cabinet, ce n'est pas la saisie.
+ * C'est courir après les pièces » (texte d'Espoir du 12/11/2026) : ce que fait l'agent,
+ * puis comment les agents passent sur les espaces officiels, d'après la capture de
+ * l'onglet Agents de la plateforme fournie par Espoir le 12/11/2026 (un agent par
+ * espace : Impôts, URSSAF, URSSAF · TNS, INPI, jedeclare.com, BODACC ; « Dernier
+ * passage », « Accès à rétablir », « Pas branché », bouton « Relever maintenant »),
+ * puis l'agenda du pré-audit offert. « Aucune donnée client n'est envoyée aux IA grand
+ * public » : post du 10/11/2026 sur la même plateforme.
  */
 import type { IconName } from "@/components/icons/lucide";
 
@@ -54,7 +63,7 @@ export interface RdvDetail {
 export type RdvBlock =
   /** Cartes juste sous l'en-tête : titre discret en petites capitales, phrase en dessous */
   | { kind: "apports"; title: string; items: RdvPoint[]; note: RdvNote }
-  /** Section titrée de cartes ; ligne « et d'autres », encadré de points forts et phrase facultatifs */
+  /** Section titrée de cartes ; ligne « et d'autres », encadrés et phrase facultatifs */
   | {
       kind: "cartes";
       id: string;
@@ -62,7 +71,21 @@ export type RdvBlock =
       title: string;
       items: RdvPoint[];
       more?: string;
+      /** Encadré mis en avant (icône, titre, texte) */
+      highlight?: RdvPoint;
+      /** Encadré de points forts (titre et liste) */
       points?: { title: string; items: string[] };
+      note?: RdvNote;
+    }
+  /** Capture de l'interface (cliquable, taille réelle), légende, explications et phrase facultative */
+  | {
+      kind: "apercu";
+      id: string;
+      eyebrow: string;
+      title: string;
+      /** Fichier de public/, dimensions réelles en pixels */
+      image: { src: string; alt: string; width: number; height: number; caption: string };
+      items: RdvPoint[];
       note?: RdvNote;
     }
   /** Encadré mis en avant, liste des tâches (la dernière ligne dit qu'elle n'est pas exhaustive) et carte à côté */
@@ -275,6 +298,104 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
           },
           { icon: "lock", title: "Pas d'IA grand public", text: "Aucune donnée client n'y est envoyée." },
           { icon: "shieldCheck", title: "Votre validation d'abord", text: "Rien ne part chez un client sans votre validation." },
+        ],
+        cta: "Votre cabinet a des exigences particulières ? C'est l'objet du pré-audit.",
+      },
+    ],
+  },
+  "agent-pieces": {
+    slug: "agent-pieces",
+    metaTitle: "Démo : l'agent IA qui court après les pièces à votre place",
+    metaDescription:
+      "Il repère les pièces manquantes, relance vos clients et récupère les documents sur les espaces impôts et URSSAF. Démo complète sur un vrai dossier, 100 % gratuite.",
+    eyebrow: "Démo sur un vrai dossier · 100 % gratuit",
+    title: "Le vrai temps perdu au cabinet, <accent>c'est courir après les pièces</accent>",
+    subtitle: "Un agent IA repère les pièces manquantes, relance vos clients et récupère les documents sur les espaces impôts et URSSAF.",
+    priceLabel: "Gratuit",
+    booking: {
+      // Agenda « Pré-audit IA offert - Althoce » (le même que la démo du 10/11, les guides et les emails) : 30 min, Google Meet.
+      url: "https://calendar.app.google/JmhxjFqk2kybuFLR9",
+      embedUrl:
+        "https://calendar.google.com/calendar/appointments/schedules/AcZssZ3fJwV7FRh514CDPeI7xaMilYOxLNenoXdF9ZNlL4NRkEUuO5fK3TUzHRcdNsf4A3IwA8Xx0Xbl?gv=true&hl=fr",
+      title: "Démo et pré-audit",
+      durationMin: 30,
+    },
+    host: ESPOIR,
+    blocks: [
+      {
+        kind: "cartes",
+        id: "agent",
+        eyebrow: "L'agent",
+        title: "Ce qu'il fait chaque jour",
+        items: [
+          { icon: "scanSearch", title: "Il repère les pièces manquantes", text: "Dans chaque dossier suivi, sans que vous ayez à faire le tour." },
+          { icon: "mail", title: "Il relance le client", text: "Avec un message prêt. Vous le validez, puis il part." },
+          {
+            icon: "landmark",
+            title: "Il récupère les documents officiels",
+            text: "L'avis de CFE sur l'espace impôts, l'attestation URSSAF : il va les chercher pour vous.",
+          },
+          { icon: "folderCheck", title: "Il range tout au bon dossier", text: "Chaque pièce reçue ou récupérée arrive dans le dossier du client." },
+        ],
+        highlight: {
+          icon: "sunrise",
+          title: "Le matin, vous ne voyez que ce qui a changé",
+          text: "Pièces reçues, documents récupérés, accès à rétablir : tout est signalé, dossier par dossier.",
+        },
+      },
+      {
+        kind: "apercu",
+        id: "interface",
+        eyebrow: "Comment ça marche",
+        title: "Des agents qui vont sur les espaces à votre place",
+        image: {
+          src: "/rdv/onglet-agents.webp",
+          alt: "Onglet Agents de la plateforme : un agent par espace (Impôts, URSSAF, INPI, URSSAF · TNS, jedeclare.com, BODACC), avec les dossiers relevés, l'heure du dernier passage et ce qui bloque.",
+          width: 2000,
+          height: 1293,
+          caption: "L'onglet Agents de la plateforme : chaque espace, ses dossiers relevés et ce qui bloque.",
+        },
+        items: [
+          {
+            icon: "landmark",
+            title: "Un agent par espace",
+            text: "Impôts, URSSAF, URSSAF · TNS, INPI, jedeclare.com, BODACC : chaque agent est branché sur son espace et y relève vos dossiers.",
+          },
+          { icon: "clock", title: "Un relevé chaque jour", text: "Chaque agent passe sur vos dossiers suivis. L'heure du dernier passage est affichée." },
+          { icon: "triangleAlert", title: "Ce qui bloque est signalé", text: "Un accès à rétablir, un dossier pas encore branché : vous savez où agir." },
+          { icon: "refreshCw", title: "Un relevé quand vous voulez", text: "Le bouton « Relever maintenant » lance un passage à la demande." },
+        ],
+        note: {
+          icon: "listChecks",
+          text: "Ce même agent fait partie d'une plateforme qui gère aussi la saisie et le rapprochement. Commencez par les pièces : c'est là que le temps part.",
+        },
+      },
+      { kind: "agenda" },
+      {
+        kind: "cartes",
+        id: "demo",
+        eyebrow: "En 30 minutes",
+        title: "Ce que la démo vous apporte",
+        items: [
+          { icon: "video", title: "Une démo complète", text: "Sur un vrai dossier, de la pièce manquante au document rangé." },
+          { icon: "scanSearch", title: "Votre pré-audit", text: "Ce qui prend trop de place à votre cabinet aujourd'hui." },
+          { icon: "route", title: "Par où commencer", text: "Les espaces et les dossiers à brancher en premier." },
+          { icon: "messageSquareText", title: "Vos questions", text: "Accès, données, validation : on y répond en direct." },
+        ],
+      },
+      {
+        kind: "liste",
+        id: "donnees",
+        eyebrow: "Vos données",
+        title: "Vos données restent en Europe, ou chez vous",
+        items: [
+          {
+            icon: "server",
+            title: "En Europe, ou sur votre propre serveur",
+            text: "Les agents tournent sur des modèles hébergés en Europe, ou directement sur votre serveur.",
+          },
+          { icon: "shieldCheck", title: "Votre validation d'abord", text: "Aucune relance ne part chez un client sans votre validation." },
+          { icon: "lock", title: "Pas d'IA grand public", text: "Aucune donnée client n'y est envoyée." },
         ],
         cta: "Votre cabinet a des exigences particulières ? C'est l'objet du pré-audit.",
       },
