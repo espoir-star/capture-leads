@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { preload } from "react-dom";
 import "./globals.css";
 import CookieConsent from "@/components/CookieConsent";
+import AudienceAnalytics from "@/components/AudienceAnalytics";
 
 /*
  * Police commune (standard davinci) : Geist, nombres en chiffres tabulaires.
@@ -29,6 +30,7 @@ export default function RootLayout({
         {/* GA4, Meta Pixel, tracker Brevo : chargés seulement après « Tout accepter » (components/CookieConsent.tsx) */}
         {children}
         <CookieConsent />
+        <AudienceAnalytics />
       </body>
     </html>
   );

@@ -30,6 +30,7 @@
     "webinar:replay": "tsx --env-file-if-exists=.env scripts/webinar/replay.ts"
   },
   "dependencies": {
+    "@vercel/analytics": "2.0.1",
     "gray-matter": "^4.0.3",
     "libphonenumber-js": "^1.13.14",
     "marked": "^18.1.0",
