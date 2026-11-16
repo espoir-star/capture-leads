@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { trackJourney } from "@/lib/analytics";
 
 /**
  * Hauteurs mesurées le 28/10/2026. L'iframe ne transmet pas sa hauteur (autre
@@ -24,11 +25,41 @@ interface Props {
   embedUrl: string;
   url: string;
   title: string;
+  /** Page /rdv/<slug> : étiquette des étapes mesurées dans GA4 (après consentement). */
+  slug: string;
 }
 
-export default function BookingCalendar({ embedUrl, url, title }: Props) {
+export default function BookingCalendar({ embedUrl, url, title, slug }: Props) {
   const [height, setHeight] = useState<number>();
   const box = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLIFrameElement>(null);
+
+  // Parcours GA4 : agenda affiché à l'écran, puis premier clic dans l'agenda. L'iframe Google
+  // ne dit rien de ce qui s'y passe : un clic dedans se repère à la page qui perd le focus
+  // au profit de l'iframe. Une seule mesure de chaque par visite de la page.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    let seen = false;
+    let clicked = false;
+    const observer = new IntersectionObserver((entries) => {
+      if (seen || !entries.some((e) => e.isIntersecting)) return;
+      seen = true;
+      trackJourney("agenda_vu", slug);
+      observer.disconnect();
+    }, { threshold: 0.25 });
+    observer.observe(el);
+    const onBlur = () => {
+      if (clicked || document.activeElement !== frame.current) return;
+      clicked = true;
+      trackJourney("agenda_clic", slug);
+    };
+    window.addEventListener("blur", onBlur);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [slug]);
 
   useEffect(() => {
     const el = box.current;
@@ -47,6 +78,7 @@ export default function BookingCalendar({ embedUrl, url, title }: Props) {
           Chargement de l&apos;agenda…
         </p>
         <iframe
+          ref={frame}
           src={embedUrl}
           title={`${title} : choisir un créneau`}
           style={height ? { height } : undefined}
@@ -55,7 +87,7 @@ export default function BookingCalendar({ embedUrl, url, title }: Props) {
       </div>
       <p className="mt-3 text-[12px] text-discret">
         Agenda Google.{" "}
-        <a href={url} target="_blank" rel="noopener noreferrer" className="underline decoration-bordure-forte underline-offset-4 hover:text-texte">
+        <a href={url} target="_blank" rel="noopener noreferrer" onClick={() => trackJourney("agenda_onglet", slug)} className="underline decoration-bordure-forte underline-offset-4 hover:text-texte">
           Ouvrir dans un nouvel onglet
         </a>
       </p>

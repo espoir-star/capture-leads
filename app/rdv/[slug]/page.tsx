@@ -153,7 +153,7 @@ function Bloc({ b, p }: { b: RdvBlock; p: RdvPage }) {
             </div>
           </div>
           <div className="mt-7">
-            <BookingCalendar embedUrl={p.booking.embedUrl} url={p.booking.url} title={p.booking.title} />
+            <BookingCalendar embedUrl={p.booking.embedUrl} url={p.booking.url} title={p.booking.title} slug={p.slug} />
           </div>
         </section>
       );
