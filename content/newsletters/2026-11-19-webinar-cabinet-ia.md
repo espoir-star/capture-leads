@@ -1,6 +1,6 @@
 ---
 rubric: "Webinaire gratuit · jeudi 26 novembre"
-title: "Ce que font déjà les cabinets qui ont intégré l'IA, montré en direct sur leurs écrans."
+title: "Relances de pièces, révision, réponses aux mails : l'IA prépare, votre collaborateur valide."
 subject: "Webinaire 26/11 : intégrer l'IA dans un cabinet comptable"
 previewText: "Jeudi 26 novembre à 11 h. Moins de production, plus de conseil. Gratuit."
 scheduledAt: "2026-11-19T08:30:00+01:00"
