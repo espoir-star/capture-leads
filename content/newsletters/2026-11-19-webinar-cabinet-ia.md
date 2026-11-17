@@ -1,13 +1,13 @@
 ---
 rubric: "Webinaire gratuit · jeudi 26 novembre"
 title: "Ce que font déjà les cabinets qui ont intégré l'IA, montré en direct sur leurs écrans."
-subject: "Webinaire jeudi 11 h : intégrer l'IA dans un cabinet comptable"
-previewText: "Moins de production, plus de conseil. Une heure, gratuit, en visio."
-scheduledAt: "2026-11-24T08:30:00+01:00"
+subject: "Webinaire 26/11 : intégrer l'IA dans un cabinet comptable"
+previewText: "Jeudi 26 novembre à 11 h. Moins de production, plus de conseil. Gratuit."
+scheduledAt: "2026-11-19T08:30:00+01:00"
 audience: finance
 tag: WEBINAR_FINANCE
 utmCampaign: webinar_agentflow_althoce_20261126
-utmContent: email_invitation
+utmContent: email_annonce
 status: draft
 cta:
   label: "Je réserve ma place"

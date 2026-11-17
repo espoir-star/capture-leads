@@ -35,16 +35,20 @@ test("newsletters de novembre : une ressource par email, lien direct, mardi et j
 
 /**
  * Webinaire AgentFlow × Althoce du jeudi 26/11/2026 à 11 h (page d'inscription chez AgentFlow,
- * lien de recommandation fourni par Espoir le 17/11). Deux emails : invitation le mardi, rappel
- * le matin même. Faits repris de la page d'inscription, aucune mention d'un enregistrement.
+ * lien de recommandation fourni par Espoir le 17/11). Cinq emails demandés par Espoir le 17/11 :
+ * jeudi 19, samedi 21, lundi 23, mercredi 25 et le matin même. Faits repris de la page
+ * d'inscription, aucune mention d'un enregistrement.
  */
 const WEBINAR_STARTS_AT = "2026-11-26T11:00:00+01:00";
 const WEBINAR_MAILS = [
-  { file: "2026-11-24-webinar-cabinet-ia", at: "2026-11-24T08:30:00+01:00", content: "email_invitation" },
+  { file: "2026-11-19-webinar-cabinet-ia", at: "2026-11-19T08:30:00+01:00", content: "email_annonce" },
+  { file: "2026-11-21-webinar-cabinet-ia-pieces", at: "2026-11-21T09:00:00+01:00", content: "email_pieces" },
+  { file: "2026-11-23-webinar-cabinet-ia-conseil", at: "2026-11-23T08:30:00+01:00", content: "email_conseil" },
+  { file: "2026-11-25-webinar-cabinet-ia-veille", at: "2026-11-25T08:30:00+01:00", content: "email_veille" },
   { file: "2026-11-26-webinar-cabinet-ia-jour-j", at: "2026-11-26T08:00:00+01:00", content: "email_jour_j" },
 ];
 
-test("webinaire du 26/11 : invitation puis rappel avant le direct, lien de recommandation, présence en direct", () => {
+test("webinaire du 26/11 : cinq emails avant le direct, lien de recommandation, présence en direct", () => {
   for (const m of WEBINAR_MAILS) {
     const md = readFileSync(`content/newsletters/${m.file}.md`, "utf8");
     const field = (k: string) => md.match(new RegExp(`^\\s*${k}: "?([^"\\n]+)"?$`, "m"))?.[1];
@@ -58,5 +62,6 @@ test("webinaire du 26/11 : invitation puis rappel avant le direct, lien de recom
     assert.match(md, /Augustin Branthomme, fondateur d'AgentFlow/, `${m.file} : co-animateur`);
     assert.doesNotMatch(md, /—/, `${m.file} : tiret long`);
     assert.doesNotMatch(md, /replay|enregistr|places limitées/i, `${m.file} : pas de raison de ne pas venir, pas de pression`);
+    assert.doesNotMatch(md, /page d'AgentFlow/, `${m.file} : formulation écartée par Espoir`);
   }
 });
