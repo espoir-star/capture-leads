@@ -9,7 +9,8 @@ import { existsSync, readFileSync } from "node:fs";
  */
 const PLANNING = [
   { file: "2026-11-17-finance", day: 2, page: "10-prompts-production-cabinet" },
-  { file: "2026-11-19-finance", day: 4, page: "agent-surveillance" },
+  // Reportée au vendredi 27/11 (campagne #62) : le jeudi 19/11 est pris par l'annonce du webinaire du 26/11
+  { file: "2026-11-19-finance", day: 5, page: "agent-surveillance" },
   { file: "2026-11-24-finance", day: 2, page: "12-cas-usage-experts-comptables" },
   { file: "2026-11-26-finance", day: 4, page: "12-skills-claude-finance" },
 ];
@@ -27,6 +28,7 @@ test("newsletters de novembre : une ressource par email, lien direct, mardi et j
     // Date : mardi ou jeudi, 8 h 30 heure de Paris ; campagne datée du même jour
     const at = new Date(field("scheduledAt")!);
     assert.equal(at.getUTCDay(), p.day, `${p.file} : jour`);
+    assert.ok(at.toISOString().slice(0, 10) >= p.file.slice(0, 10), `${p.file} : jamais avant la date du fichier`);
     assert.equal(field("scheduledAt")!.slice(11), "08:30:00+01:00", `${p.file} : heure`);
     assert.equal(field("utmCampaign"), `nl_finance_${p.file.slice(0, 10).replace(/-/g, "")}`);
     assert.ok(["draft", "ready", "created", "scheduled"].includes(field("status")!), `${p.file} : statut inconnu`);

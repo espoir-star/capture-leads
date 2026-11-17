@@ -8,10 +8,11 @@ audience: finance
 tag: WEBINAR_FINANCE
 utmCampaign: webinar_agentflow_althoce_20261126
 utmContent: email_jour_j
-status: draft
+status: scheduled
 cta:
   label: "Je m'inscris pour 11 h"
   url: "https://0e7tr90.short.gy/reco-c05-althoce"
+brevoCampaignId: 69
 ---
 
 Bonjour,
