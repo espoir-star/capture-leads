@@ -32,3 +32,31 @@ test("newsletters de novembre : une ressource par email, lien direct, mardi et j
     assert.ok(["draft", "ready", "created", "scheduled"].includes(field("status")!), `${p.file} : statut inconnu`);
   }
 });
+
+/**
+ * Webinaire AgentFlow × Althoce du jeudi 26/11/2026 à 11 h (page d'inscription chez AgentFlow,
+ * lien de recommandation fourni par Espoir le 17/11). Deux emails : invitation le mardi, rappel
+ * le matin même. Faits repris de la page d'inscription, aucune mention d'un enregistrement.
+ */
+const WEBINAR_STARTS_AT = "2026-11-26T11:00:00+01:00";
+const WEBINAR_MAILS = [
+  { file: "2026-11-24-webinar-cabinet-ia", at: "2026-11-24T08:30:00+01:00", content: "email_invitation" },
+  { file: "2026-11-26-webinar-cabinet-ia-jour-j", at: "2026-11-26T08:00:00+01:00", content: "email_jour_j" },
+];
+
+test("webinaire du 26/11 : invitation puis rappel avant le direct, lien de recommandation, présence en direct", () => {
+  for (const m of WEBINAR_MAILS) {
+    const md = readFileSync(`content/newsletters/${m.file}.md`, "utf8");
+    const field = (k: string) => md.match(new RegExp(`^\\s*${k}: "?([^"\\n]+)"?$`, "m"))?.[1];
+    assert.equal(field("url"), "https://0e7tr90.short.gy/reco-c05-althoce", m.file);
+    assert.equal(field("audience"), "finance", m.file);
+    assert.equal(field("scheduledAt"), m.at, m.file);
+    assert.ok(Date.parse(m.at) < Date.parse(WEBINAR_STARTS_AT), `${m.file} : avant le direct`);
+    assert.equal(field("utmCampaign"), "webinar_agentflow_althoce_20261126");
+    assert.equal(field("utmContent"), m.content);
+    assert.match(md, /11 h/, `${m.file} : horaire`);
+    assert.match(md, /Augustin Branthomme, fondateur d'AgentFlow/, `${m.file} : co-animateur`);
+    assert.doesNotMatch(md, /—/, `${m.file} : tiret long`);
+    assert.doesNotMatch(md, /replay|enregistr|places limitées/i, `${m.file} : pas de raison de ne pas venir, pas de pression`);
+  }
+});
