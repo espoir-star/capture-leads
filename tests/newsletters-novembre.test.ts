@@ -8,11 +8,13 @@ import { existsSync, readFileSync } from "node:fs";
  * aucun rendez-vous.
  */
 const PLANNING = [
+  // Les trois suivantes sont reportées après le webinaire du 26/11 (accord d'Espoir du 17/11) :
+  // 10 prompts mardi 1/12 (#61), 12 cas d'usage jeudi 3/12 (#63), 12 compétences mardi 8/12 (#64).
   { file: "2026-11-17-finance", day: 2, page: "10-prompts-production-cabinet" },
   // Reportée au vendredi 27/11 (campagne #62) : le jeudi 19/11 est pris par l'annonce du webinaire du 26/11
   { file: "2026-11-19-finance", day: 5, page: "agent-surveillance" },
-  { file: "2026-11-24-finance", day: 2, page: "12-cas-usage-experts-comptables" },
-  { file: "2026-11-26-finance", day: 4, page: "12-skills-claude-finance" },
+  { file: "2026-11-24-finance", day: 4, page: "12-cas-usage-experts-comptables" },
+  { file: "2026-11-26-finance", day: 2, page: "12-skills-claude-finance" },
 ];
 
 test("newsletters de novembre : une ressource par email, lien direct, mardi et jeudi 8 h 30", () => {
