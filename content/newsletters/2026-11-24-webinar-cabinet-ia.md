@@ -28,4 +28,4 @@ Jeudi 26 novembre à 11 h, je vous le montre en direct avec Augustin Branthomme,
 
 Une heure, gratuit, en visio, avec vos questions en direct.
 
-L'inscription se fait sur la page d'AgentFlow, qui organise ce webinaire avec Althoce. Le lien du direct vous arrive ensuite par email.
+Après votre inscription, le lien du direct vous arrive par email.
