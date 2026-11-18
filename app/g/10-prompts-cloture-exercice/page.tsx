@@ -177,7 +177,7 @@ export default function Page() {
             </div>
           </div>
           <div className="mt-7">
-            <BookingCalendar embedUrl={rdv.booking.embedUrl} url={rdv.booking.url} title={rdv.booking.title} />
+            <BookingCalendar embedUrl={rdv.booking.embedUrl} url={rdv.booking.url} title={rdv.booking.title} slug={rdv.slug} />
           </div>
         </section>
 

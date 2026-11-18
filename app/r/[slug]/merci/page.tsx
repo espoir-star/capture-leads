@@ -84,7 +84,7 @@ export default async function PageMerci({ params }: Props) {
             </div>
           </div>
           <div className="mt-6">
-            <BookingCalendar embedUrl={PRE_AUDIT_BOOKING_EMBED} url={PRE_AUDIT_BOOKING_URL} title="Pré-audit IA offert" />
+            <BookingCalendar embedUrl={PRE_AUDIT_BOOKING_EMBED} url={PRE_AUDIT_BOOKING_URL} title="Pré-audit IA offert" slug="pre-audit-merci" />
           </div>
         </section>
 
