@@ -124,10 +124,12 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
    * PAS_DE_PROJET) : jamais par un clic, un recalcul de score ou un retour CRM.
    * FORM_SCORE/LEAD_SCORE gardent leur maximum historique : cette date permet
    * au CRM de distinguer un projet actuel d'un ancien score élevé. */
-  const declared = data.besoin !== undefined && data.horizon !== undefined;
+  // Formulaire sans horizon (variante d'un guide) : le besoin seul vaut déclaration,
+  // l'horizon déjà connu n'est pas effacé.
+  const declared = data.besoin !== undefined;
   if (declared) {
     a.BESOIN_PRIORITAIRE = data.besoin!;
-    a.HORIZON_PROJET = data.horizon!;
+    if (data.horizon !== undefined) a.HORIZON_PROJET = data.horizon;
     a.INTENT_UPDATED_AT = data.now.toISOString();
   }
   const previousActivity = Date.parse(String(ex.LAST_QUALIFYING_ACTIVITY_AT ?? ""));
@@ -163,7 +165,7 @@ export function buildContactUpdate(existing: BrevoContact | null, data: CaptureD
   }
 
   /* Score et cycle de vie */
-  const formScore = declared ? formIntentScore(data.besoin!, data.horizon!) : 0;
+  const formScore = declared ? formIntentScore(data.besoin!, data.horizon) : 0;
   const bestForm = Math.max(toScore(ex.FORM_SCORE), formScore);
   if (isEmptyValue(ex.FORM_SCORE) || bestForm !== toScore(ex.FORM_SCORE)) a.FORM_SCORE = bestForm;
   const leadScore = mergeScore(ex.LEAD_SCORE, Math.min(SCORE_CAP, bestForm + toScore(ex.BEHAVIOR_SCORE)));

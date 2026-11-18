@@ -24,6 +24,9 @@ interface Props {
   redirectTo?: string;
   /** "webinar" pour une inscription webinar (config/webinars.ts) */
   kind?: "guide" | "webinar";
+  /** Variante propre au guide (config/leadMagnets.ts, `form`) : entreprise obligatoire, sans horizon */
+  entrepriseRequise?: boolean;
+  sansHorizon?: boolean;
 }
 
 type Field = "prenom" | "nom" | "email" | "entreprise" | "tel" | "besoin" | "horizon";
@@ -74,7 +77,7 @@ function newSessionId(): string {
     : Math.random().toString(36).slice(2);
 }
 
-export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: Props) {
+export default function CaptureForm({ slug, cta, redirectTo, kind = "guide", entrepriseRequise = false, sansHorizon = false }: Props) {
   const router = useRouter();
   /** Webinar : formulaire court (prénom, nom, email, entreprise facultative), aucun projet demandé. */
   const isWebinar = kind === "webinar";
@@ -125,9 +128,10 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
           prenom: String(form.get("prenom") ?? "").trim(),
           nom: String(form.get("nom") ?? "").trim(),
           email,
+          ...(isWebinar || entrepriseRequise ? { entreprise: String(form.get("entreprise") ?? "").trim() } : {}),
           ...(isWebinar
-            ? { entreprise: String(form.get("entreprise") ?? "").trim() }
-            : { tel: String(form.get("tel") ?? "").trim(), pays, besoin, horizon }),
+            ? {}
+            : { tel: String(form.get("tel") ?? "").trim(), pays, besoin, ...(sansHorizon ? {} : { horizon }) }),
           marketingOpposition,
           website: String(form.get("website") ?? ""),
           turnstileToken,
@@ -272,17 +276,19 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         )}
       </div>
 
-      {isWebinar && (
+      {(isWebinar || entrepriseRequise) && (
         <div>
           <label htmlFor="entreprise" className="sr-only">
-            Entreprise (facultatif)
+            {entrepriseRequise ? "Entreprise" : "Entreprise (facultatif)"}
           </label>
           <input
             id="entreprise"
             name="entreprise"
             type="text"
+            required={entrepriseRequise}
+            minLength={entrepriseRequise ? 2 : undefined}
             maxLength={120}
-            placeholder="Entreprise (facultatif)"
+            placeholder={entrepriseRequise ? "Entreprise" : "Entreprise (facultatif)"}
             autoComplete="organization"
             aria-invalid={!!errors.entreprise}
             aria-describedby={errors.entreprise ? "entreprise-error" : undefined}
@@ -376,6 +382,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         <ErrorText id="besoin-error" message={errors.besoin} />
       </div>
 
+      {!sansHorizon && (
       <div>
         <label htmlFor="horizon" className="sr-only">
           {LABEL_HORIZON}
@@ -407,6 +414,7 @@ export default function CaptureForm({ slug, cta, redirectTo, kind = "guide" }: P
         </div>
         <ErrorText id="horizon-error" message={errors.horizon} />
       </div>
+      )}
       </>)}
 
       <Turnstile ref={turnstile} />

@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getRessource, getAllSlugs } from "@/lib/ressources";
+import { guideFormOptions } from "@/config/leadMagnets";
 import CaptureForm from "@/components/CaptureForm";
 import BrandLogo from "@/components/BrandLogo";
 
@@ -173,7 +174,7 @@ export default async function PageCapture({ params }: Props) {
 
   const form = (
     <Suspense>
-      <CaptureForm slug={r.slug} cta={r.cta ?? "Recevoir la ressource"} />
+      <CaptureForm slug={r.slug} cta={r.cta ?? "Recevoir la ressource"} {...guideFormOptions(r.slug)} />
     </Suspense>
   );
 
