@@ -67,6 +67,27 @@ export interface Ressource {
 }
 
 export const RESSOURCES: Record<string, Ressource> = {
+  /* ─────────────────────────────────────────────────────────────
+   * 10 prompts pour préparer la clôture (post du 18/11/2026, lien cl1)
+   * Formulaire : entreprise obligatoire, sans horizon (config/leadMagnets.ts)
+   * ──────────────────────────────────────────────────────────── */
+  "10-prompts-cloture-exercice": {
+    slug: "10-prompts-cloture-exercice",
+    badge: "RESSOURCE GRATUITE",
+    titre: "Contrôles de clôture : <accent>1 journée → 30 minutes</accent> de relecture.",
+    sousTitre:
+      "Pour les experts-comptables, collaborateurs et dirigeants de cabinets. Les 10 prompts pour préparer la clôture d'un dossier : la liste des travaux, les pièces à demander, les contrôles de fin d'exercice et le point avec le dirigeant.",
+    resourceCard: {
+      titre: "10 prompts pour préparer la clôture",
+      description: "Préparer, contrôler, conclure : les prompts prêts à copier.",
+      meta: "Lecture estimée : 5 minutes",
+    },
+    pills: ["10 prompts prêts à copier", "Préparer, contrôler, conclure", "Claude, ChatGPT ou une autre IA", "Audit d'installation 100 % gratuit"],
+    urlRessource: "/g/10-prompts-cloture-exercice",
+    style: "modal",
+    cta: "Recevoir les 10 prompts",
+    signature: "Espoir Mwami · Althoce",
+  },
   "tableaux-de-bord-claude-cabinets": {
     slug: "tableaux-de-bord-claude-cabinets",
     badge: "GUIDE GRATUIT",

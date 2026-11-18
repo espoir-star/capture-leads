@@ -93,12 +93,11 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     utm_content: "LI_EC_20261103_01",
   },
   cl1: {
-    kind: "lecteur",
     slug: "10-prompts-cloture-exercice",
     utm_source: "linkedin",
     utm_medium: "organic",
     utm_campaign: "10_prompts_cloture_exercice",
-    // Post « Clôture » (accès libre, sans formulaire), programmé dans Buffer le 18/11/2026 (demande d'Espoir le 17/11).
+    // Post « Clôture », publié le 18/11/2026 à 11 h (Buffer). Accès par formulaire depuis le 18/11 (demande d'Espoir).
     utm_content: "LI_EC_20261118_01",
   },
   ag1: {
@@ -123,7 +122,7 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
 };
 
 /** Lecteurs /g/<slug> en accès libre (sans page de capture) : seuls ceux-ci acceptent un lien court. */
-export const OPEN_READERS: readonly string[] = ["10-prompts-production-cabinet", "10-prompts-cloture-exercice"];
+export const OPEN_READERS: readonly string[] = ["10-prompts-production-cabinet"];
 
 /** Chemin cible (relatif) d'un code, ou null s'il est inconnu */
 export function shortLinkTarget(code: string): string | null {

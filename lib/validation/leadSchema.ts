@@ -6,7 +6,9 @@
  * Les UTM ne bloquent jamais une inscription : une valeur absurde est
  * simplement ignorée (lib/tracking/utm.ts).
  *
- * Guides : téléphone, besoin et horizon obligatoires (inchangé).
+ * Guides : téléphone, besoin et horizon obligatoires (inchangé), sauf variante
+ * propre au guide (config/leadMagnets.ts, `form`) : entreprise obligatoire,
+ * horizon ni demandé ni enregistré.
  * Webinars (`kind: "webinar"`) : formulaire court prénom, nom, email et
  * entreprise facultative. Téléphone, besoin et horizon y sont ignorés : une
  * inscription ne fabrique jamais de déclaration de projet.
@@ -14,6 +16,7 @@
 
 import { z } from "zod";
 import { BESOIN_CODES, HORIZON_CODES, PHONE_COUNTRY_CODES } from "@/config/taxonomy";
+import { guideFormOptions } from "@/config/leadMagnets";
 
 const stripControls = (s: string) => s.replace(/[\u0000-\u001F\u007F]/g, "").trim();
 
@@ -62,8 +65,16 @@ export const leadSchema = z.object({
     .optional(),
 }).superRefine((v, ctx) => {
   if (v.kind === "webinar") return;
-  for (const field of GUIDE_ONLY) if (v[field] === undefined) ctx.addIssue({ code: "custom", path: [field], message: "required" });
-}).transform((v) => (v.kind === "webinar" ? { ...v, tel: undefined, pays: undefined, besoin: undefined, horizon: undefined } : v));
+  const form = guideFormOptions(v.slug);
+  for (const field of GUIDE_ONLY) {
+    if (field === "horizon" && form.sansHorizon) continue;
+    if (v[field] === undefined) ctx.addIssue({ code: "custom", path: [field], message: "required" });
+  }
+  if (form.entrepriseRequise && !v.entreprise) ctx.addIssue({ code: "custom", path: ["entreprise"], message: "required" });
+}).transform((v) => {
+  if (v.kind === "webinar") return { ...v, tel: undefined, pays: undefined, besoin: undefined, horizon: undefined };
+  return guideFormOptions(v.slug).sansHorizon ? { ...v, horizon: undefined } : v;
+});
 
 export type LeadInput = z.infer<typeof leadSchema>;
 

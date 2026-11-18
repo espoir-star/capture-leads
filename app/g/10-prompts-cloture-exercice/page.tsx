@@ -76,7 +76,7 @@ export default function Page() {
               <Icon name="arrowDown" size={14} />
             </a>
             <a href="#creneaux" className={ghost}>
-              Audit d&apos;installation gratuit
+              Audit 100&nbsp;% gratuit
               <Icon name="arrowDown" size={14} />
             </a>
           </div>
@@ -159,14 +159,14 @@ export default function Page() {
           <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-secondaire">
             <li className="flex items-center gap-2 tabular-nums"><Icon name="clock" size={14} className="text-accent" />{rdv.booking.durationMin}&nbsp;min</li>
             <li className="flex items-center gap-2"><Icon name="video" size={14} className="text-accent" />Google Meet</li>
-            <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-accent" />Gratuit</li>
+            <li className="flex items-center gap-2 font-medium text-texte"><Icon name="check" size={14} className="text-accent" />100&nbsp;% gratuit, sans engagement</li>
           </ul>
         </section>
 
         <section id="creneaux" aria-labelledby="creneaux-titre" className="mt-12 scroll-mt-6">
-          <p className={`${label} text-accent`}>Réserver</p>
+          <p className={`${label} text-accent`}>Réserver · 100&nbsp;% gratuit</p>
           <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-            <h2 id="creneaux-titre" className="text-[26px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[28px]">Choisissez votre créneau</h2>
+            <h2 id="creneaux-titre" className="text-[26px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[28px]">Votre audit, <span className="text-accent">100&nbsp;% gratuit</span> : choisissez votre créneau</h2>
             <div className="flex items-center gap-3">
               <Image src={rdv.host.photo} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
               <p className="text-[12.5px] leading-tight text-secondaire">
