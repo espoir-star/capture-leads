@@ -68,6 +68,28 @@ export interface Ressource {
 
 export const RESSOURCES: Record<string, Ressource> = {
   /* ─────────────────────────────────────────────────────────────
+   * Claude en réunion : la fiche pratique (post du 19/11/2026, lien re1)
+   * Dirigeants et commerciaux. Formulaire : entreprise obligatoire, sans horizon.
+   * ──────────────────────────────────────────────────────────── */
+  "claude-en-reunion": {
+    slug: "claude-en-reunion",
+    badge: "FICHE GRATUITE",
+    titre: "Le compte rendu et les actions, <accent>prêts à la fin de la réunion.</accent>",
+    sousTitre:
+      "Pour les dirigeants et les commerciaux. Claude rejoint vos réunions Google Meet, prend les notes et liste les actions : les réglages, l'accord des participants, le cas des réunions avec un client et 5 prompts pour l'après-réunion.",
+    resourceCard: {
+      titre: "Claude en réunion : la fiche pratique",
+      description: "Réglages, accord des participants, réunions client et 5 prompts.",
+      meta: "Lecture estimée : 5 minutes",
+    },
+    pills: ["Réglages pas à pas", "Message d'accord prêt à copier", "5 prompts pour l'après-réunion", "Pré-audit 100 % gratuit"],
+    urlRessource: "/g/claude-en-reunion",
+    style: "modal",
+    cta: "Recevoir la fiche",
+    signature: "Espoir Mwami · Althoce",
+    merci: { titre: "Votre fiche est dans votre boîte mail." },
+  },
+  /* ─────────────────────────────────────────────────────────────
    * 10 prompts pour préparer la clôture (post du 18/11/2026, lien cl1)
    * Formulaire : entreprise obligatoire, sans horizon (config/leadMagnets.ts)
    * ──────────────────────────────────────────────────────────── */
