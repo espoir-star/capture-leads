@@ -157,7 +157,7 @@ export const RESSOURCES: Record<string, Ressource> = {
     cta: "Recevoir la fiche",
     signature: "Espoir Mwami — Althoce",
     merci: {
-      titre: "Votre fiche est prête.",
+      titre: "Votre fiche est dans votre boîte mail.",
       ctaTitre: "Voir l'agent sur votre cabinet ?",
     },
   },
