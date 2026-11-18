@@ -83,6 +83,7 @@ export function trackLead(leadType: 'contact' | 'roi' | 'guide', resourceSlug?: 
  *   agenda_vu         l'agenda est apparu à l'écran
  *   agenda_clic       clic dans l'agenda (date ou créneau) ; la réservation elle-même reste chez Google
  *   agenda_onglet     ouverture de l'agenda dans un nouvel onglet
+ * rdv_slug = slug de la page /rdv ; « pre-audit-merci » pour l'agenda des pages merci des guides.
  */
 export type JourneyStep = 'clic_rdv' | 'agenda_vu' | 'agenda_clic' | 'agenda_onglet';
 export function trackJourney(step: JourneyStep, slug: string) {
