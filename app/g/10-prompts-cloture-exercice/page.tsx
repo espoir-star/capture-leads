@@ -3,15 +3,16 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import BrandLogo from "@/components/BrandLogo";
 import CopyPillButton from "@/components/CopyPillButton";
-import SourceLink from "@/components/SourceLink";
+import BookingCalendar from "@/components/BookingCalendar";
 import { Icon } from "@/components/icons/lucide";
 import { PROMPTS_CLOTURE as r } from "@/content/guides/prompts-cloture-exercice";
 import { getRdvPage } from "@/config/rdvPages";
 
 /**
  * Ressource en accès libre : les 10 prompts de clôture se lisent et se copient sans formulaire.
- * Même présentation que /g/10-prompts-production-cabinet ; l'appel à l'action mène
- * à l'audit d'installation gratuit.
+ * Même présentation que /g/10-prompts-production-cabinet. L'audit d'installation gratuit
+ * se réserve sur la page même : agenda Google ouvert en bas de page (demande d'Espoir
+ * du 18/11/2026, pas de renvoi vers une autre page).
  */
 
 export const metadata: Metadata = {
@@ -54,8 +55,6 @@ function PromptBlock({ text }: { text: string }) {
 
 export default function Page() {
   const rdv = getRdvPage(r.rdvSlug)!;
-  const href = `/rdv/${rdv.slug}`;
-  const utm = { ...r.fallbackUtm, utm_campaign: r.campaigns.rdv };
 
   return (
     <main className="min-h-screen bg-fond text-texte antialiased">
@@ -76,10 +75,10 @@ export default function Page() {
               Lire les 10 prompts
               <Icon name="arrowDown" size={14} />
             </a>
-            <SourceLink href={href} fallback={utm} className={ghost}>
+            <a href="#creneaux" className={ghost}>
               Audit d&apos;installation gratuit
-              <Icon name="arrowUpRight" size={14} />
-            </SourceLink>
+              <Icon name="arrowDown" size={14} />
+            </a>
           </div>
           <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-secondaire">
             {r.promises.map((p) => (
@@ -157,16 +156,28 @@ export default function Page() {
           <h2 id="rendez-vous-titre" className="mt-3 text-[26px] font-semibold leading-[1.15] tracking-[-0.03em] text-balance sm:text-[28px]">{r.further.title}</h2>
           <p className="mt-3 text-[15px] leading-relaxed text-secondaire">{r.further.text}</p>
           <p className="mt-3 text-[15px] leading-relaxed text-secondaire">{rdv.subtitle}</p>
-          <div className="mt-7 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-secondaire">
-              <li className="flex items-center gap-2 tabular-nums"><Icon name="clock" size={14} className="text-accent" />{rdv.booking.durationMin}&nbsp;min</li>
-              <li className="flex items-center gap-2"><Icon name="video" size={14} className="text-accent" />Google Meet</li>
-              <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-accent" />Gratuit</li>
-            </ul>
-            <SourceLink href={href} fallback={utm} className={`${primary} shrink-0`}>
-              Choisir mon créneau
-              <Icon name="arrowUpRight" size={14} />
-            </SourceLink>
+          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-secondaire">
+            <li className="flex items-center gap-2 tabular-nums"><Icon name="clock" size={14} className="text-accent" />{rdv.booking.durationMin}&nbsp;min</li>
+            <li className="flex items-center gap-2"><Icon name="video" size={14} className="text-accent" />Google Meet</li>
+            <li className="flex items-center gap-2"><Icon name="check" size={14} className="text-accent" />Gratuit</li>
+          </ul>
+        </section>
+
+        <section id="creneaux" aria-labelledby="creneaux-titre" className="mt-12 scroll-mt-6">
+          <p className={`${label} text-accent`}>Réserver</p>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <h2 id="creneaux-titre" className="text-[26px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[28px]">Choisissez votre créneau</h2>
+            <div className="flex items-center gap-3">
+              <Image src={rdv.host.photo} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
+              <p className="text-[12.5px] leading-tight text-secondaire">
+                Avec <span className="font-medium text-texte">{rdv.host.name}</span>
+                <br />
+                {rdv.host.role}
+              </p>
+            </div>
+          </div>
+          <div className="mt-7">
+            <BookingCalendar embedUrl={rdv.booking.embedUrl} url={rdv.booking.url} title={rdv.booking.title} />
           </div>
         </section>
 

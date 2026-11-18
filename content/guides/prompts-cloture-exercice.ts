@@ -6,10 +6,10 @@
  *
  * Aucun fait daté ni chiffré : les prompts ne citent ni échéance fiscale, ni seuil réglementaire.
  * Les seuils sont entre [crochets], à fixer par le cabinet. Jamais le mot « FEC ».
- * L'appel à l'action mène à l'audit d'installation gratuit (/rdv/audit-connecteurs).
+ * L'audit d'installation gratuit se réserve sur la page même (agenda de la page /rdv/audit-connecteurs,
+ * intégré en bas de page, demande d'Espoir du 18/11/2026).
  */
 import type { IconName } from "@/components/icons/lucide";
-import type { Utm } from "@/lib/tracking/utm";
 
 /** Typographie française : espace insécable avant « : ; ? ! % € », dans les guillemets et entre les milliers. */
 function fr(s: string): string {
@@ -203,9 +203,7 @@ export const PROMPTS_CLOTURE = {
       "Avec un connecteur sur mesure en écriture, les charges à payer, les charges constatées d'avance et les dotations proposées par ces prompts sont préparées directement dans le dossier. Vous relisez, vous validez."
     ),
   },
-  /** Provenance de la visite quand elle n'a pas d'UTM (lien partagé, accès direct) */
-  fallbackUtm: { utm_source: "althoce", utm_medium: "ressource", utm_content: "ressource_10_prompts_cloture" } satisfies Utm,
+  /** Agenda repris de cette page de rendez-vous */
   rdvSlug: "audit-connecteurs",
-  campaigns: { rdv: "audit_installation_connecteurs" },
   author: "Espoir Mwami",
 } as const;

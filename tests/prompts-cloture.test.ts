@@ -2,9 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PROMPTS_CLOTURE as r } from "@/content/guides/prompts-cloture-exercice";
-import { OPEN_READERS, SHORT_LINKS, shortLinkTarget } from "@/config/shortLinks";
+import { OPEN_READERS, shortLinkTarget } from "@/config/shortLinks";
 import { getRdvPage } from "@/config/rdvPages";
-import { pathWithUtm } from "@/lib/tracking/utm";
 
 /** Tous les textes affichés ou copiés depuis la ressource */
 function texts(): string[] {
@@ -48,18 +47,16 @@ test("10 prompts de clôture : aucun fait daté ni seuil imposé, typographie fr
   assert.match(r.prompts.find((p) => p.number === "06")!.prompt, /\[SEUIL EN\s€\]/);
 });
 
-test("10 prompts de clôture : accès libre, appel à l'audit, lien court du post du 18/11", () => {
+test("10 prompts de clôture : accès libre, agenda de l'audit sur la page, lien court du post du 18/11", () => {
   assert.ok(OPEN_READERS.includes(r.slug));
   const rdv = getRdvPage(r.rdvSlug);
-  assert.ok(rdv, "page d'audit");
-  assert.equal(r.campaigns.rdv, SHORT_LINKS.au1.utm_campaign);
-  assert.equal(
-    pathWithUtm(`/rdv/${r.rdvSlug}`, { ...r.fallbackUtm, utm_campaign: r.campaigns.rdv }),
-    "/rdv/audit-connecteurs?utm_source=althoce&utm_medium=ressource&utm_campaign=audit_installation_connecteurs&utm_content=ressource_10_prompts_cloture"
-  );
+  assert.ok(rdv?.booking.embedUrl, "agenda de l'audit");
   const page = readFileSync(`app/g/${r.slug}/page.tsx`, "utf8");
   assert.match(page, /robots: \{ index: false, follow: false \}/);
-  for (const id of ["avant", "prompts", "rendez-vous"]) assert.match(page, new RegExp(`id="${id}"`), id);
+  for (const id of ["avant", "prompts", "rendez-vous", "creneaux"]) assert.match(page, new RegExp(`id="${id}"`), id);
+  // Espoir, 18/11 : le créneau se réserve sur la page, sans renvoi vers une autre page
+  assert.match(page, /<BookingCalendar embedUrl=\{rdv\.booking\.embedUrl\}/);
+  assert.doesNotMatch(page, /href=\{?["`]\/rdv\//);
   assert.doesNotMatch(page, /<form|CaptureForm|fetch\(|localStorage|sendBeacon/);
   assert.equal(
     shortLinkTarget("cl1"),
