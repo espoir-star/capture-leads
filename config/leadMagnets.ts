@@ -10,6 +10,13 @@ export interface LegacyAutomation {
   deliveryTemplateId: number;
   followupTemplateIds: number[];
 }
+/** Variante du formulaire guide, propre à une ressource (défaut : formulaire standard). */
+export interface GuideFormOptions {
+  /** Nom de l'entreprise demandé et obligatoire */
+  entrepriseRequise?: boolean;
+  /** Horizon du projet ni demandé ni enregistré */
+  sansHorizon?: boolean;
+}
 export interface LeadMagnetConfig {
   slug: string;
   resource: string;
@@ -20,6 +27,7 @@ export interface LeadMagnetConfig {
   note: string;
   sequence: SequenceId;
   legacy: LegacyAutomation;
+  form?: GuideFormOptions;
 }
 
 export const LEAD_MAGNETS = {
@@ -111,11 +119,24 @@ export const LEAD_MAGNETS = {
     sequence: "guide-7-chantiers-cabinet-v1",
     legacy: { automationId: 11, deliveryTemplateId: 34, followupTemplateIds: [33] },
   },
+  "10-prompts-cloture-exercice": {
+    slug: "10-prompts-cloture-exercice", resource: "10-prompts-cloture-exercice",
+    brevoListId: 25, brevoListName: "LM - 10 prompts clôture",
+    vertical: "FINANCE", subsector: "EXPERTISE_COMPTABLE",
+    note: "Liste 25 et champs MG_*_25 créés et relus via API (npm run brevo:guide) le 18/11/2026. Post du 18/11 : experts-comptables. Formulaire demandé par Espoir le 18/11 : entreprise obligatoire, sans horizon du projet.",
+    sequence: "guide-10-prompts-cloture-v1",
+    legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
+    form: { entrepriseRequise: true, sansHorizon: true },
+  },
 } as const satisfies Record<string, LeadMagnetConfig>;
 
 export type LeadMagnetSlug = keyof typeof LEAD_MAGNETS;
 export function getLeadMagnet(slug: string): LeadMagnetConfig | undefined {
   return Object.prototype.hasOwnProperty.call(LEAD_MAGNETS, slug) ? LEAD_MAGNETS[slug as LeadMagnetSlug] : undefined;
+}
+/** Variante du formulaire d'un guide (objet vide = formulaire standard) */
+export function guideFormOptions(slug: string): GuideFormOptions {
+  return getLeadMagnet(slug)?.form ?? {};
 }
 export function getLeadMagnetByListId(listId: number): LeadMagnetConfig | undefined {
   return Object.values(LEAD_MAGNETS).find((lm) => lm.brevoListId === listId);

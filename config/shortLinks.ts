@@ -92,6 +92,14 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // Post « 10 prompts » (accès libre, sans formulaire), publié le 03/11/2026 (« le post d'aujourd'hui », Espoir le 03/11).
     utm_content: "LI_EC_20261103_01",
   },
+  cl1: {
+    slug: "10-prompts-cloture-exercice",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "10_prompts_cloture_exercice",
+    // Post « Clôture », publié le 18/11/2026 à 11 h (Buffer). Accès par formulaire depuis le 18/11 (demande d'Espoir).
+    utm_content: "LI_EC_20261118_01",
+  },
   ag1: {
     kind: "rdv",
     slug: "demo-agents-ia",

@@ -8,13 +8,17 @@ type State = "checking" | "accepted" | "pending" | "delayed" | "failed" | "unkno
 /** Relectures espacées (ms) : l'envoi part juste après la réponse du formulaire. */
 const CHECKS = [1500, 4000, 8000, 15000];
 
+/**
+ * Page merci (choix d'Espoir du 18/11/2026) : le guide part par email, aucun bouton
+ * d'accès n'est proposé. Seul un échec d'envoi confirmé affiche un lien de secours.
+ */
 const MESSAGES: Record<State, string> = {
-  checking: "Envoi de l’email contenant le lien en cours de vérification…",
-  pending: "L’envoi de l’email contenant le lien est en cours. Le bouton ci‑dessous vous donne accès au guide sans attendre.",
-  delayed: "L’envoi de l’email n’a pas encore abouti. Le bouton ci‑dessous reste votre accès direct au guide.",
-  accepted: "L’email contenant le lien a été accepté par notre service d’envoi. Selon votre messagerie, il peut arriver avec un léger délai ou dans les courriers indésirables.",
-  failed: "L’email n’a pas pu être envoyé. Utilisez le bouton ci‑dessous pour accéder au guide.",
-  unknown: "Le lien vous est également transmis par email afin que vous puissiez le retrouver ; s’il n’apparaît pas, pensez à vérifier vos courriers indésirables.",
+  checking: "Envoi de l’email en cours de vérification…",
+  pending: "L’email est en cours d’envoi. Il arrive dans quelques instants.",
+  delayed: "L’envoi de l’email prend un peu plus de temps que prévu. Il arrive dans quelques instants.",
+  accepted: "L’email a bien été envoyé. Selon votre messagerie, il peut arriver avec un léger délai ou dans les courriers indésirables.",
+  failed: "L’email n’a pas pu être envoyé.",
+  unknown: "S’il n’apparaît pas dans quelques minutes, pensez à vérifier vos courriers indésirables.",
 };
 
 /**
@@ -22,12 +26,12 @@ const MESSAGES: Record<State, string> = {
  * serveur l'a enregistrée ; jamais de délai garanti. Sans jeton (page rouverte
  * dans un autre onglet), message neutre.
  */
-export default function DeliveryStatus({ slug }: { slug: string }) {
+export default function DeliveryStatus({ slug, fallbackHref }: { slug: string; fallbackHref?: string }) {
   const [state, setState] = useState<State>("checking");
   useEffect(() => {
     let leadRef: string | null = null;
     try {
-      leadRef = sessionStorage.getItem(LEAD_REF_KEY + slug); // lu avant que le clic sur le guide ne l'efface
+      leadRef = sessionStorage.getItem(LEAD_REF_KEY + slug); // jeton de la capture qui vient d'aboutir
     } catch {
       leadRef = null;
     }
@@ -58,6 +62,14 @@ export default function DeliveryStatus({ slug }: { slug: string }) {
   return (
     <p role="status" aria-live="polite" className="mt-3 text-sm text-secondaire leading-relaxed">
       {MESSAGES[state]}
+      {state === "failed" && fallbackHref && (
+        <>
+          {" "}
+          <a href={fallbackHref} className="text-accent underline underline-offset-4">
+            Accéder au guide
+          </a>
+        </>
+      )}
     </p>
   );
 }

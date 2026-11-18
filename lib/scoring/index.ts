@@ -33,8 +33,9 @@ export const HOT_LEAD_THRESHOLD = 25;
 
 /* Scoring comportemental (clics, webinars, RDV) : config/scoring.ts et lib/scoring/behavior.ts */
 
-export function formIntentScore(besoin: Besoin, horizon: Horizon): number {
-  return Math.min(MAX_FORM_SCORE, (HORIZON_SCORES[horizon] ?? 0) + (BESOIN_SCORES[besoin] ?? 0));
+/** Horizon absent (formulaire sans horizon) : seul le besoin compte. */
+export function formIntentScore(besoin: Besoin, horizon?: Horizon): number {
+  return Math.min(MAX_FORM_SCORE, (horizon ? HORIZON_SCORES[horizon] ?? 0 : 0) + (BESOIN_SCORES[besoin] ?? 0));
 }
 
 export function toScore(value: unknown): number {
