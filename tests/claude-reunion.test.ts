@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { CLAUDE_REUNION as r } from "@/content/guides/claude-en-reunion";
+import { CLAUDE_REUNION as r, skillFile } from "@/content/guides/claude-en-reunion";
 import { getLeadMagnet, guideFormOptions } from "@/config/leadMagnets";
 import { getRessource } from "@/lib/ressources";
 import { shortLinkTarget } from "@/config/shortLinks";
@@ -14,7 +14,8 @@ function texts(): string[] {
     ...r.steps.flatMap((s) => [s.title, s.text]),
     r.consent.title, r.consent.text, r.consent.invitation, r.consent.opening,
     r.external.title, ...r.external.points,
-    ...r.prompts.flatMap((p) => [p.title, p.result, p.prompt]), r.promptsNote,
+    ...r.skills.flatMap((k) => [k.title, k.result, k.body]),
+    r.install.prerequisite, ...r.install.steps, r.install.phrase, r.install.use,
   ];
 }
 
@@ -27,9 +28,10 @@ test("Claude en réunion : faits vérifiés et nuances obligatoires présents", 
   assert.match(all, /accepter d(’|')être transcrits/);
   assert.match(all, /invité extérieur/);
   assert.match(all, /10 février 2027/);
-  // Claude n'envoie pas de mail de suivi : le prompt n'en prépare qu'un brouillon
-  assert.match(r.prompts.find((p) => p.number === "02")!.prompt, /n(’|')envoie rien/);
-  assert.equal(r.prompts.length, 5);
+  // Claude n'envoie pas de mail de suivi : le skill n'en prépare qu'un brouillon
+  assert.match(r.skills.find((k) => k.number === "02")!.body, /n(’|')envoie rien/);
+  assert.equal(r.skills.length, 5);
+  assert.match(r.install.prerequisite, /exécution de code/);
   assert.ok(r.sources.every((s) => /^https:\/\/(claude\.com|support\.claude\.com)\//.test(s.href)));
 });
 
@@ -54,5 +56,22 @@ test("Claude en réunion : capture avec formulaire (entreprise, sans horizon), l
   assert.match(page, /robots: \{ index: false, follow: false \}/);
   assert.match(page, /<BookingCalendar embedUrl=\{PRE_AUDIT_BOOKING_EMBED\}/);
   assert.ok(PRE_AUDIT_BOOKING_EMBED);
-  for (const id of ["ce-quil-fait", "avant", "reglages", "accord", "client", "prompts", "creneaux"]) assert.match(page, new RegExp(`id="${id}"`), id);
+  for (const id of ["ce-quil-fait", "avant", "reglages", "accord", "client", "skills", "creneaux"]) assert.match(page, new RegExp(`id="${id}"`), id);
+});
+
+test("Claude en réunion : fichiers SKILL.md conformes au centre d'aide Claude", () => {
+  const names = new Set<string>();
+  for (const k of r.skills) {
+    assert.match(k.name, /^[a-z0-9]+(-[a-z0-9]+)*$/, k.name);
+    assert.ok(k.name.length <= 64, k.name);
+    assert.ok(!names.has(k.name), `nom en double : ${k.name}`);
+    names.add(k.name);
+    assert.ok(k.description.length <= 200, `${k.name} : ${k.description.length} caractères`);
+    // Valeur YAML sans guillemets : ni deux-points, ni dièse, ni retour à la ligne
+    assert.doesNotMatch(k.description, /:|#|\n/, k.name);
+    assert.match(k.description, /À utiliser/, k.name);
+    const file = skillFile(k);
+    assert.ok(file.startsWith(`---\nname: ${k.name}\ndescription: ${k.description}\n---\n\n# `), k.name);
+    for (const part of ["## Rôle", "## Procédure", "## Format de sortie", "## Règles"]) assert.ok(k.body.includes(part), `${k.name} : ${part}`);
+  }
 });

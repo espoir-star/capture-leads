@@ -5,13 +5,15 @@ import BrandLogo from "@/components/BrandLogo";
 import CopyPillButton from "@/components/CopyPillButton";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Icon } from "@/components/icons/lucide";
-import { CLAUDE_REUNION as r } from "@/content/guides/claude-en-reunion";
+import { CLAUDE_REUNION as r, skillFile } from "@/content/guides/claude-en-reunion";
 import { ESPOIR, PRE_AUDIT_BOOKING_EMBED, PRE_AUDIT_BOOKING_URL } from "@/config/rdvPages";
 
 /**
  * Fiche « Claude en réunion » (post du 19/11/2026, dirigeants et commerciaux), envoyée par
  * email après la page de capture /r/claude-en-reunion. Même présentation que les lecteurs
- * 10 prompts ; le pré-audit gratuit se réserve sur la page même (agenda ouvert).
+ * 10 prompts ; 5 skills à installer (demande d'Espoir du 18/11 : des skills plutôt que des
+ * prompts), même méthode d'installation que /g/12-skills-claude-finance ; le pré-audit
+ * gratuit se réserve sur la page même (agenda ouvert).
  */
 
 export const metadata: Metadata = {
@@ -152,26 +154,51 @@ export default function Page() {
           </ul>
         </Section>
 
-        <Section id="prompts" eyebrow="Après la réunion" title="5 prompts pour transformer la réunion en actions">
-          <p className="text-[13.5px] leading-relaxed text-secondaire">{r.promptsNote}</p>
-          <ol className={`${card} mt-5 divide-y divide-bordure`}>
-            {r.prompts.map((p) => (
-              <li key={p.number} id={`prompt-${p.number}`} className="flex scroll-mt-8 gap-4 px-5 py-5 sm:px-6">
-                <span className="w-5 shrink-0 pt-px text-[12px] font-medium tabular-nums text-discret">{p.number}</span>
+        <Section id="skills" eyebrow="Après la réunion" title="5 skills pour transformer la réunion en actions">
+          <p className="text-[15px] leading-relaxed text-secondaire">
+            Un skill s&apos;installe une fois dans Claude. Ensuite, il s&apos;applique tout seul dès que votre demande correspond&nbsp;: plus de prompt à recopier après chaque réunion.
+          </p>
+
+          <div className="mt-6 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6">
+            <h3 className="text-[15px] font-semibold leading-snug">Installer un skill en 3 étapes</h3>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-secondaire">{r.install.prerequisite}</p>
+            <ol className="mt-4 space-y-3">
+              {r.install.steps.map((step, i) => (
+                <li key={step} className="flex gap-3 text-[14px] leading-relaxed">
+                  <span className="w-5 shrink-0 pt-px text-[12px] font-medium tabular-nums text-discret">0{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    {step}
+                    {i === 1 && (
+                      <div className="mt-3 flex flex-col items-start gap-3 rounded-xl border border-bordure bg-fond p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-[13px] leading-relaxed">{r.install.phrase}</p>
+                        <CopyPillButton text={r.install.phrase} label="Copier la phrase" done="Copiée" />
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-4 text-[13px] leading-relaxed text-secondaire">{r.install.use}</p>
+          </div>
+
+          <ol className={`${card} mt-6 divide-y divide-bordure`}>
+            {r.skills.map((k) => (
+              <li key={k.number} id={k.name} className="flex scroll-mt-8 gap-4 px-5 py-5 sm:px-6">
+                <span className="w-5 shrink-0 pt-px text-[12px] font-medium tabular-nums text-discret">{k.number}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-6">
                     <div className="min-w-0">
-                      <h3 className="text-[15px] font-semibold leading-snug">{p.title}</h3>
-                      <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{p.result}</p>
+                      <h3 className="text-[15px] font-semibold leading-snug">{k.title}</h3>
+                      <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{k.result}</p>
                     </div>
-                    <CopyPillButton text={p.prompt} label="Copier le prompt" done="Copié" />
+                    <CopyPillButton text={skillFile(k)} label="Copier le skill" done="Copié" />
                   </div>
                   <details className="group mt-3">
                     <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md text-[12.5px] text-secondaire transition-colors duration-150 hover:text-texte [&::-webkit-details-marker]:hidden">
-                      Voir le prompt
+                      Voir le fichier
                       <Icon name="chevronDown" size={14} className="transition-transform duration-300 group-open:rotate-180" />
                     </summary>
-                    <div className="mt-3"><TextBlock text={p.prompt} /></div>
+                    <div className="mt-3"><TextBlock text={skillFile(k)} /></div>
                   </details>
                 </div>
               </li>

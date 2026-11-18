@@ -14,7 +14,11 @@
  * réunion ni l'email de récapitulatif ; transcription, résumé et descriptions d'écran conservés,
  * pas l'audio ; accord des participants à obtenir avant ; notes et transcriptions gratuites,
  * documents et tableaux blancs gratuits jusqu'au 10/02/2027.
- * Claude n'envoie pas d'email de suivi : le prompt 02 en prépare un brouillon.
+ * Claude n'envoie pas d'email de suivi : le skill 02 en prépare un brouillon.
+ * Skills (demande d'Espoir du 18/11 : « partage plutôt des skills que des prompts ») : offres
+ * Free à Enterprise, exécution de code requise (activée par un propriétaire sur Team et
+ * Enterprise), installés une fois, déclenchés par leur description ; nom ≤ 64, description ≤ 200
+ * (https://support.claude.com/en/articles/12512180-using-skills-in-claude, vérifié le 17/11).
  */
 import type { IconName } from "@/components/icons/lucide";
 
@@ -26,75 +30,193 @@ function fr(s: string): string {
     .replace(/(\d) (\d{3})\b/g, "$1 $2");
 }
 
-export interface ReunionPrompt {
+/** Skill Claude : fichier SKILL.md (nom ≤ 64 caractères, description ≤ 200, centre d'aide Claude). */
+export interface ReunionSkill {
   number: string;
+  /** Champ `name` du fichier SKILL.md : minuscules, chiffres et tirets */
+  name: string;
   title: string;
+  /** Ce que le skill produit, en une phrase (affiché sur la page) */
   result: string;
-  prompt: string;
+  /** Champ `description` : ce que fait le skill et quand l'utiliser (≤ 200 caractères, sans deux-points : en-tête YAML) */
+  description: string;
+  /** Corps Markdown du fichier SKILL.md, après l'en-tête */
+  body: string;
 }
 
-const prompts: ReunionPrompt[] = [
+const skills: ReunionSkill[] = [
   {
     number: "01",
+    name: "compte-rendu-reunion-client",
     title: "Le compte rendu à envoyer au client",
     result: "Une page claire : contexte, décisions, prochaines étapes, sans le bruit de la discussion.",
-    prompt: `À partir de la réunion [NOM DE LA RÉUNION] du [DATE], rédige le compte rendu à envoyer à [NOM DU CLIENT].
-Structure : contexte en 2 phrases, décisions prises, points en suspens, prochaines étapes avec un responsable et une date pour chacune.
-Ton professionnel et simple, une page au maximum.
-N'écris que ce qui a été dit pendant la réunion : marque « à confirmer » ce qui n'est pas clair.`,
+    description: "Rédige le compte rendu d'une réunion à envoyer au client, avec contexte, décisions, points en suspens et prochaines étapes. À utiliser après une réunion avec un client ou un prospect.",
+    body: `# Compte rendu de réunion client
+
+## Rôle
+
+Tu rédiges le compte rendu d'une réunion, prêt à être relu puis envoyé au client.
+
+## Procédure
+
+1. Retrouve la réunion demandée (notes, transcription, résumé). Si plusieurs réunions correspondent, demande laquelle.
+2. Résume le contexte en 2 phrases.
+3. Liste les décisions prises.
+4. Liste les points restés en suspens.
+5. Liste les prochaines étapes avec un responsable et une date pour chacune.
+
+## Format de sortie
+
+Un email d'une page au maximum : objet, puis les quatre parties avec un titre court chacune. Ton professionnel et simple, vouvoiement.
+
+## Règles
+
+- N'écris que ce qui a été dit pendant la réunion. Marque « à confirmer » ce qui n'est pas clair.
+- Pas de détail interne à l'entreprise (prix de revient, remarques sur le client).
+- C'est un brouillon : n'envoie rien.`,
   },
   {
     number: "02",
+    name: "mail-suivi-reunion",
     title: "Le mail de suivi, prêt à relire",
     result: "Un brouillon de mail de suivi personnalisé, avec les engagements pris de chaque côté.",
-    prompt: `À partir de la réunion [NOM DE LA RÉUNION], rédige le mail de suivi que j'envoie à [NOM DU CONTACT].
-Remercie en une phrase, rappelle les 3 points clés, liste ce que je m'engage à envoyer et ce que j'attends de lui, avec les dates évoquées.
-Termine par une proposition de prochain rendez-vous : [CRÉNEAUX].
-C'est un brouillon que je relis : n'envoie rien.`,
+    description: "Prépare le brouillon du mail de suivi après une réunion, avec les points clés, les engagements de chaque côté et le prochain rendez-vous. À utiliser pour un mail de suivi ou de relance.",
+    body: `# Mail de suivi après une réunion
+
+## Rôle
+
+Tu prépares le mail de suivi que l'utilisateur envoie à son interlocuteur après une réunion.
+
+## Procédure
+
+1. Retrouve la réunion et l'interlocuteur concernés.
+2. Remercie en une phrase.
+3. Rappelle les 3 points clés de la réunion.
+4. Liste ce que l'utilisateur s'engage à envoyer et ce qu'il attend de son interlocuteur, avec les dates évoquées.
+5. Propose un prochain rendez-vous. Si aucun créneau n'est donné, laisse [CRÉNEAUX] à compléter.
+
+## Format de sortie
+
+Objet, puis le mail : 10 lignes au plus, phrases courtes, vouvoiement sauf si l'échange était au tutoiement.
+
+## Règles
+
+- N'invente aucun engagement ni aucune date.
+- C'est un brouillon à relire : n'envoie rien.`,
   },
   {
     number: "03",
+    name: "actions-reunion",
     title: "Les actions, avec un responsable et une date",
     result: "Le tableau des actions de la réunion, prêt à coller dans votre outil de suivi.",
-    prompt: `Liste toutes les actions décidées pendant la réunion [NOM DE LA RÉUNION].
-Présente un tableau : action | responsable | échéance | dépend de | statut.
-Si un responsable ou une échéance n'a pas été dit, écris « à préciser » au lieu de le supposer.
-Termine par les 3 actions à lancer en premier.`,
+    description: "Extrait les actions décidées en réunion dans un tableau avec responsable, échéance et statut. À utiliser quand on demande les actions, le plan d'action ou le suivi d'une réunion.",
+    body: `# Actions de la réunion
+
+## Rôle
+
+Tu extrais toutes les actions décidées pendant une réunion pour qu'aucune ne se perde.
+
+## Procédure
+
+1. Retrouve la réunion demandée.
+2. Relève chaque action décidée, même évoquée rapidement.
+3. Pour chacune : qui la fait, pour quand, ce dont elle dépend.
+4. Classe les actions par échéance.
+
+## Format de sortie
+
+| Action | Responsable | Échéance | Dépend de | Statut |
+
+Termine par les 3 actions à lancer en premier.
+
+## Règles
+
+- Si un responsable ou une échéance n'a pas été dit, écris « à préciser » au lieu de le supposer.
+- Une action par ligne, formulée avec un verbe.`,
   },
   {
     number: "04",
+    name: "fiche-crm-reunion",
     title: "La fiche prospect mise à jour",
     result: "Les informations utiles pour votre CRM : besoin, budget, décideurs, calendrier, objections.",
-    prompt: `À partir de la réunion avec [NOM DU PROSPECT], prépare la mise à jour de sa fiche dans mon CRM.
-Champs : besoin exprimé, enjeu pour lui, décideurs et interlocuteurs cités, budget évoqué, calendrier, objections soulevées, concurrents mentionnés, prochaine étape.
-Pour chaque champ, cite la phrase de la réunion qui le justifie. Laisse vide ce qui n'a pas été abordé.`,
+    description: "Prépare la mise à jour de la fiche prospect du CRM après une réunion (besoin, décideurs, budget, calendrier, objections). À utiliser après un rendez-vous commercial.",
+    body: `# Fiche prospect après une réunion
+
+## Rôle
+
+Tu prépares la mise à jour de la fiche d'un prospect dans le CRM à partir d'une réunion commerciale.
+
+## Procédure
+
+1. Retrouve la réunion avec ce prospect.
+2. Remplis chaque champ à partir de ce qui a été dit :
+   - besoin exprimé et enjeu pour le prospect ;
+   - décideurs et interlocuteurs cités ;
+   - budget évoqué ;
+   - calendrier ;
+   - objections soulevées ;
+   - concurrents mentionnés ;
+   - prochaine étape.
+3. Pour chaque champ, cite la phrase de la réunion qui le justifie.
+
+## Format de sortie
+
+| Champ | Valeur | Phrase de la réunion |
+
+## Règles
+
+- Laisse vide un champ qui n'a pas été abordé. N'invente rien.
+- Ne modifie rien dans le CRM : tu prépares, l'utilisateur saisit ou valide.`,
   },
   {
     number: "05",
+    name: "preparation-rendez-vous",
     title: "La préparation du prochain rendez-vous",
     result: "Ce qu'il faut apporter, les questions à poser et les objections à anticiper.",
-    prompt: `Je revois [NOM DU CONTACT] le [DATE]. À partir de nos réunions passées dans Claude, prépare ce rendez-vous :
-- ce qui a été promis de notre côté et doit être prêt ;
-- les questions restées sans réponse ;
-- les objections soulevées et la réponse à préparer pour chacune ;
-- l'objectif du rendez-vous en une phrase.
-Une page au maximum. Distingue ce qui a été dit de ce que tu supposes.`,
+    description: "Prépare le prochain rendez-vous à partir des réunions passées, avec engagements, questions ouvertes, objections et objectif. À utiliser avant de revoir un client ou un prospect.",
+    body: `# Préparation du prochain rendez-vous
+
+## Rôle
+
+Tu prépares un rendez-vous à partir des réunions passées avec le même interlocuteur.
+
+## Procédure
+
+1. Retrouve les réunions passées avec cet interlocuteur.
+2. Liste ce qui a été promis par l'utilisateur et doit être prêt.
+3. Liste les questions restées sans réponse.
+4. Liste les objections soulevées, avec la réponse à préparer pour chacune.
+5. Formule l'objectif du rendez-vous en une phrase.
+
+## Format de sortie
+
+Une page au maximum, avec ces quatre parties et l'objectif en tête.
+
+## Règles
+
+- Distingue ce qui a été dit de ce que tu supposes.
+- Si aucune réunion passée n'est trouvée, dis-le et demande les éléments utiles.`,
   },
 ];
+
+/** Texte complet du fichier SKILL.md, tel qu'il doit être copié */
+export function skillFile(skill: ReunionSkill): string {
+  return `---\nname: ${skill.name}\ndescription: ${skill.description}\n---\n\n${skill.body}\n`;
+}
 
 export const CLAUDE_REUNION = {
   slug: "claude-en-reunion",
   metaTitle: fr("Claude en réunion : la fiche pratique"),
   metaDescription: fr(
-    "Claude rejoint vos réunions Google Meet, prend les notes et liste les actions. Les réglages, l'accord des participants, le cas des réunions avec un client et 5 prompts pour l'après-réunion."
+    "Claude rejoint vos réunions Google Meet, prend les notes et liste les actions. Les réglages, l'accord des participants, le cas des réunions avec un client et 5 skills pour l'après-réunion."
   ),
   eyebrow: "Fiche gratuite · Claude en réunion",
   /** <accent>…</accent> = mot mis en avant (bleu du site) */
   title: "Le compte rendu et les actions, <accent>prêts à la fin de la réunion.</accent>",
   subtitle: fr(
-    "Claude rejoint vos réunions Google Meet, prend les notes et liste les actions. Voici comment le régler, comment prévenir vos participants, et 5 prompts pour transformer la réunion en compte rendu, en mail de suivi et en fiche prospect."
+    "Claude rejoint vos réunions Google Meet, prend les notes et liste les actions. Voici comment le régler, comment prévenir vos participants, et 5 skills à installer une fois pour transformer chaque réunion en compte rendu, en mail de suivi et en fiche prospect."
   ),
-  promises: ["Réglages pas à pas", "Message d'accord prêt à copier", "5 prompts pour l'après-réunion"],
+  promises: ["Réglages pas à pas", "Message d'accord prêt à copier", "5 skills à installer une fois"],
   /** Ce que Claude fait pendant et après l'appel */
   does: [
     { icon: "video", title: "Il rejoint l'appel", text: fr("Il apparaît comme un participant et l'annonce dans le chat de la réunion.") },
@@ -134,11 +256,22 @@ Si vous préférez qu'il ne participe pas, répondez simplement à ce message : 
       fr("Demandez l'accord du client avant la réunion : le message ci-dessus convient tel quel."),
     ],
   },
-  prompts: prompts.map((p) => ({ ...p, title: fr(p.title), result: fr(p.result), prompt: fr(p.prompt) })),
-  promptsNote: fr("À utiliser dans le chat de la page de la réunion, ou dans un chat Claude classique : il retrouve les réunions passées auxquelles vous avez accès."),
+  skills: skills.map((k) => ({ ...k, title: fr(k.title), result: fr(k.result), body: fr(k.body) })),
+  /** Installation d'un skill (même méthode que le guide 12 skills finance) */
+  install: {
+    prerequisite: fr("Prérequis : l'exécution de code activée (Paramètres > Capacités). Sur Team et Enterprise, un propriétaire de l'organisation l'active d'abord pour tous."),
+    steps: [
+      fr("Copiez un skill ci-dessous."),
+      fr("Dans une nouvelle conversation Claude, collez-le avec la phrase à copier."),
+      fr("Enregistrez le fichier proposé par Claude : le skill apparaît dans Personnaliser > Compétences."),
+    ],
+    phrase: fr("Crée une compétence à partir de ce fichier SKILL.md. Garde exactement le nom, la description et la procédure, sans rien ajouter."),
+    use: fr("Ensuite, après une réunion, demandez simplement « le compte rendu client de la réunion avec Dupont » : Claude retrouve la réunion et applique le skill. Pas de déclenchement ? Nommez le skill dans votre demande."),
+  },
   sources: [
     { label: "Claude Meetings, annonce du 12/11/2026", href: "https://claude.com/resources/articles/claude-meetings" },
     { label: "Centre d'aide Claude : Use Claude Meetings", href: "https://support.claude.com/en/articles/18325154-use-claude-meetings" },
+    { label: "Centre d'aide Claude : Using skills in Claude", href: "https://support.claude.com/en/articles/12512180-using-skills-in-claude" },
   ],
   verifiedOn: "18/11/2026",
   author: "Espoir Mwami",
