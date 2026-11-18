@@ -129,7 +129,12 @@ export interface RdvPage {
   webinarSlug?: string;
 }
 
-const ESPOIR = { name: "Espoir Mwami", role: "Fondateur d'Althoce", photo: "/webinar/espoir-mwami.jpg" };
+export const ESPOIR = { name: "Espoir Mwami", role: "Fondateur d'Althoce", photo: "/webinar/espoir-mwami.jpg" };
+
+/** Agenda « Pré-audit IA offert - Althoce » : guides, emails, pages merci, démo et pièces (30 min, Google Meet). */
+export const PRE_AUDIT_BOOKING_URL = "https://calendar.app.google/JmhxjFqk2kybuFLR9";
+export const PRE_AUDIT_BOOKING_EMBED =
+  "https://calendar.google.com/calendar/appointments/schedules/AcZssZ3fJwV7FRh514CDPeI7xaMilYOxLNenoXdF9ZNlL4NRkEUuO5fK3TUzHRcdNsf4A3IwA8Xx0Xbl?gv=true&hl=fr";
 
 export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
   "audit-connecteurs": {
@@ -226,9 +231,8 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
     priceLabel: "Offert",
     booking: {
       // Agenda « Pré-audit IA offert - Althoce » (le même que les guides et les emails) : 30 min, Google Meet.
-      url: "https://calendar.app.google/JmhxjFqk2kybuFLR9",
-      embedUrl:
-        "https://calendar.google.com/calendar/appointments/schedules/AcZssZ3fJwV7FRh514CDPeI7xaMilYOxLNenoXdF9ZNlL4NRkEUuO5fK3TUzHRcdNsf4A3IwA8Xx0Xbl?gv=true&hl=fr",
+      url: PRE_AUDIT_BOOKING_URL,
+      embedUrl: PRE_AUDIT_BOOKING_EMBED,
       title: "Démo et pré-audit",
       durationMin: 30,
     },
@@ -314,9 +318,8 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
     priceLabel: "Gratuit",
     booking: {
       // Agenda « Pré-audit IA offert - Althoce » (le même que la démo du 10/11, les guides et les emails) : 30 min, Google Meet.
-      url: "https://calendar.app.google/JmhxjFqk2kybuFLR9",
-      embedUrl:
-        "https://calendar.google.com/calendar/appointments/schedules/AcZssZ3fJwV7FRh514CDPeI7xaMilYOxLNenoXdF9ZNlL4NRkEUuO5fK3TUzHRcdNsf4A3IwA8Xx0Xbl?gv=true&hl=fr",
+      url: PRE_AUDIT_BOOKING_URL,
+      embedUrl: PRE_AUDIT_BOOKING_EMBED,
       title: "Démo et pré-audit",
       durationMin: 30,
     },
