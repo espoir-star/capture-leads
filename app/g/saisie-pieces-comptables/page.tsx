@@ -118,6 +118,25 @@ export default function Page() {
           </ul>
         </section>
 
+        <Section id="sortie" eyebrow="En sortie" title={r.sortie.title}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { icon: "download" as const, ...r.sortie.sans },
+              { icon: "plug" as const, ...r.sortie.avec },
+            ].map((b) => (
+              <div key={b.title} className={`${card} p-6`}>
+                <span className={tile}><Icon name={b.icon} size={14} /></span>
+                <h3 className="mt-4 text-[15px] font-semibold leading-snug">{b.title}</h3>
+                <p className="mt-2 text-[13.5px] leading-relaxed text-secondaire">{b.text}</p>
+              </div>
+            ))}
+          </div>
+          <a href="#creneaux" className="mt-5 inline-flex items-center gap-2 text-[14px] font-medium text-accent hover:underline">
+            {r.sortie.cta}
+            <Icon name="arrowDown" size={14} />
+          </a>
+        </Section>
+
         <Section id="skill" eyebrow="Avec Claude" title="Le skill : déposez les pièces, recevez les écritures">
           <div className="rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6">
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">

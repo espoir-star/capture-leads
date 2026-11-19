@@ -156,13 +156,17 @@ Prépare à la fin un message court au client qui liste les pièces manquantes, 
   },
   {
     number: "10",
-    title: "Préparer le fichier d'import",
-    result: "Des écritures équilibrées au format de votre logiciel, sans les pièces en écart.",
+    title: "Saisir dans le logiciel ou préparer le fichier d'import",
+    result: "Avec un connecteur : la saisie, après votre accord. Sans connecteur : le fichier à importer vous-même. En cas de doute : la question.",
     prompt: `Pour les pièces contrôlées sans écart, rassemble les écritures :
 colonnes journal, date, numéro de pièce, compte, libellé, débit, crédit.
 Vérifie que chaque écriture est équilibrée : total débit = total crédit.
 
-Prépare le fichier d'import pour [LOGICIEL] : colonnes de votre logiciel, date au format JJ/MM/AAAA, décimales avec une virgule, séparateur point-virgule, UTF-8.
+Regarde ensuite si un connecteur vers [LOGICIEL] est disponible dans cette conversation, c'est-à-dire un outil qui peut créer des écritures dans le logiciel :
+- s'il y en a un : montre-moi les écritures et attends mon accord explicite avant de saisir quoi que ce soit. Saisis seulement les écritures validées, puis donne la liste de ce qui a été saisi ;
+- s'il n'y en a pas : prépare le fichier d'import que j'importerai moi-même dans le logiciel (colonnes de mon logiciel, date au format JJ/MM/AAAA, décimales avec une virgule, séparateur point-virgule, UTF-8) ;
+- en cas de doute, ne choisis pas : demande-moi « saisie directe dans le logiciel ou fichier à importer ? ».
+
 Laisse de côté les pièces en écart et liste-les à la fin.`,
   },
 ];
@@ -171,7 +175,7 @@ const skill: SaisieSkill = {
   name: "saisie-pieces-comptables",
   title: "Le skill qui regroupe les 10 prompts",
   description:
-    "Lit des pièces comptables (factures, tickets, relevés, échéanciers) même scannées, les contrôle et propose des écritures prêtes à importer. À utiliser quand des pièces sont chargées.",
+    "Lit des pièces comptables (factures, tickets, relevés, échéanciers) même scannées, les contrôle et propose les écritures, à saisir ou à importer. À utiliser quand des pièces sont chargées.",
   body: `# Saisie des pièces comptables
 
 ## Rôle
@@ -196,20 +200,25 @@ Tu prépares la saisie de pièces comptables, même scannées : factures d'achat
    - immobilisation possible : classe 2 et 44562, à trancher par le cabinet (seuil, durée d'amortissement).
    Chaque compte choisi est marqué « à valider ».
 6. Rapproche le relevé et les factures : opérations sans facture (pièces à demander au client), factures sans paiement.
-7. Vérifie que chaque écriture est équilibrée, demande le logiciel de destination et ses colonnes si tu ne les connais pas, puis produis le fichier CSV.
+7. Vérifie que chaque écriture est équilibrée.
+8. Choisis la sortie :
+   - un connecteur vers le logiciel comptable est disponible (un outil qui peut créer des écritures) : montre les écritures, attends l'accord explicite de l'utilisateur, saisis seulement les écritures validées et liste ce qui a été saisi ;
+   - aucun connecteur : produis le fichier CSV, que l'utilisateur importe lui-même dans son logiciel ; demande le logiciel et ses colonnes si tu ne les connais pas ;
+   - en cas de doute : ne choisis pas, demande « saisie directe dans le logiciel ou fichier à importer ? ».
 
 ## Format de sortie
 
 - Le résumé des contrôles, avec les écarts en euros.
 - Le tableau des écritures : journal, date, numéro de pièce, compte, libellé, débit, crédit.
-- Le fichier CSV : date JJ/MM/AAAA, décimales avec une virgule, séparateur point-virgule, UTF-8.
+- Sans connecteur, le fichier CSV : date JJ/MM/AAAA, décimales avec une virgule, séparateur point-virgule, UTF-8.
+- Avec connecteur, après accord : la liste des écritures saisies dans le logiciel.
 - La liste des pièces laissées de côté et des pièces à demander au client.
 
 ## Règles de vigilance
 
 - Ne modifie jamais un montant pour faire tomber un contrôle.
 - Un PDF de plus de 100 pages n'est lu qu'en texte : un scan n'en contient pas. Demande de découper le fichier.
-- C'est une proposition : le comptable choisit les comptes et valide avant l'import. Aucun message n'est envoyé au client.`,
+- C'est une proposition : le comptable choisit les comptes et valide avant tout import ou toute saisie. Rien n'est saisi dans le logiciel sans son accord explicite. Aucun message n'est envoyé au client.`,
 };
 
 export function skillFile(s: SaisieSkill): string {
@@ -236,6 +245,13 @@ export const SAISIE_PIECES = {
     { icon: "folderCheck" as IconName, title: "Pour recevoir un fichier CSV", text: fr("Activez l'exécution de code et la création de fichiers (Paramètres > Capacités). Sur Team et Enterprise, un propriétaire de l'organisation l'active d'abord.") },
     { icon: "scanSearch" as IconName, title: "Des scans lisibles", text: fr("Une page droite et nette donne moins de cellules illisibles. Une photo de travers donne plus de pièces à revoir.") },
   ],
+  /** Ce que la personne reçoit : sans connecteur, un fichier à importer elle-même (demande d'Espoir du 19/11) */
+  sortie: {
+    title: "Ce que vous recevez",
+    sans: { title: fr("Sans connecteur : un fichier à importer"), text: fr("Votre IA ne saisit pas toute seule dans votre logiciel. Vous recevez les contrôles, les écritures proposées et un fichier CSV, que vous importez vous-même avec la fonction d'import d'écritures de votre logiciel.") },
+    avec: { title: fr("Avec un connecteur : la saisie directe"), text: fr("Si un connecteur qui écrit est branché sur votre logiciel, l'IA peut saisir les écritures elle-même, après votre accord. Le skill et le prompt 10 le détectent : connecteur, ils proposent la saisie et attendent votre validation ; pas de connecteur, ils préparent le fichier ; en cas de doute, ils vous demandent.") },
+    cta: fr("Brancher un connecteur qui écrit dans votre logiciel : on en parle pendant le pré-audit gratuit."),
+  },
   skill: { ...skill, title: fr(skill.title), body: fr(skill.body) },
   zip: { href: "/g/saisie-pieces-comptables/saisie-pieces-comptables.zip", file: "saisie-pieces-comptables.zip" },
   install: {
