@@ -128,6 +128,15 @@ export const LEAD_MAGNETS = {
     legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
     form: { entrepriseRequise: true, sansHorizon: true },
   },
+  "claude-en-reunion": {
+    slug: "claude-en-reunion", resource: "claude-en-reunion",
+    brevoListId: 26, brevoListName: "LM - Claude en réunion",
+    vertical: "GENERAL", subsector: null,
+    note: "Liste 26 et champs MG_*_26 créés et relus via API (npm run brevo:guide) le 18/11/2026. Post du 19/11 pour les dirigeants et les commerciaux : sans cible métier précise (aucun sous-secteur de la taxonomie ne correspond). Formulaire comme la clôture : entreprise obligatoire, sans horizon.",
+    sequence: "guide-claude-reunion-v1",
+    legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
+    form: { entrepriseRequise: true, sansHorizon: true },
+  },
 } as const satisfies Record<string, LeadMagnetConfig>;
 
 export type LeadMagnetSlug = keyof typeof LEAD_MAGNETS;
