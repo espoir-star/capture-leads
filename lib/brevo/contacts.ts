@@ -75,6 +75,27 @@ export async function upsertContact(
   return { contactId, phoneRejected };
 }
 
+/**
+ * Crée le contact SANS jamais modifier un contact existant (updateEnabled: false).
+ * Une adresse apparue entre la lecture et l'écriture renvoie `created: false` :
+ * Brevo refuse alors l'écriture, aucun attribut ni aucune liste ne change.
+ * Aucun SMS attendu ici (attribut unique) : un duplicate_parameter vise l'email.
+ */
+export async function createContactIfAbsent(
+  email: string,
+  attributes: Record<string, AttributeValue>,
+  listIds: number[]
+): Promise<{ created: true; contactId?: number } | { created: false }> {
+  const res = await brevoRequest<{ id?: number }>("/contacts", {
+    method: "POST",
+    body: { email, attributes, listIds, updateEnabled: false },
+    retries: 1,
+  });
+  if (res.ok) return { created: true, contactId: res.data?.id };
+  if (res.status === 400 && res.code === "duplicate_parameter") return { created: false };
+  throw new BrevoWriteError(res.status, res.code);
+}
+
 /** Oppose un contact aux campagnes marketing, sans bloquer les emails transactionnels. */
 export async function blocklistMarketingContact(identifier: { email: string } | { id: number }): Promise<void> {
   const path = "email" in identifier

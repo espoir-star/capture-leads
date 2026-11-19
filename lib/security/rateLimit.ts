@@ -45,6 +45,9 @@ export const LEAD_LIMITS: Window[] = [
 
 export const EVENT_LIMITS: Window[] = [{ ms: 60_000, max: 30 }];
 
+/** Entrée n8n → Vercel (test de maturité IA), par instance : garde-fou contre une boucle, l'authentification protège la route. */
+export const INTAKE_LIMITS: Window[] = [{ ms: 60_000, max: 60 }];
+
 /** Mode dégradé (Cloudflare Turnstile injoignable) : 2 soumissions / 10 min par IP… */
 export const DEGRADED_IP_LIMITS: Window[] = [{ ms: 600_000, max: 2 }];
 /** … et 20 / heure par instance, toutes IP confondues */

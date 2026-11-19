@@ -44,7 +44,7 @@ LEAD_SCORE → segment LEADS — HOT → (futur) n8n enrichissement LinkedIn →
 | `lib/lead/` | `capture.ts` (pipeline), `contactUpdate.ts` (règles de fusion), `log.ts` |
 | `lib/scoring/`, `lib/backfill/`, `lib/newsletter/` | scoring, plan de backfill, rendu newsletter |
 | `components/` | `CaptureForm`, `CookieConsent` (bannière + « Gérer mes cookies »), `Turnstile`, `GuideLink`, `ConfirmEmail`, `GoogleAnalytics` |
-| `app/` | `/r/[slug]`, `/r/[slug]/merci`, `/w/[slug]`, `/confirmer-email`, API `lead`, `events`, `email/confirm`, `webhooks/brevo` |
+| `app/` | `/r/[slug]`, `/r/[slug]/merci`, `/w/[slug]`, `/confirmer-email`, API `lead`, `events`, `email/confirm`, `webhooks/brevo`, `intake/test-maturite` (n8n → base marketing, [INTAKE_TEST_MATURITE.md](INTAKE_TEST_MATURITE.md)) |
 | `scripts/` | `brevo/*` (attributs, segments, webhooks, backfill, smoke test, suppression du contact de test), `newsletter/campaign.ts`, `tracking/build-url.ts`, `data-quality/update-disposable-domains.ts` |
 
 ---
@@ -59,6 +59,7 @@ LEAD_SCORE → segment LEADS — HOT → (futur) n8n enrichissement LinkedIn →
 | `SIGNING_SECRET` | serveur | **obligatoire** | Signe le jeton « guide ouvert », chiffre les liens de confirmation. Stable : le changer invalide les liens déjà envoyés. |
 | `BREVO_WEBHOOK_SECRET` | serveur | recommandé | Active `/api/webhooks/brevo` (hard bounce, désinscription). |
 | `ALTHOCE_SEQUENCE_GUIDES`, `N8N_*`, `SEQUENCE_API_SECRET` | serveur | moteur | Moteur de séquences (docs/PHASE_MARKETING_N8N.md § 3). |
+| `ALTHOCE_INTAKE_TEST_MATURITE`, `BREVO_LIST_TEST_MATURITE` | serveur | optionnel | Entrée des visiteurs du test de maturité IA (off / qa / on + ID de la liste dédiée), docs/INTAKE_TEST_MATURITE.md. |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | navigateur | optionnel | GA4 (défaut du code si non définie, désactivé si vide). |
 | `NEXT_PUBLIC_META_PIXEL_ID` | navigateur | optionnel | Meta Pixel (défaut du code si non définie, désactivé si vide). |
 | `NEXT_PUBLIC_BREVO_CLIENT_KEY` | navigateur | optionnel | Tracker Brevo (désactivé si vide). |
@@ -146,6 +147,8 @@ Source de vérité : `config/leadMagnets.ts`. Le navigateur n'envoie que le slug
 Arbitrer un TODO = renseigner la valeur dans `config/leadMagnets.ts` (preuve à l'appui), puis relancer le backfill en dry run.
 
 **Nouvelle ressource** : contenu dans `lib/ressources.ts` + liste Brevo `LM - …` + entrée `config/leadMagnets.ts` + `npm test`.
+
+**Test de maturité IA** (althoce.com, via n8n) : liste dédiée « LM - Test de maturité IA » (`BREVO_LIST_TEST_MATURITE`), secteurs du test → VERTICAL / SUBSECTOR dans `config/testMaturite.ts` : [INTAKE_TEST_MATURITE.md](INTAKE_TEST_MATURITE.md).
 
 ---
 
