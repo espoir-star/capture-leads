@@ -102,23 +102,21 @@ Retour arrière : vider `ALTHOCE_INTAKE_TEST_MATURITE` (Redeploy) ; n8n reçoit 
 
 ## Corps envoyé par n8n
 
-Champs du lead construit par le site (`lib/maturite/lead.ts` du site). Le site transmet la taille en libellé (`taille_test`) : la convertir en identifiant. Construire l'objet dans un nœud Code (mode « Run Once for Each Item »), puis HTTP Request → Send Body → JSON → Using JSON → `{{ $json.intake }}` :
+Le nœud Code du flux n8n (`docs/test-maturite-ia/n8n/inscrire-base.js` côté site) construit le corps à partir du contact transmis par le site, champ pour champ, sans conversion :
 
-```js
-// `lead` : le lead reçu du site (souvent `$json.body` juste après un nœud Webhook)
-const lead = $json.body ?? $json;
-const TAILLES = { 'Vous exercez seul': 'solo', '2 à 9 personnes': '2-9', '10 à 49 personnes': '10-49', '50 à 199 personnes': '50-199', '200 personnes et plus': '200+' };
-return { json: { intake: {
-  email: lead.email, prenom: lead.prenom,
-  secteur_slug: lead.secteur_slug, secteur_personnalise: lead.secteur_personnalise ?? '',
-  taille: TAILLES[lead.taille_test], role: lead.role,
-  score: lead.score ?? null, stade: lead.stade ?? null, stade_nom: lead.stade_nom ?? null,
-  offre_recommandee: lead.offre_recommandee, lien_resultat: lead.lien_resultat,
-  opposition_marketing: lead.opposition_marketing === true, source_url: lead.source_url ?? '',
-} } };
-```
+| Champ envoyé | Valeur du contact transmis par le site |
+| --- | --- |
+| `email`, `prenom` | `email`, `prenom` |
+| `secteur_slug` | `secteur_slug` |
+| `secteur_personnalise` | `secteur_personnalise`, seulement s'il est présent |
+| `taille` | `taille_code` (`solo`, `2-9`, `10-49`, `50-199`, `200+`), tel quel |
+| `role` | `role` (libellé) |
+| `score`, `stade`, `stade_nom` | `score`, `stade`, `stade_nom` (`null` si non établis) |
+| `offre_recommandee`, `lien_resultat` | `offre_recommandee`, `lien_resultat` |
+| `opposition_marketing` | `false` (seuls les visiteurs sans opposition sont envoyés) |
+| `source_url` | `source_url` |
 
-N'appeler la route que pour `demande = "plan"`, `rappel = false` et `opposition_marketing = false`.
+Le nœud HTTP Request qui appelle la route est configuré en **On Error : Continue** : un refus ou une panne de cette route n'interrompt jamais le flux ni la livraison du PDF. La route n'est appelée que pour `demande = "plan"`, `rappel = false` et `opposition_marketing = false`.
 
 ## Suite possible (hors de cette PR)
 
