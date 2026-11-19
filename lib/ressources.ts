@@ -68,6 +68,28 @@ export interface Ressource {
 
 export const RESSOURCES: Record<string, Ressource> = {
   /* ─────────────────────────────────────────────────────────────
+   * Saisie des pièces comptables (post du 20/11/2026, lien sp1), experts-comptables.
+   * Formulaire : entreprise obligatoire, sans horizon.
+   * ──────────────────────────────────────────────────────────── */
+  "saisie-pieces-comptables": {
+    slug: "saisie-pieces-comptables",
+    badge: "RESSOURCE GRATUITE",
+    titre: "Saisie des pièces comptables\u00a0: <accent>1\u00a0heure → quelques minutes</accent> de relecture.",
+    sousTitre:
+      "Pour les experts-comptables et leurs collaborateurs. Les 10 prompts et le skill Claude qui les regroupe pour saisir vos pièces, même scannées : factures d'achat et de vente, tickets, relevés bancaires, échéanciers. Contrôles avant saisie, écritures à valider, fichier d'import.",
+    resourceCard: {
+      titre: "Saisie des pièces comptables : de la pièce à l'écriture",
+      description: "Les 10 prompts, le skill qui les regroupe et les contrôles avant saisie.",
+      meta: "Lecture estimée : 5 minutes",
+    },
+    pills: ["10 prompts prêts à copier", "1 skill qui regroupe tout", "Factures, tickets, relevés, échéanciers", "Pré-audit 100 % gratuit"],
+    urlRessource: "/g/saisie-pieces-comptables",
+    style: "modal",
+    cta: "Recevoir les 10 prompts",
+    signature: "Espoir Mwami · Althoce",
+    merci: { titre: "Votre ressource est dans votre boîte mail." },
+  },
+  /* ─────────────────────────────────────────────────────────────
    * Claude en réunion : la fiche pratique (post du 19/11/2026, lien re1)
    * Dirigeants et commerciaux. Formulaire : entreprise obligatoire, sans horizon.
    * ──────────────────────────────────────────────────────────── */
