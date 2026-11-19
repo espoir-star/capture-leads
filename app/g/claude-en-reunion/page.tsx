@@ -12,7 +12,7 @@ import { ESPOIR, PRE_AUDIT_BOOKING_EMBED, PRE_AUDIT_BOOKING_URL } from "@/config
  * Fiche « Claude en réunion » (post du 19/11/2026, dirigeants et commerciaux), envoyée par
  * email après la page de capture /r/claude-en-reunion. Même présentation que les lecteurs
  * 10 prompts ; 5 skills à installer (demande d'Espoir du 18/11 : des skills plutôt que des
- * prompts), même méthode d'installation que /g/12-skills-claude-finance ; le pré-audit
+ * prompts), téléchargeables en un seul ZIP (19/11) ou à copier un par un ; le pré-audit
  * gratuit se réserve sur la page même (agenda ouvert).
  */
 
@@ -70,8 +70,8 @@ export default function Page() {
           </h1>
           <p className="mt-6 max-w-[620px] text-[16px] leading-relaxed text-secondaire sm:text-[17px]">{r.subtitle}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href="#reglages" className={primary}>
-              Voir les réglages
+            <a href="#skills" className={primary}>
+              Les 5 skills
               <Icon name="arrowDown" size={14} />
             </a>
             <a href="#creneaux" className={ghost}>
@@ -154,14 +154,62 @@ export default function Page() {
           </ul>
         </Section>
 
-        <Section id="skills" eyebrow="Après la réunion" title="5 skills pour transformer la réunion en actions">
+        <Section id="skills" eyebrow="Après la réunion" title="5 skills pour automatiser vos comptes rendus">
           <p className="text-[15px] leading-relaxed text-secondaire">
             Un skill s&apos;installe une fois dans Claude. Ensuite, il s&apos;applique tout seul dès que votre demande correspond&nbsp;: plus de prompt à recopier après chaque réunion.
           </p>
 
           <div className="mt-6 rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6">
-            <h3 className="text-[15px] font-semibold leading-snug">Installer un skill en 3 étapes</h3>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-secondaire">{r.install.prerequisite}</p>
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.02em]">Installer les 5 skills en une fois</h3>
+              <a href={r.zip.href} download={r.zip.file} className={primary}>
+                <Icon name="download" size={15} />
+                Télécharger les 5 skills
+              </a>
+            </div>
+            <p className="mt-3 text-[13.5px] leading-relaxed text-secondaire">{r.install.prerequisite}</p>
+            <ol className="mt-4 space-y-3">
+              {r.zip.steps.map((step, i) => (
+                <li key={step} className="flex gap-3 text-[14px] leading-relaxed">
+                  <span className="w-5 shrink-0 pt-px text-[12px] font-medium tabular-nums text-discret">0{i + 1}</span>
+                  <span className="min-w-0 flex-1">{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-4 text-[13px] leading-relaxed text-secondaire">{r.zip.team}</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-secondaire">{r.install.use}</p>
+          </div>
+
+          <h3 className="mt-10 text-[17px] font-semibold leading-tight tracking-[-0.02em]">Les 5 skills du fichier</h3>
+          <ol className={`${card} mt-4 divide-y divide-bordure`}>
+            {r.skills.map((k) => (
+              <li key={k.number} id={k.name} className="flex scroll-mt-8 gap-4 px-5 py-5 sm:px-6">
+                <span className="w-5 shrink-0 pt-px text-[12px] font-medium tabular-nums text-discret">{k.number}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-6">
+                    <div className="min-w-0">
+                      <h4 className="text-[15px] font-semibold leading-snug">{k.title}</h4>
+                      <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{k.result}</p>
+                    </div>
+                    <CopyPillButton text={skillFile(k)} label="Copier le skill" done="Copié" />
+                  </div>
+                  <details className="group mt-3">
+                    <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md text-[12.5px] text-secondaire transition-colors duration-150 hover:text-texte [&::-webkit-details-marker]:hidden">
+                      Voir le fichier
+                      <Icon name="chevronDown" size={14} className="transition-transform duration-300 group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-3"><TextBlock text={skillFile(k)} /></div>
+                  </details>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <details className={`${card} group mt-6 p-6`}>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+              Sans le fichier ZIP : un skill à la fois, en copier-coller
+              <Icon name="chevronDown" size={16} className="shrink-0 text-secondaire transition-transform duration-300 group-open:rotate-180" />
+            </summary>
             <ol className="mt-4 space-y-3">
               {r.install.steps.map((step, i) => (
                 <li key={step} className="flex gap-3 text-[14px] leading-relaxed">
@@ -178,32 +226,7 @@ export default function Page() {
                 </li>
               ))}
             </ol>
-            <p className="mt-4 text-[13px] leading-relaxed text-secondaire">{r.install.use}</p>
-          </div>
-
-          <ol className={`${card} mt-6 divide-y divide-bordure`}>
-            {r.skills.map((k) => (
-              <li key={k.number} id={k.name} className="flex scroll-mt-8 gap-4 px-5 py-5 sm:px-6">
-                <span className="w-5 shrink-0 pt-px text-[12px] font-medium tabular-nums text-discret">{k.number}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-6">
-                    <div className="min-w-0">
-                      <h3 className="text-[15px] font-semibold leading-snug">{k.title}</h3>
-                      <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{k.result}</p>
-                    </div>
-                    <CopyPillButton text={skillFile(k)} label="Copier le skill" done="Copié" />
-                  </div>
-                  <details className="group mt-3">
-                    <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md text-[12.5px] text-secondaire transition-colors duration-150 hover:text-texte [&::-webkit-details-marker]:hidden">
-                      Voir le fichier
-                      <Icon name="chevronDown" size={14} className="transition-transform duration-300 group-open:rotate-180" />
-                    </summary>
-                    <div className="mt-3"><TextBlock text={skillFile(k)} /></div>
-                  </details>
-                </div>
-              </li>
-            ))}
-          </ol>
+          </details>
         </Section>
 
         <section id="creneaux" aria-labelledby="creneaux-titre" className="mt-20 scroll-mt-6 rounded-[18px] border border-accent/25 bg-accent/5 p-5 sm:p-8">

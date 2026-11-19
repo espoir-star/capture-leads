@@ -21,6 +21,7 @@
  * (https://support.claude.com/en/articles/12512180-using-skills-in-claude, vérifié le 17/11).
  */
 import type { IconName } from "@/components/icons/lucide";
+import { createZip } from "@/lib/zip";
 
 /** Typographie française : espace insécable avant « : ; ? ! % € », dans les guillemets et entre les milliers. */
 function fr(s: string): string {
@@ -206,17 +207,17 @@ export function skillFile(skill: ReunionSkill): string {
 
 export const CLAUDE_REUNION = {
   slug: "claude-en-reunion",
-  metaTitle: fr("Claude en réunion : la fiche pratique"),
+  metaTitle: "5 skills pour automatiser vos comptes rendus avec Claude et Google Meet",
   metaDescription: fr(
-    "Claude rejoint vos réunions Google Meet, prend les notes et liste les actions. Les réglages, l'accord des participants, le cas des réunions avec un client et 5 skills pour l'après-réunion."
+    "5 skills Claude à installer en une fois : compte rendu client, mail de suivi, actions, fiche prospect et prochain rendez-vous. Avec les réglages de Claude dans Google Meet et l'accord des participants."
   ),
   eyebrow: "Fiche gratuite · Claude en réunion",
   /** <accent>…</accent> = mot mis en avant (bleu du site) */
-  title: "Le compte rendu et les actions, <accent>prêts à la fin de la réunion.</accent>",
+  title: "5 skills pour automatiser vos comptes rendus avec <accent>Claude et Google Meet.</accent>",
   subtitle: fr(
-    "Claude rejoint vos réunions Google Meet, prend les notes et liste les actions. Voici comment le régler, comment prévenir vos participants, et 5 skills à installer une fois pour transformer chaque réunion en compte rendu, en mail de suivi et en fiche prospect."
+    "Claude rejoint vos réunions Google Meet, prend les notes et liste les actions. Installez ces 5 skills en une fois : chaque réunion devient un compte rendu client, un mail de suivi, une liste d'actions et une fiche prospect, sans rien recopier. Les réglages et l'accord des participants sont expliqués pas à pas."
   ),
-  promises: ["Réglages pas à pas", "Message d'accord prêt à copier", "5 skills à installer une fois"],
+  promises: ["5 skills à installer en une fois", "Réglages pas à pas", "Message d'accord prêt à copier"],
   /** Ce que Claude fait pendant et après l'appel */
   does: [
     { icon: "video", title: "Il rejoint l'appel", text: fr("Il apparaît comme un participant et l'annonce dans le chat de la réunion.") },
@@ -257,11 +258,28 @@ Si vous préférez qu'il ne participe pas, répondez simplement à ce message : 
     ],
   },
   skills: skills.map((k) => ({ ...k, title: fr(k.title), result: fr(k.result), body: fr(k.body) })),
-  /** Installation d'un skill (même méthode que le guide 12 skills finance) */
+  /**
+   * Installation des 5 skills en une fois : un ZIP qui contient un ZIP par skill (claude.ai :
+   * un skill par ZIP, dossier au nom du skill ; plusieurs ZIP sélectionnables d'un coup à
+   * l'import, cf. anthropics/claude-code#82044 du 28/07/2026). Les propriétaires Team et
+   * Enterprise peuvent aussi les ajouter pour toute l'organisation (centre d'aide 12512180).
+   */
+  zip: {
+    href: "/g/claude-en-reunion/5-skills-claude-reunion.zip",
+    file: "5-skills-claude-reunion.zip",
+    folder: "5-skills-claude-reunion",
+    steps: [
+      fr("Téléchargez le fichier et ouvrez-le : il contient 5 fichiers ZIP, un par skill."),
+      fr("Dans Claude, ouvrez Personnaliser > Compétences, cliquez sur « + » puis importez une compétence."),
+      fr("Sélectionnez les 5 fichiers ZIP en même temps : les 5 skills apparaissent dans votre liste."),
+    ],
+    team: fr("Propriétaire d'une organisation Team ou Enterprise ? Vous pouvez aussi les ajouter pour toute l'équipe : ils apparaissent dans la liste de chaque membre."),
+  },
+  /** Installation d'un skill à la main, en copier-coller (même méthode que le guide 12 skills finance) */
   install: {
     prerequisite: fr("Prérequis : l'exécution de code activée (Paramètres > Capacités). Sur Team et Enterprise, un propriétaire de l'organisation l'active d'abord pour tous."),
     steps: [
-      fr("Copiez un skill ci-dessous."),
+      fr("Copiez un skill dans la liste ci-dessus."),
       fr("Dans une nouvelle conversation Claude, collez-le avec la phrase à copier."),
       fr("Enregistrez le fichier proposé par Claude : le skill apparaît dans Personnaliser > Compétences."),
     ],
@@ -276,3 +294,14 @@ Si vous préférez qu'il ne participe pas, répondez simplement à ce message : 
   verifiedOn: "18/11/2026",
   author: "Espoir Mwami",
 } as const;
+
+/** Fichier ZIP d'un skill, au format attendu par claude.ai : `<nom>/SKILL.md` */
+export function skillZip(skill: ReunionSkill): Uint8Array {
+  return createZip([{ path: `${skill.name}/SKILL.md`, data: skillFile(skill) }]);
+}
+
+/** Le téléchargement « 5 skills » : un dossier avec un ZIP par skill, à importer d'un coup */
+export function skillsBundleZip(): Uint8Array {
+  const { folder } = CLAUDE_REUNION.zip;
+  return createZip(CLAUDE_REUNION.skills.map((k) => ({ path: `${folder}/${k.name}.zip`, data: skillZip(k) })));
+}
