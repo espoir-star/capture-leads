@@ -279,7 +279,7 @@ Si vous préférez qu'il ne participe pas, répondez simplement à ce message : 
   install: {
     prerequisite: fr("Prérequis : l'exécution de code activée (Paramètres > Capacités). Sur Team et Enterprise, un propriétaire de l'organisation l'active d'abord pour tous."),
     steps: [
-      fr("Copiez un skill ci-dessous."),
+      fr("Copiez un skill dans la liste ci-dessus."),
       fr("Dans une nouvelle conversation Claude, collez-le avec la phrase à copier."),
       fr("Enregistrez le fichier proposé par Claude : le skill apparaît dans Personnaliser > Compétences."),
     ],
