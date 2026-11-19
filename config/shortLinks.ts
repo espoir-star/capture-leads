@@ -100,6 +100,14 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // Post « Claude en réunion » (dirigeants, commerciaux), programmé dans Buffer pour le 19/11/2026 (Espoir, 18/11).
     utm_content: "LI_GEN_20261119_01",
   },
+  rb1: {
+    slug: "releve-bancaire-pdf",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "releve_bancaire_pdf",
+    // Post « Relevé bancaire scanné » (experts-comptables), prévu le 20/11/2026.
+    utm_content: "LI_EC_20261120_01",
+  },
   cl1: {
     slug: "10-prompts-cloture-exercice",
     utm_source: "linkedin",

@@ -68,6 +68,28 @@ export interface Ressource {
 
 export const RESSOURCES: Record<string, Ressource> = {
   /* ─────────────────────────────────────────────────────────────
+   * Relevé bancaire PDF (post du 20/11/2026, lien rb1), experts-comptables.
+   * Formulaire : entreprise obligatoire, sans horizon.
+   * ──────────────────────────────────────────────────────────── */
+  "releve-bancaire-pdf": {
+    slug: "releve-bancaire-pdf",
+    badge: "RESSOURCE GRATUITE",
+    titre: "Relevé bancaire scanné\u00a0: <accent>1 heure → quelques minutes</accent>, soldes contrôlés.",
+    sousTitre:
+      "Pour les experts-comptables et leurs collaborateurs. Le skill Claude et les 3 prompts pour transformer un relevé bancaire PDF, même scanné, en fichier d'import, avec le contrôle des soldes avant tout import.",
+    resourceCard: {
+      titre: "Relevé bancaire PDF : le fichier d'import en quelques minutes",
+      description: "Le skill à installer, les 3 prompts et le contrôle des soldes.",
+      meta: "Lecture estimée : 4 minutes",
+    },
+    pills: ["1 skill à installer", "3 prompts prêts à copier", "Contrôle des soldes", "Pré-audit 100 % gratuit"],
+    urlRessource: "/g/releve-bancaire-pdf",
+    style: "modal",
+    cta: "Recevoir le skill",
+    signature: "Espoir Mwami · Althoce",
+    merci: { titre: "Votre ressource est dans votre boîte mail." },
+  },
+  /* ─────────────────────────────────────────────────────────────
    * Claude en réunion : la fiche pratique (post du 19/11/2026, lien re1)
    * Dirigeants et commerciaux. Formulaire : entreprise obligatoire, sans horizon.
    * ──────────────────────────────────────────────────────────── */
