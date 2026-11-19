@@ -224,7 +224,7 @@ export const SAISIE_PIECES = {
   ),
   eyebrow: "Ressource gratuite · Saisie des pièces comptables",
   /** <accent>…</accent> = mot mis en avant (bleu du site) */
-  title: fr("Saisie des pièces comptables : <accent>1 heure → quelques minutes</accent> de relecture."),
+  title: fr("Saisie des pièces comptables : <accent>1\u00a0heure → quelques minutes</accent> de relecture."),
   subtitle: fr(
     "Factures, tickets, relevés scannés, échéanciers : votre IA lit la pièce, contrôle les montants et propose l'écriture au format d'import de votre logiciel. Vous relisez, vous validez les comptes, vous importez."
   ),

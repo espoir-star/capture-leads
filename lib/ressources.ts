@@ -74,7 +74,7 @@ export const RESSOURCES: Record<string, Ressource> = {
   "saisie-pieces-comptables": {
     slug: "saisie-pieces-comptables",
     badge: "RESSOURCE GRATUITE",
-    titre: "Saisie des pièces comptables\u00a0: <accent>1 heure → quelques minutes</accent> de relecture.",
+    titre: "Saisie des pièces comptables\u00a0: <accent>1\u00a0heure → quelques minutes</accent> de relecture.",
     sousTitre:
       "Pour les experts-comptables et leurs collaborateurs. Les 10 prompts et le skill Claude qui les regroupe pour saisir vos pièces, même scannées : factures d'achat et de vente, tickets, relevés bancaires, échéanciers. Contrôles avant saisie, écritures à valider, fichier d'import.",
     resourceCard: {
