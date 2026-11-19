@@ -7,7 +7,7 @@
 import "server-only";
 
 export { getContactByEmail, type BrevoContact } from "@/lib/brevo/api";
-export { upsertContact, updateContactAttributes, blocklistMarketingContact, BrevoWriteError, type UpsertResult } from "@/lib/brevo/contacts";
+export { upsertContact, createContactIfAbsent, updateContactAttributes, blocklistMarketingContact, BrevoWriteError, type UpsertResult } from "@/lib/brevo/contacts";
 export {
   BREVO_EVENTS,
   CLIENT_EVENTS,

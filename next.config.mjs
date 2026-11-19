@@ -31,6 +31,17 @@ if (process.env.VERCEL_ENV === "production") {
       throw new Error(`N8N_EVENTS_WEBHOOK_URL défini sans : ${scoringMissing.join(", ")} (voir docs/PHASE_MARKETING_N8N.md)`);
     }
   }
+  // Entrée du test de maturité IA : une route ouverte exige le secret n8n → Vercel et l'ID de sa liste
+  const intake = process.env.ALTHOCE_INTAKE_TEST_MATURITE?.trim().toLowerCase();
+  if (intake === "on" || intake === "qa") {
+    const intakeMissing = ["SEQUENCE_API_SECRET", "BREVO_LIST_TEST_MATURITE"].filter((k) => !process.env[k]?.trim());
+    if (!/^[1-9]\d{0,8}$/.test(process.env.BREVO_LIST_TEST_MATURITE?.trim() ?? "") && !intakeMissing.includes("BREVO_LIST_TEST_MATURITE")) {
+      intakeMissing.push("BREVO_LIST_TEST_MATURITE (ID numérique)");
+    }
+    if (intakeMissing.length) {
+      throw new Error(`ALTHOCE_INTAKE_TEST_MATURITE défini sans : ${intakeMissing.join(", ")} (voir docs/INTAKE_TEST_MATURITE.md)`);
+    }
+  }
   for (const testOnly of ["BREVO_API_BASE_URL", "TURNSTILE_VERIFY_URL"]) {
     if (process.env[testOnly]) throw new Error(`${testOnly} est réservée aux tests et ne doit pas être définie en Production`);
   }
