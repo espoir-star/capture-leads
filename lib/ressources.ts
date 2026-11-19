@@ -74,15 +74,15 @@ export const RESSOURCES: Record<string, Ressource> = {
   "claude-en-reunion": {
     slug: "claude-en-reunion",
     badge: "FICHE GRATUITE",
-    titre: "Le compte rendu et les actions, <accent>prêts à la fin de la réunion.</accent>",
+    titre: "5 skills pour automatiser vos comptes rendus avec <accent>Claude et Google Meet.</accent>",
     sousTitre:
-      "Pour les dirigeants et les commerciaux. Claude rejoint vos réunions Google Meet, prend les notes et liste les actions : les réglages, l'accord des participants, le cas des réunions avec un client et 5 skills à installer pour l'après-réunion.",
+      "Pour les dirigeants et les commerciaux. Compte rendu client, mail de suivi, actions, fiche prospect, prochain rendez-vous : 5 skills Claude à installer en une fois, avec les réglages de Claude dans Google Meet et l'accord des participants.",
     resourceCard: {
-      titre: "Claude en réunion : la fiche pratique",
-      description: "Réglages, accord des participants, réunions client et 5 skills.",
+      titre: "5 skills Claude pour vos comptes rendus de réunion",
+      description: "Les 5 skills en un fichier, les réglages Google Meet et l'accord des participants.",
       meta: "Lecture estimée : 5 minutes",
     },
-    pills: ["Réglages pas à pas", "Message d'accord prêt à copier", "5 skills pour l'après-réunion", "Pré-audit 100 % gratuit"],
+    pills: ["5 skills à installer en une fois", "Réglages pas à pas", "Message d'accord prêt à copier", "Pré-audit 100 % gratuit"],
     urlRessource: "/g/claude-en-reunion",
     style: "modal",
     cta: "Recevoir la fiche",
