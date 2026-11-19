@@ -137,12 +137,12 @@ export const LEAD_MAGNETS = {
     legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
     form: { entrepriseRequise: true, sansHorizon: true },
   },
-  "releve-bancaire-pdf": {
-    slug: "releve-bancaire-pdf", resource: "releve-bancaire-pdf",
-    brevoListId: 28, brevoListName: "LM - Relevé bancaire PDF",
+  "saisie-pieces-comptables": {
+    slug: "saisie-pieces-comptables", resource: "saisie-pieces-comptables",
+    brevoListId: 28, brevoListName: "LM - Saisie des pièces comptables",
     vertical: "FINANCE", subsector: "EXPERTISE_COMPTABLE",
-    note: "Liste 28 et champs MG_*_28 créés et relus via API (npm run brevo:guide) le 19/11/2026. Post du 20/11 : experts-comptables. Formulaire comme la clôture : entreprise obligatoire, sans horizon.",
-    sequence: "guide-releve-bancaire-pdf-v1",
+    note: "Liste 28 et champs MG_*_28 créés et relus via API (npm run brevo:guide) le 19/11/2026, liste renommée le même soir (sujet élargi du relevé bancaire à la saisie des pièces). Post du 20/11 : experts-comptables. Formulaire comme la clôture : entreprise obligatoire, sans horizon.",
+    sequence: "guide-saisie-pieces-v1",
     legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
     form: { entrepriseRequise: true, sansHorizon: true },
   },

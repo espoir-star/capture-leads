@@ -5,13 +5,14 @@ import BrandLogo from "@/components/BrandLogo";
 import CopyPillButton from "@/components/CopyPillButton";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Icon } from "@/components/icons/lucide";
-import { RELEVE_BANCAIRE as r, skillFile } from "@/content/guides/releve-bancaire-pdf";
+import { SAISIE_PIECES as r, skillFile } from "@/content/guides/saisie-pieces-comptables";
 import { ESPOIR, PRE_AUDIT_BOOKING_EMBED, PRE_AUDIT_BOOKING_URL } from "@/config/rdvPages";
 
 /**
- * Ressource « Relevé bancaire PDF » (post du 20/11/2026, experts-comptables), envoyée par email
- * après la page de capture /r/releve-bancaire-pdf. Même présentation que la fiche « Claude en
- * réunion » : le skill à télécharger, les 3 prompts, et le pré-audit gratuit sur la page même.
+ * Ressource « Saisie des pièces comptables » (post du 20/11/2026, experts-comptables), envoyée
+ * par email après la page de capture /r/saisie-pieces-comptables. Même présentation que la fiche
+ * « Claude en réunion » : les pièces traitées, le skill à télécharger, les 3 prompts, et le
+ * pré-audit gratuit sur la page même.
  */
 
 export const metadata: Metadata = {
@@ -70,7 +71,7 @@ export default function Page() {
           <p className="mt-6 max-w-[620px] text-[16px] leading-relaxed text-secondaire sm:text-[17px]">{r.subtitle}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#skill" className={primary}>
-              Le skill et les prompts
+              Les 10 prompts et le skill
               <Icon name="arrowDown" size={14} />
             </a>
             <a href="#creneaux" className={ghost}>
@@ -88,6 +89,20 @@ export default function Page() {
           </ul>
         </div>
 
+        <Section id="pieces" eyebrow="Les pièces" title="Ce que votre IA sait saisir">
+          <ul className={`${card} divide-y divide-bordure`}>
+            {r.pieces.map((p) => (
+              <li key={p.title} className="flex gap-4 px-5 py-4 sm:px-6">
+                <span className={`${tile} mt-0.5`}><Icon name="receipt" size={14} /></span>
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold leading-snug">{p.title}</p>
+                  <p className="mt-1 text-[13.5px] leading-relaxed text-secondaire">{p.text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Section>
+
         <section id="avant" aria-labelledby="avant-titre" className="mt-16 scroll-mt-8">
           <h2 id="avant-titre" className={`${label} text-discret`}>Avant de commencer</h2>
           <ul className={`${card} mt-4 divide-y divide-bordure`}>
@@ -103,7 +118,7 @@ export default function Page() {
           </ul>
         </section>
 
-        <Section id="skill" eyebrow="Avec Claude" title="Le skill : déposez le relevé, recevez le fichier d'import">
+        <Section id="skill" eyebrow="Avec Claude" title="Le skill : déposez les pièces, recevez les écritures">
           <div className="rounded-[18px] border border-accent/25 bg-accent/[0.06] p-6">
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.02em]">Installer le skill</h3>
@@ -145,7 +160,7 @@ export default function Page() {
           </div>
         </Section>
 
-        <Section id="prompts" eyebrow="Avec n'importe quelle IA" title="Les 3 prompts, dans l'ordre">
+        <Section id="prompts" eyebrow="Avec n'importe quelle IA" title="Les 10 prompts, de la pièce à l'import">
           <p className="text-[13.5px] leading-relaxed text-secondaire">{r.promptsNote}</p>
           <ol className={`${card} mt-5 divide-y divide-bordure`}>
             {r.prompts.map((p) => (
@@ -183,7 +198,7 @@ export default function Page() {
               Plus de ressaisie dans votre cabinet&nbsp;?
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[14px] leading-relaxed text-secondaire">
-              30 minutes pour regarder vos relevés, votre saisie et votre lettrage, et voir ce que l&apos;IA peut prendre en charge dans votre logiciel. Sans engagement.
+              30 minutes pour regarder vos pièces, votre saisie et votre lettrage, et voir ce que l&apos;IA peut prendre en charge dans votre logiciel. Sans engagement.
             </p>
             <div className="mt-5 flex items-center justify-center gap-3">
               <Image src={ESPOIR.photo} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
@@ -195,7 +210,7 @@ export default function Page() {
             </div>
           </div>
           <div className="mt-6">
-            <BookingCalendar embedUrl={PRE_AUDIT_BOOKING_EMBED} url={PRE_AUDIT_BOOKING_URL} title="Pré-audit IA offert" slug="pre-audit-releve-bancaire-pdf" />
+            <BookingCalendar embedUrl={PRE_AUDIT_BOOKING_EMBED} url={PRE_AUDIT_BOOKING_URL} title="Pré-audit IA offert" slug="pre-audit-saisie-pieces-comptables" />
           </div>
         </section>
 

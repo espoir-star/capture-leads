@@ -68,24 +68,24 @@ export interface Ressource {
 
 export const RESSOURCES: Record<string, Ressource> = {
   /* ─────────────────────────────────────────────────────────────
-   * Relevé bancaire PDF (post du 20/11/2026, lien rb1), experts-comptables.
+   * Saisie des pièces comptables (post du 20/11/2026, lien sp1), experts-comptables.
    * Formulaire : entreprise obligatoire, sans horizon.
    * ──────────────────────────────────────────────────────────── */
-  "releve-bancaire-pdf": {
-    slug: "releve-bancaire-pdf",
+  "saisie-pieces-comptables": {
+    slug: "saisie-pieces-comptables",
     badge: "RESSOURCE GRATUITE",
-    titre: "Relevé bancaire scanné\u00a0: <accent>1 heure → quelques minutes</accent>, soldes contrôlés.",
+    titre: "Saisie des pièces comptables\u00a0: <accent>1 heure → quelques minutes</accent> de relecture.",
     sousTitre:
-      "Pour les experts-comptables et leurs collaborateurs. Le skill Claude et les 3 prompts pour transformer un relevé bancaire PDF, même scanné, en fichier d'import, avec le contrôle des soldes avant tout import.",
+      "Pour les experts-comptables et leurs collaborateurs. Les 10 prompts et le skill Claude qui les regroupe pour saisir vos pièces, même scannées : factures d'achat et de vente, tickets, relevés bancaires, échéanciers. Contrôles avant saisie, écritures à valider, fichier d'import.",
     resourceCard: {
-      titre: "Relevé bancaire PDF : le fichier d'import en quelques minutes",
-      description: "Le skill à installer, les 3 prompts et le contrôle des soldes.",
-      meta: "Lecture estimée : 4 minutes",
+      titre: "Saisie des pièces comptables : de la pièce à l'écriture",
+      description: "Les 10 prompts, le skill qui les regroupe et les contrôles avant saisie.",
+      meta: "Lecture estimée : 5 minutes",
     },
-    pills: ["1 skill à installer", "3 prompts prêts à copier", "Contrôle des soldes", "Pré-audit 100 % gratuit"],
-    urlRessource: "/g/releve-bancaire-pdf",
+    pills: ["10 prompts prêts à copier", "1 skill qui regroupe tout", "Factures, tickets, relevés, échéanciers", "Pré-audit 100 % gratuit"],
+    urlRessource: "/g/saisie-pieces-comptables",
     style: "modal",
-    cta: "Recevoir le skill",
+    cta: "Recevoir les 10 prompts",
     signature: "Espoir Mwami · Althoce",
     merci: { titre: "Votre ressource est dans votre boîte mail." },
   },

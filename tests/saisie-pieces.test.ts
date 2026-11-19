@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { RELEVE_BANCAIRE as r, skillFile, skillZip } from "@/content/guides/releve-bancaire-pdf";
+import { SAISIE_PIECES as r, skillFile, skillZip } from "@/content/guides/saisie-pieces-comptables";
 import { getLeadMagnet, guideFormOptions } from "@/config/leadMagnets";
 import { getRessource } from "@/lib/ressources";
 import { shortLinkTarget } from "@/config/shortLinks";
@@ -10,25 +10,30 @@ import { crc32 } from "@/lib/zip";
 function texts(): string[] {
   return [
     r.metaTitle, r.metaDescription, r.eyebrow, r.title, r.subtitle, ...r.promises,
-    ...r.before.flatMap((b) => [b.title, b.text]), r.skill.title, r.skill.body,
-    ...r.install.steps, r.install.safari, r.install.phrase,
+    ...r.pieces.flatMap((p) => [p.title, p.text]), ...r.before.flatMap((b) => [b.title, b.text]),
+    r.skill.title, r.skill.body, ...r.install.steps, r.install.safari, r.install.phrase,
     ...r.prompts.flatMap((p) => [p.title, p.result, p.prompt]), r.promptsNote, r.guarantee,
   ];
 }
 
-test("Relevé bancaire : faits et garde-fous présents", () => {
+test("Saisie des pièces : 10 prompts, exemples de pièces, garde-fous", () => {
+  assert.equal(r.prompts.length, 10);
+  assert.deepEqual(r.prompts.map((p) => p.number), ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"]);
+  assert.ok(r.pieces.length >= 6);
   const all = texts().join(" ");
   assert.match(all, /100 pages/);
   assert.match(all, /solde de départ \+ total des crédits - total des débits = solde de fin/i);
+  assert.match(all, /HT \+ TVA = TTC/);
   assert.match(all, /ILLISIBLE/);
-  assert.match(all, /N(’|')invente aucune ligne/);
+  assert.match(all, /à valider/);
   assert.match(all, /accord de traitement des données/);
-  assert.match(r.prompts[2].prompt, /seulement si le contrôle des soldes est juste/);
-  assert.equal(r.prompts.length, 3);
+  assert.match(r.prompts[9].prompt, /Laisse de côté les pièces en écart/);
+  // le skill regroupe tout : chaque type de pièce et chaque étape
+  for (const k of ["Facture d", "Ticket", "Relevé bancaire", "Échéancier", "immobilisation", "Rapproche", "CSV"]) assert.ok(r.skill.body.includes(k), k);
   assert.ok(r.sources.every((s) => s.href.startsWith("https://support.claude.com/")));
 });
 
-test("Relevé bancaire : typographie française, pas de tiret long, jamais FEC", () => {
+test("Saisie des pièces : typographie française, pas de tiret long, jamais FEC", () => {
   for (const t of texts()) {
     assert.ok(t.trim());
     assert.doesNotMatch(t, /—/, t);
@@ -37,7 +42,7 @@ test("Relevé bancaire : typographie française, pas de tiret long, jamais FEC",
   }
 });
 
-test("Relevé bancaire : skill conforme et ZIP <nom>/SKILL.md", () => {
+test("Saisie des pièces : skill conforme et ZIP <nom>/SKILL.md", () => {
   const k = r.skill;
   assert.match(k.name, /^[a-z0-9]+(-[a-z0-9]+)*$/);
   assert.ok(k.name.length <= 64);
@@ -57,16 +62,16 @@ test("Relevé bancaire : skill conforme et ZIP <nom>/SKILL.md", () => {
   assert.equal(r.zip.href, `/g/${r.slug}/${r.zip.file}`);
 });
 
-test("Relevé bancaire : capture avec formulaire, liste 28, lien rb1, agenda", () => {
+test("Saisie des pièces : capture avec formulaire, liste 28, lien sp1, agenda", () => {
   assert.equal(getRessource(r.slug)?.urlRessource, `/g/${r.slug}`);
   assert.equal(getLeadMagnet(r.slug)?.brevoListId, 28);
   assert.deepEqual(guideFormOptions(r.slug), { entrepriseRequise: true, sansHorizon: true });
   assert.equal(
-    shortLinkTarget("rb1"),
-    "/r/releve-bancaire-pdf?utm_source=linkedin&utm_medium=organic&utm_campaign=releve_bancaire_pdf&utm_content=LI_EC_20261120_01"
+    shortLinkTarget("sp1"),
+    "/r/saisie-pieces-comptables?utm_source=linkedin&utm_medium=organic&utm_campaign=saisie_pieces_comptables&utm_content=LI_EC_20261120_01"
   );
   const page = readFileSync(`app/g/${r.slug}/page.tsx`, "utf8");
   assert.match(page, /robots: \{ index: false, follow: false \}/);
   assert.match(page, /<BookingCalendar embedUrl=\{PRE_AUDIT_BOOKING_EMBED\}/);
-  for (const id of ["avant", "skill", "prompts", "creneaux"]) assert.match(page, new RegExp(`id="${id}"`), id);
+  for (const id of ["pieces", "avant", "skill", "prompts", "creneaux"]) assert.match(page, new RegExp(`id="${id}"`), id);
 });
