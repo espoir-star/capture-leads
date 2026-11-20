@@ -3,14 +3,15 @@ rubric: "Outil gratuit · 5 minutes"
 title: "Où en est votre cabinet avec l'IA ? Faites le test en 5 minutes."
 subject: "Où en est votre cabinet avec l'IA ? Le test en 5 minutes"
 previewText: "15 questions, votre stade de maturité et vos 3 priorités. Score sans inscription."
-scheduledAt: "2026-12-10T08:30:00+01:00"
+scheduledAt: "2026-12-15T08:30:00+01:00"
 audience: finance
 tag: NL_FINANCE
-utmCampaign: nl_finance_20261210
-status: draft
+utmCampaign: nl_finance_20261215
+status: scheduled
 cta:
   label: "Faire le test"
   url: "https://althoce.com/test-maturite-ia/"
+brevoCampaignId: 70
 ---
 
 Bonjour,
