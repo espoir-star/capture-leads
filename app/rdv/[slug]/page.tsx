@@ -268,7 +268,7 @@ function Bloc({ b, p }: { b: RdvBlock; p: RdvPage }) {
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[13.5px] text-secondaire">{b.cta}</p>
             <a href="#creneaux" className={`${pill} border border-bordure-forte text-texte hover:bg-carte-2`}>
-              Choisir mon créneau
+              {p.ctaLabel ?? "Choisir mon créneau"}
               <Icon name="arrowDown" size={14} />
             </a>
           </div>
@@ -298,7 +298,7 @@ export default async function PageRdv({ params }: Props) {
           <p className="mt-6 max-w-[600px] text-[16px] leading-relaxed text-secondaire sm:text-[17px]">{p.subtitle}</p>
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
             <a href="#creneaux" className={`${pill} bg-action text-white hover:bg-action-hover`}>
-              Choisir mon créneau
+              {p.ctaLabel ?? "Choisir mon créneau"}
               <Icon name="arrowDown" size={14} />
             </a>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-secondaire">

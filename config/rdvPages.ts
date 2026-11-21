@@ -15,7 +15,9 @@
  * écriture comme Pennylane ; logiciels fermés en sur mesure ; aucune mention du
  * fichier FEC ; « une matinée par dossier […] se relit en quelques minutes », texte
  * du post), lecture seule du MCP Pennylane revérifiée sur pennylane.com/fr/mcp le
- * 28/10/2026, Isacompta édité par AGIRIS pour les cabinets (agiris.fr).
+ * 28/10/2026, Isacompta édité par AGIRIS pour les cabinets (agiris.fr). Le 21/11/2026,
+ * Espoir en fait la page de la démo gratuite du post « connecteur ACD en écriture »
+ * (mot clé DEMO, même lien au1) : boutons « Réserver ma démo gratuite » et ACD mis en avant.
  *
  * demo-agents-ia, post du 10/11/2026 « Saisie, rapprochement, collecte des pièces »
  * (démo de la plateforme d'agents IA, texte d'Espoir, dont « plus de 20 cabinets ») :
@@ -115,6 +117,8 @@ export interface RdvPage {
   subtitle: string;
   /** Pastille après la durée et Google Meet (« Gratuit », « Offert ») */
   priceLabel: string;
+  /** Texte des boutons qui mènent à l'agenda (par défaut « Choisir mon créneau ») */
+  ctaLabel?: string;
   booking: {
     /** Lien public de l'agenda (nouvel onglet) */
     url: string;
@@ -139,33 +143,34 @@ export const PRE_AUDIT_BOOKING_EMBED =
 export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
   "audit-connecteurs": {
     slug: "audit-connecteurs",
-    metaTitle: "Audit d'installation gratuit : votre IA dans votre logiciel",
+    metaTitle: "Démo gratuite : votre IA écrit dans ACD et dans votre logiciel",
     metaDescription:
-      "30 minutes en visio pour savoir ce que votre IA peut lire et écrire dans votre logiciel, et ce qu'elle peut préparer à votre place.",
-    eyebrow: "Audit d'installation · 100 % gratuit",
+      "30 minutes en visio pour voir votre IA lire et écrire dans votre logiciel, ACD compris, et ce qu'elle peut préparer à votre place.",
+    eyebrow: "Démo en direct · 100 % gratuit",
     title: "Votre IA peut-elle <accent>écrire dans votre logiciel ?</accent>",
-    subtitle: "En 30 minutes de visio, vous savez ce qui est branchable chez vous et par où commencer.",
+    subtitle: "En 30 minutes de visio, vous voyez votre IA écrire dans ACD ou dans votre logiciel, et vous savez par où commencer.",
     priceLabel: "Gratuit",
+    ctaLabel: "Réserver ma démo gratuite",
     booking: {
       // Agenda « Connecteurs IA MCP - By Althoce » (le même que althoce.com/connecteurs) : 30 min, Google Meet.
       url: "https://calendar.app.google/m6thfjDsXzEqKdkKA",
       embedUrl:
         "https://calendar.google.com/calendar/appointments/schedules/AcZssZ1V23SISY0aSuyhcnrP4bc_sW4fiTlVVr4FmYIMIGcBSEmD5RiEkyMrrO4YWE9SY_-YTHJxE6I_?gv=true&hl=fr",
-      title: "Audit d'installation",
+      title: "Démo gratuite",
       durationMin: 30,
     },
     host: ESPOIR,
     blocks: [
       {
         kind: "apports",
-        title: "Ce que l'audit vous apporte",
+        title: "Ce que la démo vous apporte",
         items: [
           { icon: "plug", title: "Ce qui est branchable", text: "Sur votre logiciel : lecture, écriture, ou les deux." },
           { icon: "route", title: "La méthode adaptée", text: "Connecteur officiel ou sur mesure, adapté aux spécificités de votre logiciel." },
           { icon: "listChecks", title: "Les tâches à confier en premier", text: "Et le temps gagné sur chacune." },
           { icon: "userCheck", title: "Le bon compte Claude ou ChatGPT", text: "Pour traiter des données clients." },
         ],
-        note: { icon: "shieldCheck", text: "Si votre logiciel ne permet pas l'écriture, on vous le dit dès l'audit." },
+        note: { icon: "shieldCheck", text: "Si votre logiciel ne permet pas l'écriture, on vous le dit pendant la démo." },
       },
       { kind: "agenda" },
       {
@@ -199,13 +204,18 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
         title: "Chaque connecteur s'adapte à votre logiciel",
         items: [
           {
+            title: "ACD",
+            status: "Lecture et écriture",
+            text: "Connecteur Althoce : votre IA lit vos dossiers ACD et y passe les écritures, avec votre validation.",
+          },
+          {
             title: "Pennylane",
             status: "Lecture et écriture",
             text: "Le connecteur officiel est en lecture seule à ce jour. Le connecteur Althoce ajoute l'écriture.",
             source: { label: "pennylane.com/fr/mcp", url: "https://www.pennylane.com/fr/mcp" },
           },
           {
-            title: "ACD, Cegid Loop, Sage Génération Experts, MyUnisoft, Inqom",
+            title: "Cegid Loop, Sage Génération Experts, MyUnisoft, Inqom",
             status: "Lecture et écriture",
             text: "Comme pour Pennylane, votre IA lit vos dossiers et y écrit, avec votre validation.",
           },
@@ -215,7 +225,7 @@ export const RDV_PAGES: Readonly<Record<string, RdvPage>> = {
             text: "Logiciels fermés : on construit un connecteur sur mesure.",
           },
         ],
-        cta: "Votre logiciel n'est pas dans la liste ? C'est l'objet de l'audit.",
+        cta: "Votre logiciel n'est pas dans la liste ? Réservez quand même votre démo.",
       },
     ],
     webinarSlug: "connecteurs-mcp-cabinets",

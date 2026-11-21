@@ -105,6 +105,10 @@ test("audit connecteurs : le texte du post, l'agenda des connecteurs, les logici
   assert.equal(p.booking.url, "https://calendar.app.google/m6thfjDsXzEqKdkKA");
   assert.match(p.eyebrow, /100 % gratuit/);
   assert.equal(p.priceLabel, "Gratuit");
+  // 21/11 : page de la démo gratuite du post ACD (Espoir) : boutons et ACD mis en avant
+  assert.equal(p.ctaLabel, "Réserver ma démo gratuite");
+  assert.match(p.subtitle, /ACD/);
+  assert.equal(bloc(p, "liste").items[0].title, "ACD");
   const travail = bloc(p, "travail");
   assert.deepEqual(travail.tasks, ["Catégoriser les transactions", "Affecter un tiers", "Ventiler une facture fournisseur", "Lettrer et rapprocher", "Passer des écritures"]);
   assert.match(travail.tasksMore, /^Et d'autres tâches/, "liste non exhaustive");
