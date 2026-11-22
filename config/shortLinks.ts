@@ -108,6 +108,14 @@ export const SHORT_LINKS: Readonly<Record<string, ShortLink>> = {
     // Post « Saisie des pièces comptables » (experts-comptables), prévu le 20/11/2026.
     utm_content: "LI_EC_20261120_01",
   },
+  rv1: {
+    slug: "revue-dossier-fec",
+    utm_source: "linkedin",
+    utm_medium: "organic",
+    utm_campaign: "revue_dossier_fec",
+    // Post « revue de dossier à partir du FEC » (experts-comptables, mot clé REVUE), date de publication à confirmer par Espoir.
+    utm_content: "LI_EC_20261124_01",
+  },
   cl1: {
     slug: "10-prompts-cloture-exercice",
     utm_source: "linkedin",

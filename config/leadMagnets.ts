@@ -146,6 +146,15 @@ export const LEAD_MAGNETS = {
     legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
     form: { entrepriseRequise: true, sansHorizon: true },
   },
+  "revue-dossier-fec": {
+    slug: "revue-dossier-fec", resource: "revue-dossier-fec",
+    brevoListId: 29, brevoListName: "LM - Revue de dossier FEC",
+    vertical: "FINANCE", subsector: "EXPERTISE_COMPTABLE",
+    note: "Liste 29 et champs MG_*_29 créés via API (npm run brevo:guide) le 22/11/2026. Post « revue de dossier à partir du FEC » (experts-comptables, mot clé REVUE). Formulaire comme la saisie : entreprise obligatoire, sans horizon.",
+    sequence: "guide-revue-fec-v1",
+    legacy: { automationId: 0, deliveryTemplateId: 0, followupTemplateIds: [] },
+    form: { entrepriseRequise: true, sansHorizon: true },
+  },
 } as const satisfies Record<string, LeadMagnetConfig>;
 
 export type LeadMagnetSlug = keyof typeof LEAD_MAGNETS;

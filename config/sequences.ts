@@ -45,6 +45,7 @@ export const SEQUENCES = {
   "guide-10-prompts-cloture-v1": genericGuide("guide-10-prompts-cloture-v1", "10 prompts de clôture"),
   "guide-claude-reunion-v1": genericGuide("guide-claude-reunion-v1", "Claude en réunion"),
   "guide-saisie-pieces-v1": genericGuide("guide-saisie-pieces-v1", "Saisie des pièces comptables"),
+  "guide-revue-fec-v1": genericGuide("guide-revue-fec-v1", "Revue de dossier à partir du FEC"),
   "guide-claude-meta-ads-v1": genericGuide("guide-claude-meta-ads-v1", "Claude × Meta Ads"),
   "guide-copilot-8-cas-v1": genericGuide("guide-copilot-8-cas-v1", "Copilot : 8 cas d'usage"),
   "guide-claude-droit-v1": genericGuide("guide-claude-droit-v1", "Claude pour le droit"),
