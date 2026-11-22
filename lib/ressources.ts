@@ -68,6 +68,28 @@ export interface Ressource {
 
 export const RESSOURCES: Record<string, Ressource> = {
   /* ─────────────────────────────────────────────────────────────
+   * Revue de dossier à partir du FEC (post du 22/11/2026, lien rv1, mot clé REVUE),
+   * experts-comptables. Formulaire : entreprise obligatoire, sans horizon.
+   * ──────────────────────────────────────────────────────────── */
+  "revue-dossier-fec": {
+    slug: "revue-dossier-fec",
+    badge: "RESSOURCE GRATUITE",
+    titre: "Chargez le FEC, <accent>voyez ce qu'il faut vérifier</accent> sur le dossier.",
+    sousTitre:
+      "Pour les experts-comptables et leurs collaborateurs. Le skill Claude qui crée un tableau de bord de revue de dossier, avec un onglet pour charger le FEC\u00a0: intégrité des écritures, soldes anormaux, doublons possibles, balance âgée, activité et cohérences.",
+    resourceCard: {
+      titre: "Revue de dossier : le tableau de bord qui analyse le FEC",
+      description: "Le skill Claude, les 6 onglets du tableau de bord et le prompt pour une autre IA.",
+      meta: "Lecture estimée : 5 minutes",
+    },
+    pills: ["1 skill Claude prêt à installer", "6 onglets, une vingtaine de contrôles", "Le FEC reste dans votre navigateur", "Pré-audit 100 % gratuit"],
+    urlRessource: "/g/revue-dossier-fec",
+    style: "modal",
+    cta: "Recevoir le tableau de bord",
+    signature: "Espoir Mwami · Althoce",
+    merci: { titre: "Votre ressource est dans votre boîte mail." },
+  },
+  /* ─────────────────────────────────────────────────────────────
    * Saisie des pièces comptables (post du 20/11/2026, lien sp1), experts-comptables.
    * Formulaire : entreprise obligatoire, sans horizon.
    * ──────────────────────────────────────────────────────────── */
