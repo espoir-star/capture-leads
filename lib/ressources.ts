@@ -82,7 +82,7 @@ export const RESSOURCES: Record<string, Ressource> = {
       description: "Le skill Claude, les 6 onglets du tableau de bord et le prompt pour une autre IA.",
       meta: "Lecture estimée : 5 minutes",
     },
-    pills: ["1 skill Claude prêt à installer", "6 onglets, une vingtaine de contrôles", "Le FEC reste dans votre navigateur", "Pré-audit 100 % gratuit"],
+    pills: ["1 skill Claude prêt à installer", "6 onglets, plus de 25 contrôles", "Le FEC reste dans votre navigateur", "Pré-audit 100 % gratuit"],
     urlRessource: "/g/revue-dossier-fec",
     style: "modal",
     cta: "Recevoir le tableau de bord",

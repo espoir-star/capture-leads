@@ -57,10 +57,10 @@ const onglets: { icon: IconName; title: string; text: string }[] = [
 
 const controles: { title: string; items: string[] }[] = [
   { title: "Intégrité des écritures", items: ["Total débit égal au total crédit", "Écritures déséquilibrées", "Trous dans la numérotation, journal par journal", "Lignes sans référence de pièce, sans libellé ou sans date de validation"] },
-  { title: "Soldes anormaux", items: ["Clients créditeurs et fournisseurs débiteurs", "Compte courant d'associé débiteur (455)", "Comptes d'attente non soldés (471 à 475)", "Caisse créditrice en cours d'exercice", "Banque créditrice à la clôture"] },
-  { title: "Écritures à regarder", items: ["Doublons possibles : même tiers, même montant, à 3 jours près", "Écritures datées un week-end", "Montants ronds importants", "Achats en charges au-dessus de votre seuil, à immobiliser ?"] },
+  { title: "Soldes anormaux", items: ["Clients créditeurs et fournisseurs débiteurs", "Charges créditrices et produits débiteurs", "Compte courant d'associé débiteur (455)", "Comptes d'attente (471 à 475) et virements internes (58) non soldés", "Caisse créditrice en cours d'exercice", "Banque créditrice à la clôture"] },
+  { title: "Écritures à regarder", items: ["Doublons possibles : même tiers, même montant, à 3 jours près", "Écritures datées un week-end", "Montants ronds importants", "Libellés à préciser (« divers », « régul »…) sur des montants significatifs", "Achats en charges au-dessus de votre seuil, à immobiliser ?"] },
   { title: "Tiers", items: ["Non lettré par ancienneté : 0 à 30, 31 à 60, 61 à 90, plus de 90 jours", "Taux de lettrage clients et fournisseurs", "Premier client et 5 premiers clients en part des flux"] },
-  { title: "Cohérences", items: ["TVA collectée rapportée au chiffre d'affaires", "TVA déductible rapportée aux achats et investissements", "Charges sociales rapportées aux salaires", "Immobilisations sans dotation aux amortissements", "Solde bancaire en fin de mois"] },
+  { title: "Cohérences", items: ["TVA collectée rapportée au chiffre d'affaires", "TVA déductible rapportée aux achats et investissements", "Charges sociales rapportées aux salaires", "Immobilisations sans dotation aux amortissements", "Capitaux propres inférieurs à la moitié du capital", "Solde bancaire en fin de mois"] },
 ];
 
 const skill: RevueSkill = {
@@ -76,7 +76,7 @@ Tu aides un expert-comptable ou un collaborateur à réviser un dossier. Tu cré
 
 ## Procédure
 
-1. Crée un artefact HTML à partir du fichier assets/tableau-de-bord-revue-fec.html de ce skill. Lis le fichier et reprends son contenu exact : ne le réécris pas, ne le raccourcis pas, n'ajoute aucune donnée.
+1. Crée un artefact HTML à partir du fichier assets/tableau-de-bord-revue-fec.html de ce skill. Lis le fichier et reprends son contenu exact : ne le réécris pas, ne le raccourcis pas, n'ajoute aucune donnée, et garde la signature Althoce en haut et en pied de page.
 2. Dis à l'utilisateur d'ouvrir l'onglet « Charger le FEC » et d'y déposer le FEC du dossier, et s'il le souhaite celui de N-1. Le fichier est lu par le tableau de bord, dans le navigateur : il n'est pas envoyé dans la conversation.
 3. Le tableau de bord affiche alors cinq onglets : Synthèse, Anomalies, Tiers, Activité, Cohérences.
 4. Quand l'utilisateur colle la synthèse copiée depuis le tableau de bord (bouton « Copier la synthèse »), rédige la note de revue :
@@ -90,18 +90,22 @@ Tu aides un expert-comptable ou un collaborateur à réviser un dossier. Tu cré
 ## Contrôles du tableau de bord
 
 - Intégrité : total débit égal au total crédit, écritures déséquilibrées, trous de numérotation par journal, lignes sans pièce, sans libellé ou sans date de validation.
-- Soldes anormaux : clients créditeurs (411), fournisseurs débiteurs (401), compte courant d'associé débiteur (455), comptes d'attente non soldés (471 à 475), caisse créditrice en cours d'exercice (53), banque créditrice à la clôture (512).
-- Écritures à regarder : doublons possibles (même tiers, même montant, même sens, à 3 jours près), écritures datées un week-end, montants ronds importants, achats en charges au-dessus du seuil (6063, 6064, 6068, 615) à immobiliser ?
-- Tiers : non lettré par ancienneté (0 à 30, 31 à 60, 61 à 90, plus de 90 jours), taux de lettrage, poids du premier client.
+- Soldes anormaux : clients créditeurs (411), fournisseurs débiteurs (401), charges créditrices (classe 6) et produits débiteurs (classe 7), compte courant d'associé débiteur (455), comptes d'attente (471 à 475) et virements internes (58) non soldés, caisse créditrice en cours d'exercice (53), banque créditrice à la clôture (512).
+- Écritures à regarder : doublons possibles (même tiers, même montant, même sens, à 3 jours près), écritures datées un week-end, montants ronds importants, libellés à préciser sur des montants significatifs, achats en charges au-dessus du seuil (6063, 6064, 6068, 615) à immobiliser ?
+- Tiers : non lettré par ancienneté (0 à 30, 31 à 60, 61 à 90, plus de 90 jours, les règlements soldant d'abord les factures les plus anciennes), taux de lettrage, poids du premier client.
 - Activité : chiffre d'affaires (70) mois par mois, achats consommés (601, 602, 603, 607), marge, charges par nature (60 à 69), résultat, comparaison avec N-1.
-- Cohérences : TVA collectée (4457) rapportée au chiffre d'affaires, TVA déductible (4456) rapportée aux achats et investissements, charges sociales (645) rapportées aux salaires (641), dotations (681) quand il y a des immobilisations, solde bancaire en fin de mois.
+- Cohérences : TVA collectée (4457) rapportée au chiffre d'affaires, TVA déductible (4456) rapportée aux achats et investissements, charges sociales (645) rapportées aux salaires (641), dotations (681) quand il y a des immobilisations, capitaux propres (10 à 14 et résultat) inférieurs à la moitié du capital (101), solde bancaire en fin de mois.
 
 ## Règles de vigilance
 
 - Un contrôle signale, il ne conclut pas : un repère dépend de l'activité, du régime de TVA et des réductions de cotisations du dossier.
 - N'invente aucun chiffre. Si une colonne du FEC manque, dis quels contrôles ne sont pas fiables.
 - Ne modifie aucune écriture et n'envoie rien au client.
-- Le FEC contient des données de clients : un compte professionnel, avec un accord de traitement des données.`,
+- Le FEC contient des données de clients : un compte professionnel, avec un accord de traitement des données.
+
+## À propos
+
+Skill et tableau de bord conçus par Althoce (althoce.com), cabinet de conseil & intégration IA, le partenaire IA des professions réglementées.`,
 };
 
 export function skillFile(s: RevueSkill): string {
@@ -132,7 +136,7 @@ export const REVUE_FEC = {
   subtitle: fr(
     "Un tableau de bord créé par Claude, avec un onglet pour charger le FEC : intégrité des écritures, soldes anormaux, doublons possibles, balance âgée, activité mois par mois et cohérences. Vous vérifiez, vous concluez."
   ),
-  promises: ["1 skill Claude prêt à installer", "6 onglets, une vingtaine de contrôles", "Le FEC reste dans votre navigateur"],
+  promises: ["1 skill Claude prêt à installer", "6 onglets, plus de 25 contrôles", "Le FEC reste dans votre navigateur"],
   onglets: onglets.map((o) => ({ ...o, title: fr(o.title), text: fr(o.text) })),
   controles: controles.map((c) => ({ title: fr(c.title), items: c.items.map(fr) })),
   before: [

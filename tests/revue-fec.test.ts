@@ -110,7 +110,11 @@ test("revue FEC : le tableau de bord est autonome et n'envoie rien", () => {
   for (const o of ["Synthèse", "Anomalies", "Tiers", "Activité", "Cohérences"]) assert.match(html, new RegExp(`data-o="[a-z]+"[^>]*>${o}`));
   assert.match(html, /type="file"/);
   assert.match(html, /FileReader/);
-  assert.doesNotMatch(html, /<script[^>]+src=|<link[^>]+href=|fetch\(|XMLHttpRequest|sendBeacon|https?:\/\//, "aucune ressource ni requête externe");
+  assert.doesNotMatch(html, /<script[^>]+src=|<link[^>]+href=|fetch\(|XMLHttpRequest|sendBeacon/, "aucune ressource ni requête externe");
+  // Seul lien externe : la signature Althoce
+  for (const u of html.match(/https?:\/\/[^\s"'<)]+/g) ?? []) assert.equal(u, "https://althoce.com", u);
+  assert.match(html, /conçu par <a href="https:\/\/althoce.com"[^>]*>Althoce<\/a>/);
+  assert.match(html, /tableau de bord de revue de dossier conçu par Althoce/);
   assert.doesNotMatch(html, /—/, "pas de tiret long");
   assert.ok(html.length < 80_000, `taille ${html.length}`);
 });
@@ -123,6 +127,8 @@ test("revue FEC : skill, ZIP, capture et lien court", () => {
   assert.match(k.body, /assets\/tableau-de-bord-revue-fec\.html/);
   assert.match(k.body, /Charger le FEC/);
   assert.match(k.body, /n'est pas envoyé dans la conversation/);
+  assert.match(k.body, /conçus par Althoce \(althoce\.com\)/);
+  assert.match(k.body, /garde la signature Althoce/);
   assert.match(skillFile(k), /^---\nname: revue-dossier-fec\ndescription: /);
   // ZIP : SKILL.md et le tableau de bord, CRC justes
   const zip = skillZip();
@@ -148,4 +154,39 @@ test("revue FEC : skill, ZIP, capture et lien court", () => {
   assert.match(shortLinkTarget("rv1") ?? "", /^\/r\/revue-dossier-fec\?utm_source=linkedin/);
   // Pas de tiret long dans les textes de la fiche
   assert.doesNotMatch(JSON.stringify(r), /—/);
+});
+
+test("revue FEC : balance âgée (règlements sur les factures les plus anciennes) et nouveaux contrôles", () => {
+  const F = logique();
+  const L = [
+    H,
+    // Client : une vieille facture de 1 000 € réglée, une facture récente de 500 € ouverte, rien n'est lettré
+    l("VE", "1", "20250102", "411000", "Clients", "CLI09", "1000,00", "0,00"),
+    l("VE", "1", "20250102", "706000", "Prestations", "", "0,00", "1000,00"),
+    l("VE", "2", "20251220", "411000", "Clients", "CLI09", "500,00", "0,00"),
+    l("VE", "2", "20251220", "706000", "Prestations", "", "0,00", "500,00"),
+    l("BQ", "3", "20251222", "512000", "Banque", "", "1000,00", "0,00"),
+    l("BQ", "3", "20251222", "411000", "Clients", "CLI09", "0,00", "1000,00"),
+    // Capital de 1 000 €, perte de 3 000 € : capitaux propres négatifs
+    l("OD", "4", "20250102", "512000", "Banque", "", "1000,00", "0,00"),
+    l("OD", "4", "20250102", "101000", "Capital", "", "0,00", "1000,00"),
+    l("AC", "5", "20250303", "622600", "Honoraires", "", "4500,00", "0,00"),
+    l("AC", "5", "20250303", "512000", "Banque", "", "0,00", "4500,00"),
+    // Charge créditrice, virement interne d'un seul côté, libellé vague
+    l("OD", "6", "20250304", "625100", "Divers", "", "0,00", "1200,00"),
+    l("OD", "6", "20250304", "512000", "Banque", "", "1200,00", "0,00"),
+    l("BQ", "7", "20250305", "580000", "Virements internes", "", "500,00", "0,00"),
+    l("BQ", "7", "20250305", "512000", "Banque", "", "0,00", "500,00"),
+  ].join("\n");
+  const res = F.analyse(F.parse(L).rows);
+  const types = (t: string) => res.anomalies.filter((a) => a.type === t);
+  // 1 500 € facturés, 1 000 € réglés : il reste la facture récente, pas la vieille
+  assert.deepEqual(res.tiers.clients.ages, [50000, 0, 0, 0]);
+  assert.equal(types("Créances clients de plus de 90 jours").length, 0);
+  assert.equal(types("Charge créditrice")[0].montant, 120000);
+  assert.equal(types("Virement interne non soldé")[0].montant, 50000);
+  assert.equal(types("Capitaux propres inférieurs à la moitié du capital").length, 1);
+  assert.equal(types("Libellé à préciser").length, 1);
+  // Les mois sans écriture comptent quand même dans la courbe (janvier à décembre)
+  assert.equal(res.activite.mois.length, 12);
 });

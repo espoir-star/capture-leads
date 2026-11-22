@@ -14,6 +14,12 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--fond);color:var(--texte);font-size:14px;line-height:1.45}
 header{max-width:1180px;margin:0 auto;padding:20px 24px 0}
+.haut{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.marque{display:inline-flex;align-items:center;gap:7px;color:var(--texte);text-decoration:none;font-weight:650;letter-spacing:-.04em;font-size:17px;white-space:nowrap}
+.marque span{color:#2563eb}
+.marque small{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--discret);font-weight:600;margin-top:1px}
+footer.signature{max-width:1180px;margin:0 auto;padding:0 24px 32px;color:var(--discret);font-size:12px}
+footer.signature a{color:var(--sec)}
 h1{font-size:20px;margin:0;letter-spacing:-.01em}
 h2{font-size:16px;margin:0 0 12px}
 h3{font-size:14px;margin:0 0 8px}
@@ -68,8 +74,16 @@ svg text{font-family:inherit}
 </head>
 <body>
 <header>
-  <h1>Revue de dossier · FEC</h1>
-  <div class="sous" id="entete">Chargez le fichier des écritures comptables (FEC) d'un dossier pour lancer les contrôles.</div>
+  <div class="haut">
+    <div>
+      <h1>Revue de dossier · FEC</h1>
+      <div class="sous" id="entete">Chargez le fichier des écritures comptables (FEC) d'un dossier pour lancer les contrôles.</div>
+    </div>
+    <a class="marque" href="https://althoce.com" target="_blank" rel="noopener" title="Althoce, conseil &amp; intégration IA">
+      <svg width="24" height="24" viewBox="0 0 100 100" aria-hidden="true"><rect x="10" y="15" width="20" height="70" fill="currentColor" rx="3"/><path d="M45 15 L65 15 L65 50 L80 50 L62.5 85 L45 50 L45 15 Z" fill="currentColor"/><circle cx="42" cy="50" r="7" fill="#2563eb"/></svg>
+      <div>althoce<span>.</span><small>Conseil &amp; intégration IA</small></div>
+    </a>
+  </div>
   <nav id="nav">
     <button data-o="charger" class="actif">Charger le FEC</button>
     <button data-o="synthese" disabled>Synthèse</button>
@@ -106,6 +120,7 @@ svg text{font-family:inherit}
   <section class="onglet" id="o-activite"></section>
   <section class="onglet" id="o-coherences"></section>
 </main>
+<footer class="signature">Tableau de bord de revue de dossier conçu par <a href="https://althoce.com" target="_blank" rel="noopener">Althoce</a> · Conseil &amp; intégration IA · Le partenaire IA des professions réglementées. Les contrôles signalent des points à vérifier : le comptable conclut.</footer>
 <script>
 /*FEC-LOGIC-START*/
 var FEC = (function () {
@@ -179,6 +194,13 @@ var FEC = (function () {
   function tiersKey(r) { return r.aux || r.compte; }
   function tiersNom(r) { return r.auxlib || r.clib || r.aux || r.compte; }
   function mois(n) { return Math.floor(n / 100); }
+  /** Tous les mois entre le premier et le dernier, sans trou (AAAAMM) */
+  function suiteMois(liste) {
+    if (!liste.length) return [];
+    var min = Math.min.apply(null, liste), max = Math.max.apply(null, liste), out = [], k = min;
+    while (k <= max && out.length < 60) { out.push(k); k = k % 100 === 12 ? (Math.floor(k / 100) + 1) * 100 + 1 : k + 1; }
+    return out;
+  }
 
   /** Chiffres d'activité d'un jeu de lignes (sert aussi au N-1) */
   function activite(rows) {
@@ -192,8 +214,8 @@ var FEC = (function () {
       if (starts(c, ["70"])) { p.ca += r.c - r.d; ca += r.c - r.d; }
       if (starts(c, ["601", "602", "603", "607"])) { p.achats += r.d - r.c; achats += r.d - r.c; }
     });
-    var cles = Object.keys(parMois).map(Number).sort(function (a, b) { return a - b; });
-    return { mois: cles.map(function (k) { return { k: k, ca: parMois[k].ca, achats: parMois[k].achats }; }), nature: nature, ca: ca, achats: achats, marge: ca - achats, resultat: cl7 - cl6 };
+    var cles = suiteMois(Object.keys(parMois).map(Number));
+    return { mois: cles.map(function (k) { var p = parMois[k] || { ca: 0, achats: 0 }; return { k: k, ca: p.ca, achats: p.achats }; }), nature: nature, ca: ca, achats: achats, marge: ca - achats, resultat: cl7 - cl6 };
   }
 
   function analyse(rows, o) {
@@ -231,13 +253,16 @@ var FEC = (function () {
     if (sansPiece && absentes.indexOf("piece") < 0) add("moyenne", "Lignes sans référence de pièce", "anomalies", { quoi: sansPiece + " ligne(s) sans PieceRef", montant: 0 });
     if (sansLib && absentes.indexOf("lib") < 0) add("info", "Lignes sans libellé", "anomalies", { quoi: sansLib + " ligne(s) sans EcritureLib", montant: 0 });
     if (nonValid && absentes.indexOf("vdate") < 0) add("info", "Lignes sans date de validation", "anomalies", { quoi: nonValid + " ligne(s) sans ValidDate (écritures en brouillard ?)", montant: 0 });
-    var trous = [];
-    jr.forEach(function (j) {
-      var nums = []; var tousNum = true;
-      ent.forEach(function (e) { if (e.j === j.code) { if (!/^\d+$/.test(e.num)) tousNum = false; else nums.push(+e.num); } });
-      if (!tousNum || nums.length < 2) return;
-      nums.sort(function (a, b) { return a - b; });
-      for (var i = 1; i < nums.length; i++) if (nums[i] - nums[i - 1] > 1) trous.push({ j: j.code, de: nums[i - 1], a: nums[i] });
+    var trous = [], parJournal = new Map();
+    ent.forEach(function (e) {
+      var g = parJournal.get(e.j) || { nums: [], tousNum: true };
+      if (/^\d+$/.test(e.num)) g.nums.push(+e.num); else g.tousNum = false;
+      parJournal.set(e.j, g);
+    });
+    parJournal.forEach(function (g, code) {
+      if (!g.tousNum || g.nums.length < 2) return;
+      g.nums.sort(function (a, b) { return a - b; });
+      for (var i = 1; i < g.nums.length; i++) if (g.nums[i] - g.nums[i - 1] > 1) trous.push({ j: code, de: g.nums[i - 1], a: g.nums[i] });
     });
     integ.trous = trous;
     if (trous.length) add("moyenne", "Numérotation non continue", "anomalies", { quoi: trous.length + " trou(s) : " + trous.slice(0, 4).map(function (t) { return t.j + " " + t.de + " → " + t.a; }).join(", ") + (trous.length > 4 ? "…" : ""), montant: 0 });
@@ -248,16 +273,27 @@ var FEC = (function () {
       var cl = r.compte.indexOf("411") === 0 ? "client" : r.compte.indexOf("401") === 0 ? "fournisseur" : null;
       if (!cl) return;
       var k = cl + "|" + tiersKey(r), t = tiers.get(k);
-      if (!t) { t = { cl: cl, code: tiersKey(r), nom: tiersNom(r), d: 0, c: 0, flux: 0, lignes: 0, lettrees: 0, nonLet: 0, ages: [0, 0, 0, 0] }; tiers.set(k, t); }
+      if (!t) { t = { cl: cl, code: tiersKey(r), nom: tiersNom(r), d: 0, c: 0, flux: 0, lignes: 0, lettrees: 0, nonLet: 0, ages: [0, 0, 0, 0], nl: [] }; tiers.set(k, t); }
       t.d += r.d; t.c += r.c; t.lignes++;
       if (!isAN(r)) t.flux += cl === "client" ? r.d : r.c;
       if (r.let) t.lettrees++;
       else {
         var s = cl === "client" ? r.d - r.c : r.c - r.d;
         t.nonLet += s;
-        var age = jours(r.date, cloture), b = age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3;
-        t.ages[b] += s;
+        t.nl.push({ date: r.date, s: s });
       }
+    });
+    // Ancienneté : les règlements non lettrés soldent d'abord les factures les plus anciennes
+    tiers.forEach(function (t) {
+      var factures = t.nl.filter(function (x) { return x.s > 0; }).sort(function (a, b) { return a.date - b.date; });
+      var reglements = t.nl.reduce(function (s, x) { return x.s < 0 ? s - x.s : s; }, 0);
+      factures.forEach(function (f) {
+        var reste = f.s, pris = Math.min(reste, reglements);
+        reste -= pris; reglements -= pris;
+        if (reste > 0) { var age = jours(f.date, cloture); t.ages[age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3] += reste; }
+      });
+      if (reglements > 0) t.ages[0] -= reglements;
+      t.nl = null;
     });
     tiers.forEach(function (t) {
       var solde = t.d - t.c;
@@ -269,7 +305,14 @@ var FEC = (function () {
       if (c.indexOf("455") === 0 && s > 100) add("haute", "Compte courant d'associé débiteur", "anomalies", { quoi: cp.lib || c, compte: c, montant: s, detail: "À examiner au regard des règles applicables à la forme sociale." });
       if (starts(c, ["471", "472", "473", "474", "475"]) && Math.abs(s) > 100) add("moyenne", "Compte d'attente non soldé", "anomalies", { quoi: cp.lib || c, compte: c, montant: Math.abs(s) });
       if (c.indexOf("512") === 0 && s < -100) add("info", "Banque créditrice à la clôture", "coherences", { quoi: cp.lib || c, compte: c, montant: -s, detail: "Découvert réel ou chèques émis non encaissés ?" });
+      if (c.indexOf("58") === 0 && Math.abs(s) > 100) add("moyenne", "Virement interne non soldé", "anomalies", { quoi: cp.lib || c, compte: c, montant: Math.abs(s), detail: "Une des deux jambes du virement entre comptes manque ?" });
+      var normal6 = starts(c, ["603", "609", "619", "629"]), normal7 = starts(c, ["709", "713"]);
+      if (c.charAt(0) === "6" && !normal6 && s < -100) add("moyenne", "Charge créditrice", "anomalies", { quoi: cp.lib || c, compte: c, montant: -s, detail: "Avoir ou régularisation passé dans le mauvais sens ?" });
+      if (c.charAt(0) === "7" && !normal7 && s > 100) add("moyenne", "Produit débiteur", "anomalies", { quoi: cp.lib || c, compte: c, montant: s, detail: "Avoir client ou extourne passé dans le mauvais sens ?" });
     });
+    // Libellés vagues sur des montants significatifs
+    var vagues = rows.filter(function (r) { return !isAN(r) && Math.max(r.d, r.c) >= 100000 && /(^|[^a-z])(divers|regul|régul|erreur|a voir|à voir|inconnu|attente)([^a-z]|$)|\?\?/i.test(r.lib); });
+    vagues.sort(function (a, b) { return Math.max(b.d, b.c) - Math.max(a.d, a.c); }).slice(0, 15).forEach(function (r) { add("info", "Libellé à préciser", "anomalies", { quoi: r.lib + " (" + r.j + " " + r.num + ")", compte: r.compte, date: r.date, montant: Math.max(r.d, r.c) }); });
     // Caisse : solde courant au fil des écritures
     var caisses = new Map();
     rows.filter(function (r) { return r.compte.indexOf("53") === 0; }).sort(function (a, b) { return a.date - b.date || (isAN(b) ? 1 : 0) - (isAN(a) ? 1 : 0); }).forEach(function (r) {
@@ -284,7 +327,8 @@ var FEC = (function () {
     rows.forEach(function (r) {
       if (isAN(r) || !starts(r.compte, ["401", "411"])) return;
       var m = r.d || r.c; if (!m) return;
-      var k = r.compte.slice(0, 3) + "|" + tiersKey(r) + "|" + (r.d ? "D" : "C") + "|" + m;
+      var qui = r.aux ? r.aux : r.compte + "|" + r.lib.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12);
+      var k = r.compte.slice(0, 3) + "|" + qui + "|" + (r.d ? "D" : "C") + "|" + m;
       (groupes.get(k) || groupes.set(k, []).get(k)).push(r);
     });
     var nbDoublons = 0;
@@ -331,6 +375,10 @@ var FEC = (function () {
     // 6. Activité
     var act = activite(rows);
     var actN1 = o.n1 ? activite(o.n1) : null;
+    var capital = 0, fonds = 0;
+    comptes.forEach(function (cp) { var c = cp.compte; if (c.indexOf("101") === 0) capital += cp.c - cp.d; if (starts(c, ["10", "11", "12", "13", "14"]) && c.indexOf("109") !== 0) fonds += cp.c - cp.d; });
+    var capitauxPropres = fonds + act.resultat;
+    if (capital > 0 && capitauxPropres < capital / 2) add("moyenne", "Capitaux propres inférieurs à la moitié du capital", "coherences", { quoi: "Capitaux propres estimés " + Math.round(capitauxPropres / 100) + " € pour un capital de " + Math.round(capital / 100) + " €", montant: capital / 2 - capitauxPropres, detail: "Estimation à partir des comptes 10 à 14 et du résultat de l'exercice : vérifier les obligations légales qui en découlent." });
 
     // 7. Cohérences
     function solde(prefixes, sens) { var s = 0; comptes.forEach(function (cp) { if (starts(cp.compte, prefixes)) s += sens === "C" ? cp.c - cp.d : cp.d - cp.c; }); return s; }
@@ -355,7 +403,7 @@ var FEC = (function () {
     // Banque fin de mois
     var banqueMois = [], cumul = 0, parMois = {};
     rows.filter(function (r) { return r.compte.indexOf("512") === 0; }).forEach(function (r) { var k = mois(r.date); parMois[k] = (parMois[k] || 0) + r.d - r.c; });
-    Object.keys(parMois).map(Number).sort(function (a, b) { return a - b; }).forEach(function (k) { cumul += parMois[k]; banqueMois.push({ k: k, solde: cumul }); });
+    suiteMois(Object.keys(parMois).map(Number)).forEach(function (k) { cumul += parMois[k] || 0; banqueMois.push({ k: k, solde: cumul }); });
     var negatifs = banqueMois.filter(function (b) { return b.solde < -100; }).length;
     if (banqueMois.length) item("Banque en fin de mois", cumul, negatifs ? negatifs + " mois négatif(s)" : "jamais négative", negatifs ? "info" : "ok", negatifs ? "Solde bancaire comptable négatif en fin de mois : découvert ou rapprochement à revoir ?" : "Solde bancaire comptable positif chaque fin de mois.");
 
@@ -374,7 +422,9 @@ var FEC = (function () {
     "Achat en charge, à immobiliser ?": "Certains achats importants sont en charges : s'agit-il de biens durables à immobiliser ?",
     "Créances clients de plus de 90 jours": "Des créances clients ont plus de 90 jours : sont-elles en litige ou encore recouvrables ?",
     "Compte d'attente non soldé": "Des sommes restent en compte d'attente : à quoi correspondent-elles ?",
-    "Lignes sans référence de pièce": "Des écritures n'ont pas de référence de pièce : les justificatifs sont-ils disponibles ?"
+    "Lignes sans référence de pièce": "Des écritures n'ont pas de référence de pièce : les justificatifs sont-ils disponibles ?",
+    "Capitaux propres inférieurs à la moitié du capital": "Les capitaux propres semblent inférieurs à la moitié du capital : une décision des associés a-t-elle été prise ?",
+    "Virement interne non soldé": "Un virement entre vos comptes n'apparaît que d'un côté : sur quel compte l'argent est-il arrivé ?"
   };
   function questions(A) {
     var vus = {}, q = [];
@@ -490,6 +540,7 @@ var FEC = (function () {
     l.push("", "Clients : taux de lettrage " + pct(r.tiers.clients.tauxLettrage) + ", créances non lettrées de plus de 90 jours " + e0(r.tiers.clients.ages[3]) + ", premier client " + pct(r.tiers.clients.part1) + " des flux.");
     l.push("Fournisseurs : taux de lettrage " + pct(r.tiers.fournisseurs.tauxLettrage) + ".");
     l.push("", "Rédige la note de revue de ce dossier : points à traiter avant la clôture, questions au client, pièces à demander. Distingue les faits relevés des hypothèses.");
+    l.push("", "(Synthèse issue du tableau de bord de revue de dossier conçu par Althoce, althoce.com)");
     return l.join("\n");
   }
   function exporter() {
@@ -581,7 +632,7 @@ var FEC = (function () {
 
   $("fichier").addEventListener("change", function (e) { charger(e.target.files[0], false); });
   $("fichier-n1").addEventListener("change", function (e) { charger(e.target.files[0], true); });
-  ["seuil-immo", "seuil-rond"].forEach(function (id) { $(id).addEventListener("change", function () { if (etat.rows) { calculer(); onglet("charger"); } }); });
+  ["seuil-immo", "seuil-rond"].forEach(function (id) { $(id).addEventListener("change", function () { if (etat.rows) { var ici = document.querySelector("nav button.actif").dataset.o; calculer(); onglet(ici); } }); });
   var zone = $("zone");
   ["dragenter", "dragover"].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add("survol"); }); });
   ["dragleave", "drop"].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove("survol"); }); });
