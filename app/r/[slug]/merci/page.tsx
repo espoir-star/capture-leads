@@ -5,12 +5,15 @@ import { getRessource, getAllSlugs } from "@/lib/ressources";
 import BookingCalendar from "@/components/BookingCalendar";
 import OppositionNotice from "@/components/OppositionNotice";
 import DeliveryStatus from "@/components/DeliveryStatus";
+import GuideLink from "@/components/GuideLink";
 import { ESPOIR, PRE_AUDIT_BOOKING_EMBED, PRE_AUDIT_BOOKING_URL } from "@/config/rdvPages";
 
 /**
- * Page merci de toutes les pages de capture (choix d'Espoir du 18/11/2026) :
- * le guide part par email, aucun bouton « Lire le guide » ; l'agenda du
- * pré-audit gratuit est affiché ouvert, pour réserver sans quitter la page.
+ * Page merci de toutes les pages de capture.
+ * - Action principale : l'agenda du pré-audit gratuit, affiché ouvert (choix d'Espoir du 18/11/2026).
+ * - Le guide part par email. Un bouton bleu de secours, SOUS l'agenda, l'ouvre directement
+ *   (choix d'Espoir du 27/11/2026) : dans les cabinets, l'email finit parfois en quarantaine
+ *   (Microsoft 365, Mimecast). Ce bouton ne doit jamais passer au-dessus de l'agenda.
  */
 
 interface Props {
@@ -60,8 +63,8 @@ export default async function PageMerci({ params }: Props) {
           <p className="mt-4 text-secondaire leading-relaxed">
             {r.merci?.texte ?? "Nous venons de vous l’envoyer par email, avec le lien d’accès."}
           </p>
-          {/* État réel de l'envoi (jamais de délai promis) ; lien de secours seulement si l'envoi échoue. */}
-          <DeliveryStatus slug={r.slug} fallbackHref={r.urlRessource} />
+          {/* État réel de l'envoi (jamais de délai promis). */}
+          <DeliveryStatus slug={r.slug} />
 
           <OppositionNotice slug={r.slug} />
         </div>
@@ -88,7 +91,19 @@ export default async function PageMerci({ params }: Props) {
           </div>
         </section>
 
-        <p className="mt-8 text-center text-xs text-secondaire">
+        {/* Secours, SOUS l'agenda : bouton bleu visible, mais jamais au-dessus de l'agenda (Espoir, 27/11). */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-secondaire">Vous ne trouvez pas l’email ?</p>
+          <GuideLink
+            href={r.urlRessource}
+            slug={r.slug}
+            className="mt-3 inline-block rounded-full bg-action px-6 py-3 text-sm font-semibold text-white hover:bg-action-hover transition"
+          >
+            Ouvrir la ressource directement ↗
+          </GuideLink>
+        </div>
+
+        <p className="mt-6 text-center text-xs text-secondaire">
           Althoce, cabinet de conseil &amp; intégration IA, le partenaire IA des professions réglementées
         </p>
       </div>
