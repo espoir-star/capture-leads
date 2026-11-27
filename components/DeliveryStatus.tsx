@@ -9,9 +9,9 @@ type State = "checking" | "accepted" | "pending" | "delayed" | "failed" | "unkno
 const CHECKS = [1500, 4000, 8000, 15000];
 
 /**
- * Page merci : le guide part par email ; un lien de secours sous l'agenda l'ouvre
+ * Page merci : le guide part par email ; un bouton de secours sous l'agenda l'ouvre
  * directement (choix d'Espoir du 27/11/2026). `fallbackHref`, facultatif, ajoute un lien
- * en cas d'échec d'envoi confirmé ; la page merci ne le passe plus, son lien suffit.
+ * en cas d'échec d'envoi confirmé ; la page merci ne le passe plus, son bouton suffit.
  */
 const MESSAGES: Record<State, string> = {
   checking: "Envoi de l’email en cours de vérification…",
