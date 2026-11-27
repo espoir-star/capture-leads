@@ -10,11 +10,11 @@ import { ESPOIR, PRE_AUDIT_BOOKING_EMBED, PRE_AUDIT_BOOKING_URL } from "@/config
 
 /**
  * Page merci de toutes les pages de capture.
- * - Le guide part par email (choix d'Espoir du 18/11/2026) ET s'ouvre tout de suite
- *   depuis cette page (choix d'Espoir du 27/11/2026) : dans les cabinets, l'email
- *   finit parfois en quarantaine (filtres Microsoft 365, Mimecast) et la personne
- *   n'avait alors aucun accès au guide.
- * - L'agenda du pré-audit gratuit reste affiché ouvert, pour réserver sans quitter la page.
+ * - Action principale : l'agenda du pré-audit gratuit, affiché ouvert (choix d'Espoir du 18/11/2026).
+ * - Le guide part par email. Un simple lien de secours, SOUS l'agenda, l'ouvre directement
+ *   (choix d'Espoir du 27/11/2026) : dans les cabinets, l'email finit parfois en quarantaine
+ *   (Microsoft 365, Mimecast). Ce lien ne doit jamais devenir un bouton ni passer au-dessus
+ *   de l'agenda.
  */
 
 interface Props {
@@ -67,16 +67,6 @@ export default async function PageMerci({ params }: Props) {
           {/* État réel de l'envoi (jamais de délai promis). */}
           <DeliveryStatus slug={r.slug} />
 
-          {/* Accès immédiat : ne dépend pas de la remise de l'email. */}
-          <p className="mt-6 text-sm text-secondaire">Vous pouvez aussi l’ouvrir dès maintenant :</p>
-          <GuideLink
-            href={r.urlRessource}
-            slug={r.slug}
-            className="mt-3 inline-block w-full rounded-full bg-action px-6 py-4 font-semibold text-white hover:bg-action-hover transition sm:w-auto sm:px-10"
-          >
-            Ouvrir maintenant ↗
-          </GuideLink>
-
           <OppositionNotice slug={r.slug} />
         </div>
 
@@ -102,7 +92,15 @@ export default async function PageMerci({ params }: Props) {
           </div>
         </section>
 
-        <p className="mt-8 text-center text-xs text-secondaire">
+        {/* Secours, sous l'agenda : simple lien, jamais l'action principale (Espoir, 27/11). */}
+        <p className="mt-8 text-center text-sm text-secondaire">
+          Vous ne trouvez pas l’email ?{" "}
+          <GuideLink href={r.urlRessource} slug={r.slug} className="text-accent underline underline-offset-4 hover:text-texte transition">
+            Ouvrir la ressource directement ↗
+          </GuideLink>
+        </p>
+
+        <p className="mt-6 text-center text-xs text-secondaire">
           Althoce, cabinet de conseil &amp; intégration IA, le partenaire IA des professions réglementées
         </p>
       </div>

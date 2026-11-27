@@ -16,10 +16,14 @@ test("page merci : agenda du pré-audit affiché ouvert (Espoir, 18/11)", () => 
   assert.match(page, /dans votre boîte mail/);
 });
 
-test("page merci : bouton d'accès immédiat au guide, en plus de l'email (Espoir, 27/11, emails en quarantaine dans les cabinets)", () => {
-  assert.match(page, /<GuideLink\s+href=\{r\.urlRessource\}\s+slug=\{r\.slug\}/);
-  assert.match(page, /Ouvrir maintenant/);
+test("page merci : lien de secours vers le guide SOUS l'agenda, jamais un bouton (Espoir, 27/11, emails en quarantaine dans les cabinets)", () => {
+  assert.match(page, /<GuideLink href=\{r\.urlRessource\} slug=\{r\.slug\}/);
+  assert.match(page, /Ouvrir la ressource directement/);
   assert.match(page, /<DeliveryStatus slug=\{r\.slug\} \/>/);
+  // l'agenda reste l'action principale : le lien vient après lui, sans style de bouton
+  assert.ok(page.indexOf("<GuideLink") > page.indexOf("<BookingCalendar"), "le lien doit être sous l'agenda");
+  const lien = page.slice(page.indexOf("<GuideLink"), page.indexOf("</GuideLink>"));
+  assert.doesNotMatch(lien, /bg-action|rounded-full/);
 });
 
 test("page merci : le statut d'envoi ne renvoie plus vers un bouton ; lien de secours seulement si l'envoi échoue", () => {
