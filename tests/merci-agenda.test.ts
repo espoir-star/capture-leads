@@ -9,12 +9,17 @@ const code = (path: string) => readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\
 const page = code("app/r/[slug]/merci/page.tsx");
 const status = code("components/DeliveryStatus.tsx");
 
-test("page merci : agenda du pré-audit affiché ouvert, plus de bouton pour lire le guide (Espoir, 18/11)", () => {
+test("page merci : agenda du pré-audit affiché ouvert (Espoir, 18/11)", () => {
   assert.match(page, /<BookingCalendar embedUrl=\{PRE_AUDIT_BOOKING_EMBED\}/);
   assert.match(page, /id="creneaux"/);
   assert.match(page, /100 % gratuit/);
-  assert.doesNotMatch(page, /GuideLink|Lire le guide|Accédez au guide/);
   assert.match(page, /dans votre boîte mail/);
+});
+
+test("page merci : bouton d'accès immédiat au guide, en plus de l'email (Espoir, 27/11, emails en quarantaine dans les cabinets)", () => {
+  assert.match(page, /<GuideLink\s+href=\{r\.urlRessource\}\s+slug=\{r\.slug\}/);
+  assert.match(page, /Ouvrir maintenant/);
+  assert.match(page, /<DeliveryStatus slug=\{r\.slug\} \/>/);
 });
 
 test("page merci : le statut d'envoi ne renvoie plus vers un bouton ; lien de secours seulement si l'envoi échoue", () => {

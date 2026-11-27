@@ -5,12 +5,16 @@ import { getRessource, getAllSlugs } from "@/lib/ressources";
 import BookingCalendar from "@/components/BookingCalendar";
 import OppositionNotice from "@/components/OppositionNotice";
 import DeliveryStatus from "@/components/DeliveryStatus";
+import GuideLink from "@/components/GuideLink";
 import { ESPOIR, PRE_AUDIT_BOOKING_EMBED, PRE_AUDIT_BOOKING_URL } from "@/config/rdvPages";
 
 /**
- * Page merci de toutes les pages de capture (choix d'Espoir du 18/11/2026) :
- * le guide part par email, aucun bouton « Lire le guide » ; l'agenda du
- * pré-audit gratuit est affiché ouvert, pour réserver sans quitter la page.
+ * Page merci de toutes les pages de capture.
+ * - Le guide part par email (choix d'Espoir du 18/11/2026) ET s'ouvre tout de suite
+ *   depuis cette page (choix d'Espoir du 27/11/2026) : dans les cabinets, l'email
+ *   finit parfois en quarantaine (filtres Microsoft 365, Mimecast) et la personne
+ *   n'avait alors aucun accès au guide.
+ * - L'agenda du pré-audit gratuit reste affiché ouvert, pour réserver sans quitter la page.
  */
 
 interface Props {
@@ -60,8 +64,18 @@ export default async function PageMerci({ params }: Props) {
           <p className="mt-4 text-secondaire leading-relaxed">
             {r.merci?.texte ?? "Nous venons de vous l’envoyer par email, avec le lien d’accès."}
           </p>
-          {/* État réel de l'envoi (jamais de délai promis) ; lien de secours seulement si l'envoi échoue. */}
-          <DeliveryStatus slug={r.slug} fallbackHref={r.urlRessource} />
+          {/* État réel de l'envoi (jamais de délai promis). */}
+          <DeliveryStatus slug={r.slug} />
+
+          {/* Accès immédiat : ne dépend pas de la remise de l'email. */}
+          <p className="mt-6 text-sm text-secondaire">Vous pouvez aussi l’ouvrir dès maintenant :</p>
+          <GuideLink
+            href={r.urlRessource}
+            slug={r.slug}
+            className="mt-3 inline-block w-full rounded-full bg-action px-6 py-4 font-semibold text-white hover:bg-action-hover transition sm:w-auto sm:px-10"
+          >
+            Ouvrir maintenant ↗
+          </GuideLink>
 
           <OppositionNotice slug={r.slug} />
         </div>
