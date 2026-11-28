@@ -7,9 +7,11 @@ import { Icon } from "@/components/icons/lucide";
 import { CAS_USAGE_EC as r } from "@/content/guides/cas-usage-experts-comptables";
 
 /**
- * Ressource en accès libre : les 12 cas d'usage se lisent et leurs prompts se copient
- * sans formulaire (content/guides/cas-usage-experts-comptables.ts). Même gabarit que
- * les 10 prompts ; l'appel principal mène à une autre ressource, pas à un rendez-vous.
+ * Ressource en accès libre : les cas d'usage (15 depuis le 28/11/2026) se lisent et
+ * leurs prompts se copient sans formulaire (content/guides/cas-usage-experts-comptables.ts).
+ * Même gabarit que les 10 prompts ; l'appel principal mène à une autre ressource, pas à
+ * un rendez-vous. Seule exception discrète : sous « Saisie et écritures », un lien vers
+ * la démo du connecteur qui écrit (demande d'Espoir, 28/11/2026).
  */
 
 export const metadata: Metadata = {
@@ -68,7 +70,7 @@ export default function Page() {
           <p className="mt-6 max-w-[620px] text-[16px] leading-relaxed text-secondaire sm:text-[17px]">{r.subtitle}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#cas" className={primary}>
-              Lire les 12 cas d&apos;usage
+              Lire les {r.cases.length} cas d&apos;usage
               <Icon name="arrowDown" size={14} />
             </a>
           </div>
@@ -97,7 +99,7 @@ export default function Page() {
           </ul>
         </section>
 
-        <Section id="cas" eyebrow="Les 12 cas d'usage" title="De la production au conseil, chacun avec son prompt">
+        <Section id="cas" eyebrow={`Les ${r.cases.length} cas d'usage`} title="De la saisie au conseil, chacun avec son prompt">
           <nav aria-label="Familles de cas d'usage" className="flex flex-wrap gap-2">
             {r.families.map((f) => (
               <a key={f.id} href={`#${f.id}`} className="inline-flex items-center gap-2 rounded-full border border-bordure px-3.5 py-1.5 text-[12.5px] text-secondaire transition-colors duration-150 hover:border-bordure-forte hover:text-texte">
@@ -112,6 +114,17 @@ export default function Page() {
                 <span className={tile}><Icon name={f.icon} size={14} /></span>
                 <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.02em]">{f.label}</h3>
               </div>
+              {"note" in f && f.note && (
+                <p className="mt-3 flex items-start gap-2 text-[13px] leading-relaxed text-secondaire">
+                  <Icon name="plug" size={13} className="mt-[3px] shrink-0 text-accent" />
+                  <span>
+                    {f.note.text}{" "}
+                    <a href={f.note.url} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-texte underline decoration-accent/40 underline-offset-4 hover:decoration-accent">
+                      {f.note.label}
+                    </a>
+                  </span>
+                </p>
+              )}
               <ol className={`${card} mt-4 divide-y divide-bordure`}>
                 {r.cases.filter((c) => c.family === f.id).map((c) => (
                   <li key={c.number} id={`cas-${c.number}`} className="flex scroll-mt-8 gap-4 px-5 py-5 sm:px-6">

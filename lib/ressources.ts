@@ -249,23 +249,24 @@ export const RESSOURCES: Record<string, Ressource> = {
   },
 
   /* ─────────────────────────────────────────────────────────────
-   * 12 cas d'usage Claude pour experts-comptables
+   * 15 cas d'usage Claude pour experts-comptables (slug « 12-cas » conservé)
    * ──────────────────────────────────────────────────────────── */
   "12-cas-usage-experts-comptables": {
     slug: "12-cas-usage-experts-comptables",
     badge: "GUIDE GRATUIT",
     titre:
-      "12 cas d'usage concrets de <accent>Claude</accent> pour les experts-comptables",
+      "15 cas d'usage concrets de <accent>Claude</accent> pour les experts-comptables",
     sousTitre:
-      "Pour les experts-comptables, collaborateurs et dirigeants de cabinets. 12 cas d'usage testés sur le terrain, de la production à la relation client, en passant par l'organisation interne et le conseil. Le principe : Claude propose, vous validez. Aucune écriture, aucun mail, aucune note sans votre accord.",
+      "Pour les experts-comptables, collaborateurs et dirigeants de cabinets. 15 cas d'usage testés sur le terrain, de la saisie à la relation client, en passant par la révision, l'organisation interne et le conseil. Le principe : Claude propose, vous validez. Aucune écriture, aucun mail, aucune note sans votre accord.",
     pills: [
-      "12 cas d'usage concrets",
+      "15 cas d'usage concrets",
       "Testés sur le terrain",
       "Claude propose, vous validez",
       "Compatible responsabilité pro",
     ],
-    urlRessource:
-      "https://espoir-metareglage.notion.site/12-cas-d-usage-concrets-de-Claude-pour-les-experts-comptables-3aac7d01a0e881caabc6c8d9d5555dc2",
+    // Page du site (15 cas, 28/11/2026) plutôt que l'ancien guide Notion à 12 cas :
+    // c'est le lien de l'email de livraison (GUIDE_URL) et du bouton de secours de la page merci.
+    urlRessource: "/g/12-cas-usage-experts-comptables",
     style: "modal",
     cta: "Recevoir le guide",
   },

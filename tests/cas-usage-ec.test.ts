@@ -8,19 +8,25 @@ function texts(): string[] {
   return [
     r.metaTitle, r.metaDescription, r.eyebrow, r.title, r.subtitle, ...r.promises,
     ...r.before.flatMap((b) => [b.title, b.text]),
-    ...r.families.map((f) => f.label),
+    ...r.families.flatMap((f) => ("note" in f && f.note ? [f.label, f.note.text, f.note.label] : [f.label])),
     ...r.cases.flatMap((c) => [c.title, c.result, c.prompt, c.practice]),
     r.start.title, ...r.start.steps.flatMap((s) => [s.title, s.text]), r.start.entry.title, r.start.entry.text,
     r.next.eyebrow, r.next.title, r.next.text, r.next.button, r.booking.label,
   ];
 }
 
-test("12 cas d'usage : les 12 cas du guide Notion, dans l'ordre et par famille", () => {
-  assert.deepEqual(r.cases.map((c) => c.number), ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]);
+test("15 cas d'usage : les 12 cas du guide Notion + 3 cas de saisie (28/11), dans l'ordre et par famille", () => {
+  assert.deepEqual(r.cases.map((c) => c.number), Array.from({ length: 15 }, (_, i) => String(i + 1).padStart(2, "0")));
   assert.deepEqual(r.families.map((f) => [f.label, r.cases.filter((c) => c.family === f.id).length]), [
-    ["Production et révision", 4], ["Relation client", 4], ["Organisation interne", 2], ["Conseil et technique", 2],
+    ["Saisie et écritures", 3], ["Révision et analyse", 4], ["Relation client", 4], ["Organisation interne", 2], ["Conseil et technique", 2],
   ]);
+  // les cas d'une famille se suivent (numérotation continue sur la page)
+  const ordre = r.cases.map((c) => c.family).filter((f, i, a) => a.indexOf(f) === i);
+  assert.deepEqual(ordre, r.families.map((f) => f.id));
   assert.deepEqual(r.cases.map((c) => c.title), [
+    "Saisir les pièces comptables",
+    "Catégoriser et rapprocher la banque",
+    "Préparer le lettrage clients et fournisseurs",
     "Analyser une balance générale",
     "Comparer deux périodes comptables",
     "Faire la synthèse rapide d'une plaquette",
@@ -39,14 +45,43 @@ test("12 cas d'usage : les 12 cas du guide Notion, dans l'ordre et par famille",
     assert.match(c.prompt, /\[[A-ZÉÈ]/, `${c.number} : champ entre crochets à remplacer`);
   }
   // Points de vigilance du guide : la veille (sources à vérifier) et la note technique (références à vérifier)
-  assert.deepEqual(r.cases.filter((c) => c.warning).map((c) => c.number), ["11", "12"]);
-  assert.match(r.cases[11].practice, /pas comme source de droit/);
-  // Points d'entrée du guide : cas 5 puis cas 1 ; temps du cas 5 repris du guide
-  assert.deepEqual(r.start.entry.cases, ["05", "01"]);
-  assert.match(r.cases[4].practice, /45 minutes.*10 minutes/);
+  assert.deepEqual(r.cases.filter((c) => c.warning).map((c) => c.number), ["14", "15"]);
+  assert.match(r.cases[14].practice, /pas comme source de droit/);
+  // Points d'entrée du guide : préparer un rendez-vous (08) puis analyser une balance (04) ; temps repris du guide
+  assert.deepEqual(r.start.entry.cases, ["08", "04"]);
+  assert.equal(r.cases[7].title, "Préparer un rendez-vous client");
+  assert.equal(r.cases[3].title, "Analyser une balance générale");
+  assert.match(r.cases[7].practice, /45 minutes.*10 minutes/);
 });
 
-test("12 cas d'usage : accès libre, ni formulaire ni ancien lien de réservation, typographie française", () => {
+test("15 cas d'usage : saisie avec connecteur qui écrit (mention discrète) et résultats lourds en fichiers (Espoir, 28/11)", () => {
+  // Les 3 cas de saisie : avec connecteur, l'IA prépare sans valider ; sans connecteur, un fichier d'import Excel
+  for (const c of r.cases.filter((c) => c.family === "saisie")) {
+    assert.match(c.prompt, /connecteur, prépare .* sans (les |le )?valider/, c.number);
+    assert.match(c.prompt, /fichier Excel \(\.xlsx\)/, c.number);
+  }
+  const saisie = r.families.find((f) => f.id === "saisie");
+  assert.ok(saisie && "note" in saisie, "mention du connecteur sous la famille Saisie");
+  assert.match(saisie.note.text, /connecteur qui écrit/);
+  assert.match(saisie.note.text, /Althoce/);
+  // lien d'appel : l'agenda de démo, calendrier affiché directement
+  assert.equal(saisie.note.url, "https://calendar.app.google/m6thfjDsXzEqKdkKA");
+  // une seule famille porte une mention commerciale
+  assert.equal(r.families.filter((f) => "note" in f).length, 1);
+  // résultats lourds : un fichier propre plutôt qu'un pavé de texte
+  const livrable = (titre: string) => r.cases.find((c) => c.title === titre)!.prompt;
+  assert.match(livrable("Analyser une balance générale"), /fichier Excel \(\.xlsx\)/);
+  assert.match(livrable("Comparer deux périodes comptables"), /fichier Excel \(\.xlsx\)/);
+  assert.match(livrable("Analyser un grand livre fournisseurs"), /fichier Excel \(\.xlsx\)/);
+  assert.match(livrable("Faire la synthèse rapide d'une plaquette"), /PDF d'une seule page/);
+  assert.match(livrable("Créer un visuel pour expliquer les chiffres"), /PDF au format paysage/);
+  assert.match(livrable("Faire sa veille réglementaire"), /fichier Excel \(\.xlsx\)/);
+  assert.ok(r.before.some((b) => /Google Sheets/.test(b.text)), "Excel s'ouvre aussi dans Google Sheets");
+  // ordre conservé : la dernière ligne des procédures reste la question des zones ambiguës
+  assert.match(livrable("Créer des procédures internes"), /ambiguë ou incomplète\.$/);
+});
+
+test("15 cas d'usage : accès libre, ni formulaire ni ancien lien de réservation, typographie française", () => {
   for (const t of texts()) {
     assert.ok(t.trim(), "texte vide");
     assert.doesNotMatch(t, /—/, `tiret long : ${t}`);
