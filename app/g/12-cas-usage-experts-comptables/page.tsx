@@ -3,13 +3,17 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import BrandLogo from "@/components/BrandLogo";
 import CopyPillButton from "@/components/CopyPillButton";
+import BookingCalendar from "@/components/BookingCalendar";
 import { Icon } from "@/components/icons/lucide";
 import { CAS_USAGE_EC as r } from "@/content/guides/cas-usage-experts-comptables";
+import { ESPOIR, PRE_AUDIT_BOOKING_EMBED, PRE_AUDIT_BOOKING_URL } from "@/config/rdvPages";
 
 /**
- * Ressource en accès libre : les 12 cas d'usage se lisent et leurs prompts se copient
- * sans formulaire (content/guides/cas-usage-experts-comptables.ts). Même gabarit que
- * les 10 prompts ; l'appel principal mène à une autre ressource, pas à un rendez-vous.
+ * Ressource en accès libre : les cas d'usage (15 depuis le 28/11/2026) se lisent et
+ * leurs prompts se copient sans formulaire (content/guides/cas-usage-experts-comptables.ts).
+ * Demandes d'Espoir du 28/11/2026 :
+ * - sous « Saisie et écritures », un bouton bien visible vers la démo du connecteur qui écrit ;
+ * - en bas de page, l'agenda du pré-audit IA offert, ouvert (remplace « Une autre ressource gratuite »).
  */
 
 export const metadata: Metadata = {
@@ -68,7 +72,7 @@ export default function Page() {
           <p className="mt-6 max-w-[620px] text-[16px] leading-relaxed text-secondaire sm:text-[17px]">{r.subtitle}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#cas" className={primary}>
-              Lire les 12 cas d&apos;usage
+              Lire les {r.cases.length} cas d&apos;usage
               <Icon name="arrowDown" size={14} />
             </a>
           </div>
@@ -97,7 +101,7 @@ export default function Page() {
           </ul>
         </section>
 
-        <Section id="cas" eyebrow="Les 12 cas d'usage" title="De la production au conseil, chacun avec son prompt">
+        <Section id="cas" eyebrow={`Les ${r.cases.length} cas d'usage`} title="De la saisie au conseil, chacun avec son prompt">
           <nav aria-label="Familles de cas d'usage" className="flex flex-wrap gap-2">
             {r.families.map((f) => (
               <a key={f.id} href={`#${f.id}`} className="inline-flex items-center gap-2 rounded-full border border-bordure px-3.5 py-1.5 text-[12.5px] text-secondaire transition-colors duration-150 hover:border-bordure-forte hover:text-texte">
@@ -112,6 +116,18 @@ export default function Page() {
                 <span className={tile}><Icon name={f.icon} size={14} /></span>
                 <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.02em]">{f.label}</h3>
               </div>
+              {"note" in f && f.note && (
+                <div className="mt-4 flex flex-col items-start gap-4 rounded-[14px] border border-accent/25 bg-accent/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
+                  <p className="flex items-start gap-2.5 text-[13.5px] leading-relaxed text-secondaire">
+                    <Icon name="plug" size={14} className="mt-[3px] shrink-0 text-accent" />
+                    <span>{f.note.text}</span>
+                  </p>
+                  <a href={f.note.url} target="_blank" rel="noopener noreferrer" className={`${primary} shrink-0 whitespace-nowrap`}>
+                    {f.note.label}
+                    <Icon name="arrowUpRight" size={14} />
+                  </a>
+                </div>
+              )}
               <ol className={`${card} mt-4 divide-y divide-bordure`}>
                 {r.cases.filter((c) => c.family === f.id).map((c) => (
                   <li key={c.number} id={`cas-${c.number}`} className="flex scroll-mt-8 gap-4 px-5 py-5 sm:px-6">
@@ -171,24 +187,30 @@ export default function Page() {
           </div>
         </Section>
 
-        <section aria-labelledby="suite-titre" className="mt-20 flex flex-col gap-5 rounded-[18px] border border-bordure-forte bg-carte-2 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7">
-          <div>
-            <p className={`${label} text-discret`}>{r.next.eyebrow}</p>
-            <h2 id="suite-titre" className="mt-2 text-[17px] font-semibold leading-snug tracking-[-0.02em]">{r.next.title}</h2>
-            <p className="mt-1.5 text-[13.5px] leading-relaxed text-secondaire">{r.next.text}</p>
+        <section id="creneaux" aria-labelledby="creneaux-titre" className="mt-20 scroll-mt-6 rounded-[18px] border border-accent/25 bg-accent/5 p-5 sm:p-8">
+          <div className="text-center">
+            <p className={`${label} text-accent`}>{r.rdv.eyebrow}</p>
+            <h2 id="creneaux-titre" className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.03em] text-balance sm:text-[28px]">
+              {r.rdv.title}
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-[14px] leading-relaxed text-secondaire">{r.rdv.text}</p>
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <Image src={ESPOIR.photo} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
+              <p className="text-left text-[12.5px] leading-tight text-secondaire">
+                Avec <span className="font-medium text-texte">{ESPOIR.name}</span>
+                <br />
+                30 min · Google Meet · 100&nbsp;% gratuit
+              </p>
+            </div>
           </div>
-          <a href={r.next.href} className={`${primary} shrink-0`}>
-            {r.next.button}
-            <Icon name="arrowUpRight" size={14} />
-          </a>
+          <div className="mt-6">
+            <BookingCalendar embedUrl={PRE_AUDIT_BOOKING_EMBED} url={PRE_AUDIT_BOOKING_URL} title="Pré-audit IA offert" slug="pre-audit-12-cas-usage" />
+          </div>
         </section>
 
         <footer className="mt-16 flex flex-col gap-5 border-t border-bordure pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[12px] leading-relaxed text-discret">
-            Ressource rédigée par {r.author} · Althoce, cabinet de conseil &amp; intégration IA, le partenaire IA des professions réglementées.{" "}
-            <a href={r.booking.url} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-secondaire underline decoration-bordure-forte underline-offset-4 hover:text-texte">
-              {r.booking.label}
-            </a>
+            Ressource rédigée par {r.author} · Althoce, cabinet de conseil &amp; intégration IA, le partenaire IA des professions réglementées.
           </p>
           <div className="flex shrink-0 items-center gap-2">
             <a
