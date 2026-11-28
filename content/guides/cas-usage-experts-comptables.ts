@@ -363,7 +363,7 @@ export const CAS_USAGE_EC = {
       /** Mention discrète du connecteur (demande d'Espoir, 28/11/2026) : lien vers l'agenda de démo, calendrier affiché directement */
       note: {
         text: fr("Ces trois usages vont jusqu'à l'écriture dans votre logiciel : il faut un connecteur qui écrit. Althoce en installe sur Pennylane, ACD et d'autres logiciels. Sans connecteur, Claude vous livre un fichier d'import."),
-        label: "Voir le connecteur en démo",
+        label: "Réserver une démo du connecteur",
         url: "https://calendar.app.google/m6thfjDsXzEqKdkKA",
       },
     },
@@ -389,15 +389,15 @@ export const CAS_USAGE_EC = {
     /** Les deux meilleurs points d'entrée selon le guide : préparer un rendez-vous client, puis analyser une balance */
     entry: { title: "Les meilleurs points d'entrée", cases: ["08", "04"], text: fr("Gain immédiat et adoption facile par les collaborateurs.") },
   },
-  /** Une autre ressource gratuite, plutôt qu'une prise de rendez-vous (choix d'Espoir, 12/11/2026) */
-  next: {
-    eyebrow: "Une autre ressource gratuite",
-    title: "Les 10 prompts d'un mois de production",
-    text: fr("Du contrôle de la balance à la relance client, à utiliser avec le connecteur de votre logiciel ou un simple export."),
-    href: "/g/10-prompts-production-cabinet",
-    button: "Lire les 10 prompts",
+  /**
+   * Bas de page : l'agenda du pré-audit IA offert, affiché ouvert (choix d'Espoir du
+   * 28/11/2026, à la place de « Une autre ressource gratuite »). Agenda Google
+   * PRE_AUDIT_BOOKING_* (config/rdvPages.ts), le même que la page merci et les autres guides.
+   */
+  rdv: {
+    eyebrow: fr("Pré-audit IA · 100 % gratuit"),
+    title: fr("Appliquer ces usages à votre cabinet ?"),
+    text: fr("30 minutes pour regarder votre production, vos dossiers et vos logiciels, et voir ce que l'IA peut prendre en charge. Sans engagement."),
   },
-  /** Lien discret de bas de page, comme les autres guides : agenda du pré-audit offert (Google, lu par le CRM) */
-  booking: { url: "https://calendar.app.google/JmhxjFqk2kybuFLR9", label: "Échanger 30 minutes" },
   author: "Espoir Mwami",
 } as const;

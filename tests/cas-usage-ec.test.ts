@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { CAS_USAGE_EC as r } from "@/content/guides/cas-usage-experts-comptables";
+import { PRE_AUDIT_BOOKING_URL } from "@/config/rdvPages";
 
 /** Tous les textes affichés ou copiés depuis la ressource */
 function texts(): string[] {
@@ -11,7 +12,7 @@ function texts(): string[] {
     ...r.families.flatMap((f) => ("note" in f && f.note ? [f.label, f.note.text, f.note.label] : [f.label])),
     ...r.cases.flatMap((c) => [c.title, c.result, c.prompt, c.practice]),
     r.start.title, ...r.start.steps.flatMap((s) => [s.title, s.text]), r.start.entry.title, r.start.entry.text,
-    r.next.eyebrow, r.next.title, r.next.text, r.next.button, r.booking.label,
+    r.rdv.eyebrow, r.rdv.title, r.rdv.text,
   ];
 }
 
@@ -90,9 +91,15 @@ test("15 cas d'usage : accès libre, ni formulaire ni ancien lien de réservatio
   }
   const page = readFileSync("app/g/12-cas-usage-experts-comptables/page.tsx", "utf8");
   assert.doesNotMatch(page, /cal\.com|notion\.site|<form/i);
-  // Appel principal : une autre ressource ; en bas de page, l'agenda du pré-audit (Google, lu par le CRM)
-  assert.equal(r.next.href, "/g/10-prompts-production-cabinet");
-  assert.equal(r.booking.url, "https://calendar.app.google/JmhxjFqk2kybuFLR9");
+  // Bas de page (Espoir, 28/11) : l'agenda du pré-audit IA offert, ouvert, après les cas ; plus de « Une autre ressource gratuite »
+  assert.match(page, /<BookingCalendar embedUrl=\{PRE_AUDIT_BOOKING_EMBED\} url=\{PRE_AUDIT_BOOKING_URL\}/);
+  assert.ok(page.indexOf("<BookingCalendar") > page.indexOf('id="cas"'), "l'agenda vient après les cas");
+  assert.doesNotMatch(page, /r\.next\b/);
+  assert.ok(!("next" in r), "plus de bloc « Une autre ressource gratuite »");
+  assert.equal(PRE_AUDIT_BOOKING_URL, "https://calendar.app.google/JmhxjFqk2kybuFLR9");
+  // Bouton de démo du connecteur : un vrai bouton (style principal), pas un lien discret
+  const bloc = page.slice(page.indexOf('"note" in f'), page.indexOf("</a>", page.indexOf('"note" in f')));
+  assert.match(bloc, /className=\{`\$\{primary\}/);
 });
 
 test("newsletters du 17 et du 24/11 : un email par ressource, lien direct, sans formulaire ni rendez-vous", () => {
